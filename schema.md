@@ -1,10 +1,10 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.1（在 V2.0 无物理外键规范上补充票务交易表）**  
+> **版本：V2.2（补齐最小用户身份、账号场次限购并发模型、场次选座模式）**  
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：4 张基础资源表 + 3 张票务交易表（共 7 张表）的设计草案；用户、预约、商品、赠票操作、退款明细及限购计数尚未定稿**  
-> **核心决策：不在核心表声明物理 FOREIGN KEY，但保留关联 ID、必要索引、唯一约束、事务和库存原子操作。**
+> **当前状态：9 张已设计表：1 张用户表 + 4 张活动／座位基础表 + 3 张票务交易表 + 1 张账号场次购票计数表；预约、商品、赠票流水和退款明细仍未设计**  
+> **核心决策：V2.2 全部 9 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
 ## 0. 架构决策：为什么改为逻辑关联
 
@@ -29,35 +29,76 @@
 | 表之间的关联存在性和业务归属 | Service 层 | 查询并校验 ID；新增子记录与关联记录变更在必要时使用同一事务 |
 | 库存不超卖 | MySQL 条件 `UPDATE` + 事务 | 根据影响行数判断，禁止 `SELECT` 后无条件 `UPDATE` |
 | 同一座位不可重复分配 | MySQL 座位行原子状态更新 + 事务 | `AVAILABLE → SOLD/GIFT_ALLOCATED`；退款按有效状态回退 |
-| 账号／场次限购 | Service + MySQL 事务及账号场次维度的受保护计数或锁 | 并发检查必须串行化或使用原子条件更新 |
+| 账号／场次限购 | `user_session_purchase` 复合主键、原子条件 `UPDATE` + 事务 | 同一账号同场次的并发支付不能突破上限 |
 | 重复请求幂等 | 持久化的唯一业务键／状态条件更新 | 多实例部署时不能仅靠 JVM `synchronized` |
 | 引用异常与数据巡检 | 定期对账 SQL + 日志告警 | 无物理外键会增加孤儿记录风险 |
 
 **保留逻辑关系，不等于取消数据库索引。** 不再有物理外键帮助自动创建索引，关联 ID 的常用查询索引应显式建立。
 
-## 1. 当前的逻辑关系（均非物理外键）
+## 1. 逻辑关系总览（不声明物理外键）
 
 ```text
-user.id                         ← activity.publisher_id
-activity.activity_id            ← activity_session.activity_id
-activity_session.activity_session_id ← session_zone.session_id
-session_zone.zone_id            ← session_seat.zone_id
+app_user.id                           ← activity.publisher_id
+app_user.id                           ← ticket_order.buyer_id
+app_user.id                           ← user_session_purchase.user_id
+activity.activity_id                  ← activity_session.activity_id
+activity_session.activity_session_id  ← session_zone.session_id
+activity_session.activity_session_id  ← ticket_order.session_id
+activity_session.activity_session_id  ← user_session_purchase.session_id
+session_zone.zone_id                  ← session_seat.zone_id
+session_zone.zone_id                  ← ticket_order_item.zone_id
+ticket_order.order_id                 ← ticket_order_item.order_id
+ticket_order_item.order_item_id       ← ticket.order_item_id
+session_seat.seat_id                  ← ticket.seat_id
 
 activity (1) → (N) activity_session (1) → (N) session_zone (1) → (N) session_seat
+ticket_order (1) → (N) ticket_order_item (1) → (N) ticket
+(app_user.id, activity_session.activity_session_id) → user_session_purchase（账号 × 场次唯一计数）
 ```
 
-所有 `xxx_id` 是逻辑关联标识，并不要求数据库建立 `FOREIGN KEY`。`user` 尚待设计，暂不假设用户表已存在。
+- 上述 `←` 仅表示**逻辑引用关系**，不是 MySQL `FOREIGN KEY`。
+- `activity_session.max_tickets_per_user` 存储**场次限购上限**，`user_session_purchase.valid_count` 存储**某账号当前有效持票数量**；二者职责不同。
+- `activity_session.seat_mode` 决定场次选座规则；订单明细中的 `allocation_mode` 是下单时的模式快照。
+- 支付前没有实际 `ticket`；待支付订单的选区、数量与指定座位保存在 `ticket_order_item`。
 
-## 2. 表结构 DDL（当前四张基础表）
+## 2. 用户身份与活动／座位基础表（5 张）
 
-> 以下四条 `CREATE TABLE` 语句互不依赖物理外键，适用于 MySQL 8.4 / InnoDB；如需持久化用户身份，仍须在应用业务层保证 `publisher_id` 的合法性。
+> 以下五条 `CREATE TABLE` 语句不声明物理外键，面向 MySQL 8.4 / InnoDB 新库建表。创建业务数据时，Service 仍必须校验逻辑引用与操作人身份。
+
+### 2.0 `app_user` — 最小用户身份（V2.2 新增）
+
+```sql
+CREATE TABLE app_user (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL COMMENT '保存经安全密码哈希算法处理后的值，禁止明文',
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT uq_app_user_username UNIQUE (username),
+    CONSTRAINT chk_app_user_username
+        CHECK (CHAR_LENGTH(TRIM(username)) > 0),
+    CONSTRAINT chk_app_user_password_hash
+        CHECK (CHAR_LENGTH(TRIM(password_hash)) > 0),
+    CONSTRAINT chk_app_user_role
+        CHECK (role IN ('USER', 'PUBLISHER')),
+    CONSTRAINT chk_app_user_status
+        CHECK (status IN ('ACTIVE', 'DISABLED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+- **身份与权限**：一期一个用户仅有一个 `role`；`PUBLISHER` 可发布管理自己有权限的活动，也可参与普通购票行为。`DISABLED` 用户不得发起新的受保护操作，历史订单仍保留。
+- **认证**：登录后的 `userId` 从可信身份上下文取得，不允许请求参数任意指定购买者／发布者；密码用 Spring Security `PasswordEncoder` 等安全方式哈希，不能自行使用明文、可逆加密或简单 SHA-256。
+- **关联**：`activity.publisher_id`、`ticket_order.buyer_id` 与 `user_session_purchase.user_id` 都逻辑关联 `app_user.id`。业务删除账号应采用禁用／保留历史，不物理级联删除。
+- **表名说明**：统一使用 `app_user`，避免旧稿 `user` 与 `publishers` 并存造成身份引用歧义。
 
 ### 2.1 `activity` — 活动
 
 ```sql
 CREATE TABLE activity (
     activity_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    publisher_id BIGINT NOT NULL COMMENT '逻辑关联 user.id',
+    publisher_id BIGINT NOT NULL COMMENT '逻辑关联 app_user.id',
     name VARCHAR(50) NOT NULL,
     description VARCHAR(1000) NULL,
     type VARCHAR(5) NOT NULL,
@@ -76,7 +117,7 @@ CREATE TABLE activity (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-**逻辑关联：** `publisher_id → user.id`。创建活动前校验当前认证用户具备发布权限；不从请求体直接信任用户 ID。`PUBLISHED` 后的核心字段冻结、发布前配置完整性和取消流程由 Service 实现，必要时使用有状态条件的 `UPDATE`。活动不做级联物理删除。
+**逻辑关联：** `publisher_id → app_user.id`。创建活动前校验当前认证用户具备发布权限；不从请求体直接信任用户 ID。`PUBLISHED` 后的核心字段冻结、发布前配置完整性和取消流程由 Service 实现，必要时使用有状态条件的 `UPDATE`。活动不做级联物理删除。
 
 ### 2.2 `activity_session` — 场次
 
@@ -88,6 +129,8 @@ CREATE TABLE activity_session (
     end_time DATETIME(3) NOT NULL,
     capacity INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
+    max_tickets_per_user INT NULL COMMENT '付费场次每账号限购量；免费场次为 NULL',
+    seat_mode VARCHAR(20) NULL COMMENT '付费场次的选座方式；免费场次为 NULL',
 
     CONSTRAINT chk_session_time
         CHECK (start_time < end_time),
@@ -95,12 +138,26 @@ CREATE TABLE activity_session (
         CHECK (capacity > 0),
     CONSTRAINT chk_session_status
         CHECK (status IN ('SCHEDULED', 'FINISHED', 'CANCELLED')),
+    CONSTRAINT chk_session_purchase_limit
+        CHECK (max_tickets_per_user IS NULL
+               OR (max_tickets_per_user > 0 AND max_tickets_per_user <= capacity)),
+    CONSTRAINT chk_session_seat_mode
+        CHECK (seat_mode IS NULL
+               OR seat_mode IN ('SELECT_SEAT', 'AUTO_ASSIGN')),
 
     INDEX idx_session_activity_time (activity_id, start_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 **逻辑关联：** `activity_id → activity.activity_id`。创建场次前检查活动存在、归属当前发布者、处于允许编辑的状态。正式发布前校验 `activity.close_time <= MIN(session.start_time)`，并保证活动下有至少一个场次。此跨表限制不依赖外键或单行 `CHECK`。
+
+**V2.2 限购与选座模式（发布前跨表校验）：**
+
+- `activity.type = 'PAID'`：所属场次 `max_tickets_per_user` 必须为正整数，`seat_mode` 必须为 `SELECT_SEAT` 或 `AUTO_ASSIGN`。限购上限不得超过场次总容量；是否超过实际**付费**区域的可售票数，还应在发布校验中检查。
+- `activity.type = 'FREE'`：这两个字段均须为 `NULL`，免费预约遵循每账号每场次一个有效名额的既定规则。
+- 发布后冻结场次 `seat_mode`、限购值和容量；场次时间仅能通过改期／取消专用流程变更。`CHECK` 无法查询父表 `activity.type`，以上校验必须由 Service 在发布事务中完成，并确保配置与发布状态变更不会竞态。
+- 订单明细 `allocation_mode` 必须等于其所属场次的 `seat_mode`，且参与购票的 Zone 必须为 `PAID`；由 Service 在下单及模拟支付时校验。
+
 
 ### 2.3 `session_zone` — 付费／赠票区域与剩余库存
 
@@ -176,12 +233,12 @@ CREATE TABLE session_seat (
 
 | 写操作 | 需要检查的关联和约束 | 失败时行为 |
 |---|---|---|
-| 创建活动 | `publisher_id` 确实存在且具有发布权限 | 拒绝创建 |
+| 创建活动 | `publisher_id` 指向有效 `app_user`，角色为 `PUBLISHER` 且有发布权限 | 拒绝创建 |
 | 新增场次 | `activity_id` 存在且归属发布者、活动允许编辑 | 拒绝创建 |
 | 新增区域 | `session_id` 存在，场次所属活动为 `PAID` 且处于允许配置状态 | 拒绝创建 |
 | 新增座位 | `zone_id` 存在，区域及所属活动允许修改座位配置 | 拒绝创建 |
-| 发布活动 | 有效场次、时间、容量、各 Zone 座位数全部符合规则 | 拒绝发布 |
-| 模拟支付 | 订单、用户、场次、区域、请求座位的逻辑关联一致，且符合时间、资格、库存、限购 | 整笔事务失败 |
+| 发布活动 | 有效场次、时间、容量、Zone 座位数；PAID 场次合法限购与选座模式；FREE 场次配置为 NULL | 拒绝发布 |
+| 模拟支付 | 用户 ACTIVE；订单、场次、区域、座位归属一致；订单模式匹配场次；限购计数原子更新；库存与座位满足条件 | 整笔支付事务回滚或按已确认业务规则关闭订单 |
 | 门票退款 | 门票属于有效订单、未重复退款，关联座位处于合法占用状态 | 不重复释放库存 |
 | 活动取消／改期 | 按专门状态机和处理记录执行，不能删除关联历史 | 记录失败并安全补偿／重试 |
 
@@ -193,7 +250,7 @@ CREATE TABLE session_seat (
 4. 批量导入、人工 SQL、迁移脚本不会自动经过 Service，因此须增加巡检 SQL 和操作权限控制。
 5. `CHECK`、`UNIQUE`、原子 `UPDATE` 必须保留；不能因为取消 FK 就取消数据库数据完整性机制。
 
-## 4. 高并发抢票的一致性操作（方案说明，非完整支付实现）
+## 4. 高并发抢票的一致性操作（核心事务约束，非完整支付实现）
 
 ### 4.1 区域库存原子扣减
 
@@ -227,7 +284,7 @@ WHERE seat_id = :seatId
 @Transactional 处理模拟支付：
   1. 按稳定的锁顺序确认订单处于待支付且未超时（防止重复支付）
   2. 校验用户资格、活动／场次状态、商品或座位归属
-  3. 以受并发保护的方式校验并占用账号-场次限购额度
+  3. 初始化（如不存在）并原子更新 user_session_purchase 计数（见 §8）
   4. 按稳定顺序尝试原子扣减相关区域库存
   5. 按稳定顺序分配／条件占用具体座位
   6. 创建门票记录并更新订单为支付成功
@@ -236,12 +293,12 @@ WHERE seat_id = :seatId
 
 该操作顺序是**统一锁顺序的起点**，退款、取消、其他资金流转等并发路径必须一起设计并压测；不能只把这几个步骤包入 `@Transactional` 就假定完全不会死锁。
 
-### 4.4 后续订单与票务建模要求（暂不直接冻结 DDL）
+### 4.4 票务表与限购计数的依赖说明（DDL 已设计，尚待实测）
 
 - `ticket_order`：见 §7.1；买家 ID、场次 ID、金额、状态、统一 15 分钟有效期、创建请求幂等键。
 - `ticket_order_item`：见 §7.2；多区域与自主选座／自动配座的购买意图、数量、单价快照。业务必须保留一对多明细，不因取消物理 FK 而合并到订单表。
 - `ticket`：见 §7.3；支付成功时生成、关联订单明细与实际座位。保留历史退款门票；使用只对 VALID 状态生效的唯一索引，不使用普通 `UNIQUE(seat_id)`。
-- 账号场次有效购票数量：应设计受事务保护的 `(buyer_id, session_id)` 唯一键或等效串行化机制，防止同账号同时支付突破限购。
+- 账号场次有效购票数量：已在 §8 使用 `PRIMARY KEY (user_id, session_id)` + 带条件的原子 `UPDATE` 设计；支付／退款均必须在同一事务内同步计数。
 - 订单幂等：需稳定的业务幂等键／合法状态条件更新（数据库唯一约束仍允许使用）。
 - 免费预约：单账号、单场次同时只有一条有效预约；取消后应能再次预约且保留历史。需要设计仅约束**当前有效预约**的方式，不应盲目 `UNIQUE(user_id, session_id)`。
 
@@ -275,31 +332,37 @@ HAVING z.total_amount <> configured_seats
 
 草稿配置尚未完成时，规划容量与已录入座位数可能暂时不一致；应对正式发布的场次执行严格对账。还应继续补充：找不到父场次的 Zone、找不到父 Zone 的 Seat、门票与座位有效状态不一致等巡检。
 
-## 6. 边界、测试目标与下一步
 
-**重要边界：** 当前的 0 FK 版本是一种为了研究高并发读写及应用层一致性的实验性选择。它避免了 FK 检查，却没有解决热点行竞争、流量洪峰、热点库存排队、数据库连接数限制等所有问题，不应对吞吐量做未经压测的保证。
+### 5.3 核对账号场次有效购票计数（V2.2 新增）
 
-进入真正的订单／门票表设计前，建议先完成以下测试：
+```sql
+SELECT
+    p.user_id,
+    p.session_id,
+    p.valid_count,
+    COUNT(t.ticket_id) AS actual_valid_tickets
+FROM user_session_purchase AS p
+LEFT JOIN ticket_order AS o
+    ON o.buyer_id = p.user_id AND o.session_id = p.session_id
+LEFT JOIN ticket_order_item AS i
+    ON i.order_id = o.order_id
+LEFT JOIN ticket AS t
+    ON t.order_item_id = i.order_item_id AND t.status = 'VALID'
+GROUP BY p.user_id, p.session_id, p.valid_count
+HAVING p.valid_count <> COUNT(t.ticket_id);
+```
 
-1. **业务一致性**：不存在逻辑孤儿、负库存、跨场次错售、重复分配座位。
-2. **库存并发**：库存为 100 时模拟多客户端并发支付，成功售出不得超过 100 张，余量与有效占座数一致。
-3. **重复请求**：同一订单重复提交支付只生效一次；同一退款重复执行只恢复一次库存。
-4. **故障回滚**：在扣减区域库存后故意制造占座失败，确认全部库存变更回滚。
-5. **锁竞争观测**：记录支付延迟、成功率、错误率、死锁和锁等待；用 `EXPLAIN` 检查关键查询与更新索引。
+正常支付与退款事务中必须同步计数。对账仅用于发现异常，不能未经审计就自动用 `COUNT(*)` 覆盖计数表；还需检查是否存在没有计数行的有效门票，以及引用了不存在用户／场次的计数行。
 
-**迁移注意：** 以上 `CREATE TABLE` 面向新库建表；若之前已在现有数据库创建带外键的表，请先备份数据、执行 `SHOW CREATE TABLE` 确认约束名称，并在迁移脚本中显式 `ALTER TABLE ... DROP FOREIGN KEY ...`。不要直接重复运行 `CREATE TABLE`，也不要通过 `SET foreign_key_checks=0` 代替真正删除外键约束。
+```sql
+SELECT p.user_id, p.session_id
+FROM user_session_purchase AS p
+LEFT JOIN app_user AS u ON u.id = p.user_id
+LEFT JOIN activity_session AS s ON s.activity_session_id = p.session_id
+WHERE u.id IS NULL OR s.activity_session_id IS NULL;
+```
 
-**下一步：** 基于第 7 节的票务表，由学生验证“订单创建 → 支付确认 → 座位分配 → 门票生成 → 部分退款”的事务和约束；随后设计账号场次限购计数、退款及赠票操作。逻辑关联保留、零物理 FOREIGN KEY，不以减少表数代替合理建模。
-
----
-
-> **版本记录**  
-> V1：四张表采用物理外键约束，重点训练关系模型与引用完整性。  
-> V2：移除物理外键，保留所有逻辑关联和数据库基础约束；新增 `session_seat.allocation_status`，显式规定 Service 验证、并发条件更新及巡检。  
-> V2.1：新增 3 张票务交易表，明确 15 分钟自动到期、订单明细、座位有效唯一约束与逻辑关联校验。退款明细表等仍待设计。
-
-
-## 7. 票务交易表（V2.1 新增；无物理 FOREIGN KEY）
+## 7. 票务交易表（沿用 V2.1，经 V2.2 身份与模式补齐）
 
 > 依照 requirements.md V1.1：一笔订单只针对一个活动场次，可以购买多张付费门票；不预占库存和座位；模拟支付成功后才生成门票。该“单场次单订单”是第一期的明确技术简化，订单内可包含该场次多个付费区域。
 >
@@ -310,7 +373,7 @@ HAVING z.total_amount <> configured_seats
 ```sql
 CREATE TABLE ticket_order (
     order_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    buyer_id BIGINT NOT NULL COMMENT '逻辑关联 user.id',
+    buyer_id BIGINT NOT NULL COMMENT '逻辑关联 app_user.id',
     session_id BIGINT NOT NULL COMMENT '逻辑关联 activity_session.activity_session_id',
     request_id VARCHAR(64) NOT NULL COMMENT '同一用户创建请求的幂等键',
 
@@ -359,7 +422,7 @@ CREATE TABLE ticket_order (
 - `request_id` 由调用方在同一次下单请求的重试中复用，`UNIQUE(buyer_id, request_id)` 防止重复创建；Service 必须核对重复请求的载荷与原请求一致。该唯一约束不代替支付幂等。
 - `total_amount` 为订单价格快照，等于各订单明细 `quantity × unit_price` 的求和；数据库 `CHECK` 不能跨表求和，Service 在创建主表和明细时于一个事务中校验。
 - `paid_at` 与状态一一对应：未支付和已关闭为 NULL，已支付及其退款状态必须非 NULL；`CLOSED` 必须写入原因。`CHECK` 不能限制状态转移次序，Service 应通过有条件状态更新保证合法转换。
-- 逻辑关系：`buyer_id → user.id`，`session_id → activity_session.activity_session_id`。门票订单不绑定赠票名额，不允许把 `GIFT` 区域写入明细。
+- 逻辑关系：`buyer_id → app_user.id`，`session_id → activity_session.activity_session_id`。门票订单不绑定赠票名额，不允许把 `GIFT` 区域写入明细。
 
 ### 7.2 `ticket_order_item` — 票务订单明细／购买意图
 
@@ -402,7 +465,7 @@ CREATE TABLE ticket_order_item (
 - `ticket_order` 是交易主记录；`ticket_order_item` 是一个订单的多个购买项目。取消物理外键不等于取消此一对多明细表，也不需要把 `zone_id_1, zone_id_2...` 塞进订单主表。
 - 自主选座：每个指定座位对应一条明细，`quantity=1`，`requested_seat_id` 非空；此时只是**购买意图**，不能在创建订单时将座位标记为 `SOLD`。`UNIQUE(order_id, requested_seat_id)` 阻止同一订单重复申请同一座位；自动配座的 NULL 可以重复出现。
 - 自动配座：按区域保存一条或多条 `quantity=N` 明细，`requested_seat_id=NULL`；`accept_non_adjacent` 保存用户是否接受非连座。在支付事务中确定具体座位。
-- `allocation_mode` 是创建订单时的模式快照。Service 校验其与场次发布时选定的选座方式一致；**现有 `activity_session` 尚缺独立的模式配置字段，此项需要在场次设计中补齐**。
+- `allocation_mode` 是创建订单时的模式快照。Service 校验其与场次发布时选定的选座方式一致；**V2.2 已在 `activity_session.seat_mode` 补齐场次级配置**，并规定已发布场次不得随意更改；这份明细快照必须与场次配置一致。
 - `unit_price` 是确定的十进制快照，**不是指向 `session_zone.price` 的外键**。创建订单时检查该价格与区域当时有效配置一致，后续退款可据此验证单张应退金额。
 - 同一订单不同明细的 `zone_id` 必须全部属于订单 `session_id`，各明细引用的座位须属于对应区域；仅靠主键/单行 CHECK 无法完成该跨表校验，Service 必须进行检查。
 
@@ -461,7 +524,7 @@ CREATE TABLE ticket (
   原子扣减 PAID 区域库存；按统一顺序占用指定/自动分配的 Seat
   按每张实际座位写入 ticket，状态 VALID
   更新 ticket_order.status=PAID、paid_at=数据库当前时间
-  任一步失败，全部回滚；库存不足则按业务约定关闭待支付订单
+  任一步失败，支付事务全部回滚；库存不足时在安全终止失败事务后，按业务约定另行关闭待支付订单（状态条件更新）
 
 退款（同一事务，示意）：
   验证票有效、退款金额/政策及申请是否可受理
@@ -473,8 +536,8 @@ CREATE TABLE ticket (
 
 ### 7.5 无物理外键仍需保证的业务一致性
 
-1. **逻辑引用存在性**：订单买家和场次、明细订单和 PAID 区域、所选座位与区域、门票与订单明细及座位，全部由 Service 校验，必要时通过对账 SQL 发现孤儿记录。不能只在高并发之前查询一次就默认永远有效。
-2. **买家限购**：本 3 表暂未实现账号-场次累计有效票数的并发安全计数。应按 §4.4 继续设计受唯一键及行锁保护的计数或等效方案；只用 `SELECT COUNT(*)` 再判断是不安全的。
+1. **逻辑引用存在性**：订单买家（`app_user.id`）和场次、明细订单和 PAID 区域、所选座位与区域、门票与订单明细及座位，全部由 Service 校验，必要时通过对账 SQL 发现孤儿记录。不能只在高并发之前查询一次就默认永远有效。
+2. **买家限购**：V2.2 已增加 `user_session_purchase` 计数表（§8）；Service 必须原子更新计数并与库存、座位、票单提交在同一事务，只用 `SELECT COUNT(*)` 再判断是不安全的。
 3. **历史保留**：不能物理删除已生效的订单明细和历史门票。允许退款后新订单对应新门票再次引用同一座位。
 4. **数据库约束边界**：`CHECK` 只能约束当前行，可校验状态、时间、数量、模式等；不能通过 `CHECK` 确保 `total_amount = SUM(items)`、`seat.zone_id = item.zone_id` 或 `ticket_count = item.quantity`。
 5. **价格快照的冗余**：订单总额、明细单价与逐票成交价有意冗余，以便查询和退款。三层数值的一致性由 Service 事务、只读历史价格和定期对账保证。
@@ -494,3 +557,161 @@ CREATE TABLE ticket (
 - 用户跨场次、跨区域混写订单：Service 拒绝，不产生门票。
 
 > **验证状态**：依据 MySQL 8.4 官方的 DDL / CHECK / 生成列规则进行静态设计；尚未连接到 MySQL 8.4 实例实际运行 DDL、事务与压测，不得据此宣称生产高并发性能已经验证。
+
+
+## 8. 账号场次购票计数与并发限购（V2.2 新增）
+
+### 8.1 `user_session_purchase` — 当前有效购票计数
+
+```sql
+CREATE TABLE user_session_purchase (
+    user_id BIGINT NOT NULL COMMENT '逻辑关联 app_user.id',
+    session_id BIGINT NOT NULL COMMENT '逻辑关联 activity_session.activity_session_id',
+    valid_count INT NOT NULL DEFAULT 0 COMMENT '当前尚未退款的有效付费门票数量',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+        ON UPDATE CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (user_id, session_id),
+    CONSTRAINT chk_user_session_purchase_count CHECK (valid_count >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+**建模说明：**
+
+- **一人一场一行**：`PRIMARY KEY(user_id, session_id)` 同时是唯一性约束与两列的联合索引，不必再创建同样的 `UNIQUE`。
+- `valid_count` 表示该账号**当前有效**（未成功退款）的付费票数，不统计 `PENDING_PAYMENT`、`CLOSED`、已退款门票、赠票或其他场次。退款完成时必须按实际成功退款票数减少；正在退款但未成功的门票仍计入。
+- `max_tickets_per_user` **不存入本表**，而在 `activity_session` 中统一配置。计数是用户实时状态，上限是场次规则，二者不能混为一谈。
+- `user_id`、`session_id` 为**逻辑关联**，无物理外键；Service 必须校验用户、场次和活动的有效性。
+- 计数行首次创建后即使变成 0 也建议保留，避免并发支付与退款之间反复删除／重建同一复合主键记录。
+
+### 8.2 首次购买时安全初始化计数行
+
+由于 `UPDATE` 无法更新不存在的记录，支付事务需先保证 `(user_id, session_id)` 的计数行存在。
+
+```sql
+-- MyBatis 参数示例；与支付操作处于同一事务。
+INSERT INTO user_session_purchase (user_id, session_id, valid_count)
+VALUES (#{userId}, #{sessionId}, 0)
+ON DUPLICATE KEY UPDATE valid_count = valid_count;
+```
+
+两个线程第一次为同一账号、同一场次下单并发支付时，复合主键保证最终只有一条计数记录。冲突更新可能等待其他事务释放行锁；上述语句为**幂等初始化**，不代表增加购票数量。
+
+### 8.3 原子占用限购额度
+
+场次每账号限购 `max_tickets_per_user = 4`；该账号当前 `valid_count = 2`，支付订单需要 `quantity = 2` 张：
+
+```sql
+UPDATE user_session_purchase
+SET valid_count = valid_count + #{quantity}
+WHERE user_id = #{userId}
+  AND session_id = #{sessionId}
+  AND #{quantity} > 0
+  AND valid_count <= #{purchaseLimit} - #{quantity};
+```
+
+应用要求**影响行数必须等于 1**。影响 0 行表示当前数量不满足条件或计数行不存在，应中止支付。`purchaseLimit` 必须在同一支付事务中从可信的已发布场次配置读取，不能由前端任意提供；发布后该限购配置冻结。
+
+在两个线程同时从 2 尝试加 2 的场景中，第一个提交后计数变为 4，第二个事务重新检查时更新 0 行；若第一个事务因座位不足**回滚**，则计数回到 2，另一个合法支付仍可能成功。MySQL 行锁与条件更新保证该计数不会因并发成功超限，但**不自动保证区域库存、座位、订单一致**，它们仍要使用同一事务。
+
+### 8.4 退款时原子恢复额度
+
+```sql
+UPDATE user_session_purchase
+SET valid_count = valid_count - #{refundQuantity}
+WHERE user_id = #{userId}
+  AND session_id = #{sessionId}
+  AND #{refundQuantity} > 0
+  AND valid_count >= #{refundQuantity};
+```
+
+必须先确保对应门票确实处于可退款的 `VALID` 状态，且该退款请求没有被其他线程成功处理过；在**同一事务中**更新门票状态、退款记录（后续实体）、座位占用状态、区域库存及本计数。重复退款不得重复减少计数或恢复库存。
+
+### 8.5 支付事务与锁顺序（Service 实现约束）
+
+```text
+1. 在事务中锁定待支付订单，验证订单状态／expires_at、活动与场次交易状态、账号 ACTIVE
+2. 校验当前账号的白名单资格、订单明细、所属场次与 seat_mode／区域归属
+3. 如不存在则幂等初始化 (user_id, session_id) 计数行
+4. 按复合主键定位计数行并执行限购条件 UPDATE（必须影响 1 行）
+5. 对 PAID 区域按 zone_id 排序执行库存条件 UPDATE；按 seat_id 顺序占用座位
+6. 为成功占用的每个座位生成 VALID ticket，并把订单更新为 PAID
+7. 全部成功 COMMIT；业务校验或写入失败必须抛出异常并 ROLLBACK
+```
+
+以上仅为统一锁顺序的建议起点，所有支付、退款、改期及取消路径的锁顺序都须协调。Java `@Transactional` 不代表自动免除死锁，遇到 InnoDB 死锁或锁等待需对**整个事务**按幂等设计处理可控重试。
+
+**状态并发提示：** 订单超时关闭与支付都要锁定／条件更新同一笔订单，并使用数据库时间检查 `expires_at`；订单无法同时成为 `CLOSED` 和 `PAID`。
+
+### 8.6 选座模式与订单明细的联动验收
+
+| 场次类型 | `seat_mode` | 下单记录 | 支付时必须检查 |
+|---|---|---|---|
+| 免费活动 | `NULL` | 不生成付费 `ticket_order` | 免费预约单独建模 |
+| 付费／自主选座 | `SELECT_SEAT` | 每个目标座位一条 `ticket_order_item`；`requested_seat_id` 非空、`quantity = 1` | 指定座位仍可用，且属于该付费场次区域 |
+| 付费／自动配座 | `AUTO_ASSIGN` | `requested_seat_id = NULL`，按区域记录 `quantity`；可记录是否接受非连座 | 可分配座位数量、连座策略与用户选择都满足条件 |
+
+`ticket_order_item.allocation_mode` 是下单时的业务快照；不能由前端提供与发布后的 `activity_session.seat_mode` 相矛盾的模式。无物理外键时，Service 仍须验证 `zone_id → session_id`、`seat_id → zone_id`、订单 `session_id` 三者一致。
+
+### 8.7 本阶段必测用例
+
+1. 新用户首次支付时，两个请求同时初始化同一 `(user_id, session_id)`：最终只能有一条计数记录。
+2. 已购 2 张、限购 4 张、两笔订单各买 2 张并发支付：最终累计有效票数不得超过 4；最多一笔支付成功。
+3. 先占用计数、后占座失败：整体事务回滚，计数恢复原值，不残留部分扣减。
+4. 成功退款 1 张后：计数减 1、该门票失效、对应座位与区域库存依规则恢复。
+5. 同一退款请求同时到达两次：计数与库存最多恢复一次。
+6. 已发布付费场次 `seat_mode` 为 `SELECT_SEAT`，却提交 `AUTO_ASSIGN` 明细：拒绝。
+7. 免费场次在发布前带有付费选座模式或限购值、付费场次缺失这些配置：拒绝发布。
+8. 用户被禁用、订单过期或场次取消时：不得成功支付，即便仍存在可用库存和限购额度。
+
+## 9. 边界、测试与迁移
+
+**重要边界：** 当前的 0 FK 版本是一种为了研究高并发读写及应用层一致性的实验性选择。它避免了 FK 检查，却没有解决热点行竞争、流量洪峰、热点库存排队、数据库连接数限制等所有问题，不应对吞吐量做未经压测的保证。
+
+在实际部署、开发完整支付／退款链路前，至少完成以下测试（新增的账号限购、身份和选座规则见 §8.7）：
+
+1. **业务一致性**：不存在逻辑孤儿、负库存、跨场次错售、重复分配座位。
+2. **库存并发**：库存为 100 时模拟多客户端并发支付，成功售出不得超过 100 张，余量与有效占座数一致。
+3. **重复请求**：同一订单重复提交支付只生效一次；同一退款重复执行只恢复一次库存。
+4. **故障回滚**：在扣减区域库存后故意制造占座失败，确认全部库存变更回滚。
+5. **锁竞争观测**：记录支付延迟、成功率、错误率、死锁和锁等待；用 `EXPLAIN` 检查关键查询与更新索引。
+
+**迁移注意：** 以上 `CREATE TABLE` 面向新库建表；若之前已在现有数据库创建带外键的表，请先备份数据、执行 `SHOW CREATE TABLE` 确认约束名称，并在迁移脚本中显式 `ALTER TABLE ... DROP FOREIGN KEY ...`。不要直接重复运行 `CREATE TABLE`，也不要通过 `SET foreign_key_checks=0` 代替真正删除外键约束。
+
+**下一步：** 本版已补齐用户身份、账号场次限购及选座模式。下一阶段依需求设计免费预约、退款明细、赠票库存操作、商品及售后表，并执行“订单创建 → 模拟支付 → 座位分配 → 票单生成 → 部分退款”端到端事务及并发测试。
+
+### 9.1 已有 V2.1 数据库的增量迁移示例
+
+如果已经执行过 V2.1 的 `activity_session` DDL，**不能再次执行 `CREATE TABLE activity_session`**，而应先备份并检查线上数据，然后在维护窗口执行类似以下迁移：
+
+```sql
+ALTER TABLE activity_session
+    ADD COLUMN max_tickets_per_user INT NULL
+        COMMENT '付费场次账号限购量，免费场次 NULL',
+    ADD COLUMN seat_mode VARCHAR(20) NULL
+        COMMENT '付费场次选座模式，免费场次 NULL',
+    ADD CONSTRAINT chk_session_purchase_limit
+        CHECK (max_tickets_per_user IS NULL
+               OR (max_tickets_per_user > 0 AND max_tickets_per_user <= capacity)),
+    ADD CONSTRAINT chk_session_seat_mode
+        CHECK (seat_mode IS NULL
+               OR seat_mode IN ('SELECT_SEAT', 'AUTO_ASSIGN'));
+```
+
+另行执行本版 `app_user` 与 `user_session_purchase` 的新表 `CREATE TABLE`。如果系统已经有真实账号、订单与发布活动，必须先做 ID 对齐和数据补齐，避免出现账号不存在或已发布付费场次配置为空的情况。跨表的付费／免费模式校验始终由 Service 负责。数据库迁移执行前应核对目标实例是否已经存在上述列或约束，避免重复添加。
+
+### 9.2 新库部署与静态验证状态
+
+新库推荐顺序：`app_user` → `activity` → `activity_session` → `session_zone` → `session_seat` → `ticket_order` → `ticket_order_item` → `ticket` → `user_session_purchase`。由于**没有物理外键**，顺序不由数据库强制，但业务校验应按父实体先创建的原则执行。
+
+本版为基于 MySQL 8.4 语法的静态设计稿，未连接真实 MySQL 实例执行 DDL、支付与退款并发压测。不能据此宣称生产性能已经验证。
+
+
+---
+
+## 10. 版本记录
+
+- **V1**：四张基础表采用物理外键，训练基础关系模型与引用完整性。
+- **V2.0**：移除物理外键，保留逻辑关联与数据库基础约束；新增座位占用状态，明确 Service 校验、条件更新和巡检职责。
+- **V2.1**：增加 `ticket_order`、`ticket_order_item`、`ticket` 三张票务表，支持独立门票、订单明细及退款后座位重新销售。
+- **V2.2（本版）**：新增 `app_user`、`user_session_purchase`；为 `activity_session` 增加 `max_tickets_per_user` 与 `seat_mode`，实现以复合主键和原子条件更新为核心的账号场次限购并发模型，并衔接两种座位分配模式。**共 9 张已设计表，0 个物理 FOREIGN KEY。**
