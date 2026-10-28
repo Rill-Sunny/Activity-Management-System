@@ -1,0 +1,38 @@
+name: limited-activities-system
+
+services:
+  mysql:
+    image: mysql:8.4.11
+    restart: unless-stopped
+
+    environment:
+      TZ: UTC
+      MYSQL_DATABASE: limit_activity_system
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?missing}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?missing}
+
+    command:
+      - "--default-time-zone=+00:00"
+
+    ports:
+      - "127.0.0.1:3307:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          MYSQL_PWD="$$MYSQL_PASSWORD"
+          mysql --protocol=TCP -h 127.0.0.1
+          -u "$$MYSQL_USER" "$$MYSQL_DATABASE"
+          -e "SELECT 1" >/dev/null 2>&1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+volumes:
+  mysql_data:

@@ -1,10 +1,10 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.2（补齐最小用户身份、账号场次限购并发模型、场次选座模式）**  
+> **版本：V2.3（增加活动与场次白名单配置、白名单成员）**  
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：9 张已设计表：1 张用户表 + 4 张活动／座位基础表 + 3 张票务交易表 + 1 张账号场次购票计数表；预约、商品、赠票流水和退款明细仍未设计**  
-> **核心决策：V2.2 全部 9 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
+> **当前状态：11 张已设计表：1 张用户表 + 4 张活动／座位基础表 + 3 张票务交易表 + 1 张账号场次购票计数表 + 2 张白名单表；预约、商品、赠票流水和退款明细仍未设计**  
+> **核心决策：全部 11 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
 ## 0. 架构决策：为什么改为逻辑关联
 
@@ -50,6 +50,10 @@ session_zone.zone_id                  ← ticket_order_item.zone_id
 ticket_order.order_id                 ← ticket_order_item.order_id
 ticket_order_item.order_item_id       ← ticket.order_item_id
 session_seat.seat_id                  ← ticket.seat_id
+activity.activity_id                  ← whitelist_config.scope_id（scope_type = ACTIVITY）
+activity_session.activity_session_id  ← whitelist_config.scope_id（scope_type = SESSION）
+whitelist_config.config_id            ← whitelist_member.config_id
+app_user.id                           ← whitelist_member.user_id
 
 activity (1) → (N) activity_session (1) → (N) session_zone (1) → (N) session_seat
 ticket_order (1) → (N) ticket_order_item (1) → (N) ticket
@@ -71,7 +75,7 @@ ticket_order (1) → (N) ticket_order_item (1) → (N) ticket
 CREATE TABLE app_user (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL COMMENT '保存经安全密码哈希算法处理后的值，禁止明文',
+    password_hash VARCHAR(255) NOT NULL COMMENT 'Stores a secure password hash; plaintext is forbidden',
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -98,7 +102,7 @@ CREATE TABLE app_user (
 ```sql
 CREATE TABLE activity (
     activity_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    publisher_id BIGINT NOT NULL COMMENT '逻辑关联 app_user.id',
+    publisher_id BIGINT NOT NULL COMMENT 'Logical reference to app_user.id',
     name VARCHAR(50) NOT NULL,
     description VARCHAR(1000) NULL,
     type VARCHAR(5) NOT NULL,
@@ -124,13 +128,13 @@ CREATE TABLE activity (
 ```sql
 CREATE TABLE activity_session (
     activity_session_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    activity_id BIGINT NOT NULL COMMENT '逻辑关联 activity.activity_id',
+    activity_id BIGINT NOT NULL COMMENT 'Logical reference to activity.activity_id',
     start_time DATETIME(3) NOT NULL,
     end_time DATETIME(3) NOT NULL,
     capacity INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
-    max_tickets_per_user INT NULL COMMENT '付费场次每账号限购量；免费场次为 NULL',
-    seat_mode VARCHAR(20) NULL COMMENT '付费场次的选座方式；免费场次为 NULL',
+    max_tickets_per_user INT NULL COMMENT 'Per-account ticket purchase limit for paid sessions; NULL for free sessions',
+    seat_mode VARCHAR(20) NULL COMMENT 'Seat selection mode for paid sessions; NULL for free sessions',
 
     CONSTRAINT chk_session_time
         CHECK (start_time < end_time),
@@ -164,7 +168,7 @@ CREATE TABLE activity_session (
 ```sql
 CREATE TABLE session_zone (
     zone_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    session_id BIGINT NOT NULL COMMENT '逻辑关联 activity_session.activity_session_id',
+    session_id BIGINT NOT NULL COMMENT 'Logical reference to activity_session.activity_session_id',
     name VARCHAR(100) NOT NULL,
     zone_type VARCHAR(10) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
@@ -202,7 +206,7 @@ CREATE TABLE session_zone (
 ```sql
 CREATE TABLE session_seat (
     seat_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    zone_id BIGINT NOT NULL COMMENT '逻辑关联 session_zone.zone_id',
+    zone_id BIGINT NOT NULL COMMENT 'Logical reference to session_zone.zone_id',
     row_no INT NOT NULL,
     seat_no INT NOT NULL,
     allocation_priority INT NOT NULL,
@@ -237,6 +241,7 @@ CREATE TABLE session_seat (
 | 新增场次 | `activity_id` 存在且归属发布者、活动允许编辑 | 拒绝创建 |
 | 新增区域 | `session_id` 存在，场次所属活动为 `PAID` 且处于允许配置状态 | 拒绝创建 |
 | 新增座位 | `zone_id` 存在，区域及所属活动允许修改座位配置 | 拒绝创建 |
+| 白名单管理 | 作用域存在且归属当前发布者；成员账号存在；配置和成员变更在同一事务内完成 | 拒绝写入并回滚 |
 | 发布活动 | 有效场次、时间、容量、Zone 座位数；PAID 场次合法限购与选座模式；FREE 场次配置为 NULL | 拒绝发布 |
 | 模拟支付 | 用户 ACTIVE；订单、场次、区域、座位归属一致；订单模式匹配场次；限购计数原子更新；库存与座位满足条件 | 整笔支付事务回滚或按已确认业务规则关闭订单 |
 | 门票退款 | 门票属于有效订单、未重复退款，关联座位处于合法占用状态 | 不重复释放库存 |
@@ -373,9 +378,9 @@ WHERE u.id IS NULL OR s.activity_session_id IS NULL;
 ```sql
 CREATE TABLE ticket_order (
     order_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    buyer_id BIGINT NOT NULL COMMENT '逻辑关联 app_user.id',
-    session_id BIGINT NOT NULL COMMENT '逻辑关联 activity_session.activity_session_id',
-    request_id VARCHAR(64) NOT NULL COMMENT '同一用户创建请求的幂等键',
+    buyer_id BIGINT NOT NULL COMMENT 'Logical reference to app_user.id',
+    session_id BIGINT NOT NULL COMMENT 'Logical reference to activity_session.activity_session_id',
+    request_id VARCHAR(64) NOT NULL COMMENT 'Idempotency key for order creation requests by the same user',
 
     total_amount DECIMAL(12,2) NOT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'PENDING_PAYMENT',
@@ -419,7 +424,7 @@ CREATE TABLE ticket_order (
 **字段与约束理由：**
 
 - `created_at` 由数据库自动填充；`expires_at` 是基于该创建时间加 **15 分钟**的存储生成列，避免应用层传入互相矛盾的过期时间，也不使用非确定性的 `NOW()` 放入 `CHECK`。如未来将 15 分钟改成可配置参数，应迁移为普通字段，并由下单事务统一赋值；本版按照已确认的固定时长设计。
-- `request_id` 由调用方在同一次下单请求的重试中复用，`UNIQUE(buyer_id, request_id)` 防止重复创建；Service 必须核对重复请求的载荷与原请求一致。该唯一约束不代替支付幂等。
+- `request_id` 由调用方在同一次下单请求的重试中复用，`UNIQUE(buyer_id, request_id)` 防止重复创建。Service 已采用方案 A，按原订单的场次及全部明细购买意图比较载荷，相同则返回原单，不同则返回 `409 IDEMPOTENCY_CONFLICT`。不比较客户端价格或总额，不新增摘要列。唯一约束只阻止重复插入，既不证明载荷相同，也不代替支付幂等，见 [ADR-003](decisions.md#adr-003创建票单按原明细实现请求幂等)。
 - `total_amount` 为订单价格快照，等于各订单明细 `quantity × unit_price` 的求和；数据库 `CHECK` 不能跨表求和，Service 在创建主表和明细时于一个事务中校验。
 - `paid_at` 与状态一一对应：未支付和已关闭为 NULL，已支付及其退款状态必须非 NULL；`CLOSED` 必须写入原因。`CHECK` 不能限制状态转移次序，Service 应通过有条件状态更新保证合法转换。
 - 逻辑关系：`buyer_id → app_user.id`，`session_id → activity_session.activity_session_id`。门票订单不绑定赠票名额，不允许把 `GIFT` 区域写入明细。
@@ -429,13 +434,13 @@ CREATE TABLE ticket_order (
 ```sql
 CREATE TABLE ticket_order_item (
     order_item_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    order_id BIGINT NOT NULL COMMENT '逻辑关联 ticket_order.order_id',
-    zone_id BIGINT NOT NULL COMMENT '逻辑关联 session_zone.zone_id',
+    order_id BIGINT NOT NULL COMMENT 'Logical reference to ticket_order.order_id',
+    zone_id BIGINT NOT NULL COMMENT 'Logical reference to session_zone.zone_id',
 
     allocation_mode VARCHAR(20) NOT NULL,
-    requested_seat_id BIGINT NULL COMMENT '自主选座时指定；自动配座为 NULL',
+    requested_seat_id BIGINT NULL COMMENT 'Specified for user-selected seating; NULL for automatic seat assignment',
     quantity INT NOT NULL,
-    unit_price DECIMAL(10,2) NOT NULL COMMENT '下单时确认的区域单张价格快照',
+    unit_price DECIMAL(10,2) NOT NULL COMMENT 'Snapshot of the per-ticket price for the zone, confirmed at order creation',
     accept_non_adjacent TINYINT NOT NULL DEFAULT 0,
 
     CONSTRAINT chk_ticket_item_quantity CHECK (quantity > 0),
@@ -474,10 +479,10 @@ CREATE TABLE ticket_order_item (
 ```sql
 CREATE TABLE ticket (
     ticket_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    order_item_id BIGINT NOT NULL COMMENT '逻辑关联 ticket_order_item.order_item_id',
-    seat_id BIGINT NOT NULL COMMENT '逻辑关联 session_seat.seat_id',
+    order_item_id BIGINT NOT NULL COMMENT 'Logical reference to ticket_order_item.order_item_id',
+    seat_id BIGINT NOT NULL COMMENT 'Logical reference to session_seat.seat_id',
 
-    paid_price DECIMAL(10,2) NOT NULL COMMENT '该张门票实际成交价格快照',
+    paid_price DECIMAL(10,2) NOT NULL COMMENT 'Snapshot of the actual transaction price for this ticket',
     status VARCHAR(20) NOT NULL DEFAULT 'VALID',
     issued_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     refunded_at DATETIME(3) NULL,
@@ -542,7 +547,7 @@ CREATE TABLE ticket (
 4. **数据库约束边界**：`CHECK` 只能约束当前行，可校验状态、时间、数量、模式等；不能通过 `CHECK` 确保 `total_amount = SUM(items)`、`seat.zone_id = item.zone_id` 或 `ticket_count = item.quantity`。
 5. **价格快照的冗余**：订单总额、明细单价与逐票成交价有意冗余，以便查询和退款。三层数值的一致性由 Service 事务、只读历史价格和定期对账保证。
 6. **索引取舍**：为常见的用户订单、超时任务、区域查找、订单明细以及活跃座位冲突建立索引；不要无条件为每个关联 ID 追加所有单列索引，写入高峰下每个索引也需要维护成本。
-7. **未实现事项**：退款申请/退款明细、改期响应、通知、赠票发放、用户认证、限购计数、订单操作幂等和自动选座算法均需后续业务表与 Service 设计。已设计的 request_id 只保证**创建订单**层面的幂等。
+7. **阶段边界**：用户认证、创建订单幂等、完整票务支付、支付时原子限购更新及自动配座已实现。退款申请、退款明细、改期响应、通知与赠票发放留待后续实现。创建幂等由唯一键与完整购买意图比较共同保证，不能只依赖 `request_id`；支付幂等由订单状态、行锁与事务共同保证。
 
 ### 7.6 验收用例（建表后再用 MySQL 实测）
 
@@ -565,9 +570,9 @@ CREATE TABLE ticket (
 
 ```sql
 CREATE TABLE user_session_purchase (
-    user_id BIGINT NOT NULL COMMENT '逻辑关联 app_user.id',
-    session_id BIGINT NOT NULL COMMENT '逻辑关联 activity_session.activity_session_id',
-    valid_count INT NOT NULL DEFAULT 0 COMMENT '当前尚未退款的有效付费门票数量',
+    user_id BIGINT NOT NULL COMMENT 'Logical reference to app_user.id',
+    session_id BIGINT NOT NULL COMMENT 'Logical reference to activity_session.activity_session_id',
+    valid_count INT NOT NULL DEFAULT 0 COMMENT 'Current number of valid paid tickets that have not been refunded',
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
         ON UPDATE CURRENT_TIMESTAMP(3),
 
@@ -589,7 +594,7 @@ CREATE TABLE user_session_purchase (
 由于 `UPDATE` 无法更新不存在的记录，支付事务需先保证 `(user_id, session_id)` 的计数行存在。
 
 ```sql
--- MyBatis 参数示例；与支付操作处于同一事务。
+-- MyBatis parameter example; executed in the same transaction as payment.
 INSERT INTO user_session_purchase (user_id, session_id, valid_count)
 VALUES (#{userId}, #{sessionId}, 0)
 ON DUPLICATE KEY UPDATE valid_count = valid_count;
@@ -630,16 +635,17 @@ WHERE user_id = #{userId}
 ### 8.5 支付事务与锁顺序（Service 实现约束）
 
 ```text
-1. 在事务中锁定待支付订单，验证订单状态／expires_at、活动与场次交易状态、账号 ACTIVE
-2. 校验当前账号的白名单资格、订单明细、所属场次与 seat_mode／区域归属
-3. 如不存在则幂等初始化 (user_id, session_id) 计数行
-4. 按复合主键定位计数行并执行限购条件 UPDATE（必须影响 1 行）
-5. 对 PAID 区域按 zone_id 排序执行库存条件 UPDATE；按 seat_id 顺序占用座位
-6. 为成功占用的每个座位生成 VALID ticket，并把订单更新为 PAID
-7. 全部成功 COMMIT；业务校验或写入失败必须抛出异常并 ROLLBACK
+1. 在事务中按主键 FOR UPDATE 锁定订单，核对当前买家、订单状态与数据库有效期
+2. 调用 QualificationService.checkAgain，取得账号、活动、场次及当前适用名单的共享锁
+3. 复核活动与场次交易状态、明细及区域关系，资格共享锁保持到事务结束
+4. 如不存在则幂等初始化 (user_id, session_id) 计数行
+5. 按复合主键定位计数行并执行限购条件 UPDATE（必须影响 1 行）
+6. 按 zone_id 升序锁齐本单全部 PAID Zone 并条件扣减，确定全部候选后按全单 seat_id 升序条件占用
+7. 为成功占用的每个座位生成 VALID ticket，并把订单更新为 PAID
+8. 全部成功 COMMIT；业务校验或写入失败必须抛出异常并 ROLLBACK
 ```
 
-以上仅为统一锁顺序的建议起点，所有支付、退款、改期及取消路径的锁顺序都须协调。Java `@Transactional` 不代表自动免除死锁，遇到 InnoDB 死锁或锁等待需对**整个事务**按幂等设计处理可控重试。
+以上是完整支付的设计约束，当前逐步实现资源组件，尚未开放支付端点。订单锁先于资格共享锁，资格锁又先于限购、库存和座位写锁，并保持到业务事务结束，具体顺序见 [locking.md](locking.md#ticket-payment-resources)。所有支付、退款、改期及取消路径的锁顺序都须协调。Java `@Transactional` 不代表自动免除死锁，遇到 InnoDB 死锁或锁等待需对**整个事务**按幂等设计处理可控重试。
 
 **状态并发提示：** 订单超时关闭与支付都要锁定／条件更新同一笔订单，并使用数据库时间检查 `expires_at`；订单无法同时成为 `CLOSED` 和 `PAID`。
 
@@ -687,9 +693,9 @@ WHERE user_id = #{userId}
 ```sql
 ALTER TABLE activity_session
     ADD COLUMN max_tickets_per_user INT NULL
-        COMMENT '付费场次账号限购量，免费场次 NULL',
+        COMMENT 'Per-account ticket purchase limit for paid sessions; NULL for free sessions',
     ADD COLUMN seat_mode VARCHAR(20) NULL
-        COMMENT '付费场次选座模式，免费场次 NULL',
+        COMMENT 'Seat selection mode for paid sessions; NULL for free sessions',
     ADD CONSTRAINT chk_session_purchase_limit
         CHECK (max_tickets_per_user IS NULL
                OR (max_tickets_per_user > 0 AND max_tickets_per_user <= capacity)),
@@ -702,16 +708,90 @@ ALTER TABLE activity_session
 
 ### 9.2 新库部署与静态验证状态
 
-新库推荐顺序：`app_user` → `activity` → `activity_session` → `session_zone` → `session_seat` → `ticket_order` → `ticket_order_item` → `ticket` → `user_session_purchase`。由于**没有物理外键**，顺序不由数据库强制，但业务校验应按父实体先创建的原则执行。
+新库推荐顺序：`app_user` → `activity` → `activity_session` → `session_zone` → `session_seat` → `ticket_order` → `ticket_order_item` → `ticket` → `user_session_purchase` → `whitelist_config` → `whitelist_member`。由于**没有物理外键**，顺序不由数据库强制，但业务校验应按父实体先创建的原则执行。
 
-本版为基于 MySQL 8.4 语法的静态设计稿，未连接真实 MySQL 实例执行 DDL、支付与退款并发压测。不能据此宣称生产性能已经验证。
+本节的建表顺序不代表完整支付、退款并发或生产性能已经验证。白名单模型与验证范围见第 10 节。
 
 
 ---
 
-## 10. 版本记录
+## 10. 白名单配置与成员（V2.3 新增）
+
+本阶段冻结活动与场次两种作用域。建表定义使用 [V3 白名单迁移](../src/main/resources/db/migration/V3__create_whitelist_tables.sql)，不修改 V1、V2 迁移。
+
+### 10.1 `whitelist_config`
+
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `config_id` | `BIGINT` | 自增主键 |
+| `scope_type` | `VARCHAR(20)` | `ACTIVITY` 或 `SESSION`，非空 |
+| `scope_id` | `BIGINT` | 对应活动或场次 ID，非空且大于 0 |
+| `created_at` | `DATETIME(3)` | 数据库填充创建时间 |
+| `updated_at` | `DATETIME(3)` | 数据库填充创建时间，并在配置行内容变化时更新 |
+
+`UNIQUE(scope_type, scope_id)` 保证每个活动或场次最多有一份配置。相同数字的活动 ID 与场次 ID 属于不同作用域，可以各有配置。该唯一索引也支持按作用域查找配置。
+
+配置记录存在表示该作用域已明确配置白名单。配置可以没有成员，不能根据 `whitelist_member` 的行数推断配置是否存在。
+
+### 10.2 `whitelist_member`
+
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `member_id` | `BIGINT` | 自增主键 |
+| `config_id` | `BIGINT` | 逻辑关联 `whitelist_config.config_id`，非空且大于 0 |
+| `user_id` | `BIGINT` | 逻辑关联 `app_user.id`，非空且大于 0 |
+| `created_at` | `DATETIME(3)` | 数据库填充创建时间 |
+
+`UNIQUE(config_id, user_id)` 阻止同一账号重复加入同一份配置，同时支持查询配置成员和判断指定账号是否在名单内。同一账号可以加入不同配置。
+
+### 10.3 配置状态与资格语义
+
+| 场次配置 | 活动配置 | 适用规则 |
+|---|---|---|
+| 不存在 | 不存在 | 满足其他业务条件的登录账号可参与 |
+| 不存在 | 存在 | 继承活动名单，活动名单为空时无人通过 |
+| 存在，成员为零 | 任意 | 场次显式空名单，无人通过，不回退到活动名单 |
+| 存在，成员非空 | 任意 | 仅按场次名单判断，完全覆盖活动名单 |
+
+清空成员保留配置记录，表示显式空名单。取消配置则在同一事务中删除该配置的成员与配置记录，使活动恢复公开规则，或使场次恢复继承规则。创建活动或场次时不自动创建空配置。
+
+公开表示满足基础条件的登录账号通过名单校验，交易状态、时间、库存和限购仍由业务 Service 校验。`USER` 与 `PUBLISHER` 遵守相同名单规则，场次显式空名单同样拒绝活动所有者。
+
+成员增删不修改配置行自身字段，因此不会自动改变 `whitelist_config.updated_at`。`PublisherWhitelistService` 在成员实际增删后显式更新该字段，不能仅依赖 `ON UPDATE CURRENT_TIMESTAMP(3)`。
+
+### 10.4 应用边界与验证
+
+数据库通过主键、唯一约束、非空约束和单行 `CHECK` 保护上述模型。`PublisherWhitelistService` 校验作用域对应的活动或场次存在、归属当前发布者及待加入的成员账号存在，并维护配置移除与成员增删的事务完整性。接口契约见 [白名单管理 API](whitelist.md)。
+
+配置行不存在时无法锁定该行。名单管理先排他锁定所属 Activity，再按作用域锁定配置。资格检查通过 Activity 共享锁与名单管理协调，并使用锁定读查询当前账号、资源、配置和成员，操作顺序记录在 [locking.md](locking.md#qualification-reads)。完整支付、预约的事务锁顺序随对应功能扩充。名单管理允许活动为 `DRAFT` 或 `PUBLISHED`，`CANCELLED`、`FINISHED` 及其他状态返回 `409 WHITELIST_NOT_EDITABLE`。白名单变更不套用核心配置的 `DRAFT` 限制。
+
+名单变更不撤销已成功预约或已支付门票，待支付订单在支付时重新校验资格。商品白名单与活动名单独立，本阶段不扩展 `PRODUCT` 作用域。
+
+`QualificationService.check(activityId, sessionId)` 与 `checkAgain(activityId, sessionId)` 从可信身份上下文取得当前账号，要求已有业务事务。前者已接入 `TicketOrderService.createOrder`，后续预约也复用该入口，后者供支付复查使用。`canParticipate(userId, activityId, sessionId)` 保留为内部布尔查询。三个入口共用账号、活动与场次归属检查及名单判断，每次读取当前适用配置。场次配置存在时直接采用场次成员结果，只有场次配置不存在时才继承活动配置，两级均未配置时采用公开规则。事务与错误契约见 [当前架构](architecture.md)。
+
+[白名单模型 MySQL 集成测试](../src/test/java/com/limitactivitysystem/whitelist/integration/WhitelistSchemaMySqlIntegrationTest.java) 从 V3 迁移读取 DDL，在同一连接的临时表上验证配置缺失、显式空名单、清空成员、作用域唯一性及成员唯一性。该模型测试不执行正式库迁移，管理接口、资格逻辑及并发验证见 [白名单管理与资格查询](whitelist.md)。
+
+迁移中的建表语句数量可通过 PowerShell 核对：`(Get-ChildItem src/main/resources/db/migration -Filter 'V*__*.sql' | Select-String -Pattern '^CREATE TABLE ').Count`。
+
+### 10.5 发布冻结与白名单例外
+
+| 字段 | `PUBLISHED` 后的普通修改 |
+|---|---|
+| `activity.type`、`open_time`、`close_time` | 冻结 |
+| `activity_session.capacity`、`max_tickets_per_user`、`seat_mode` | 冻结 |
+| `session_zone.price`、`total_amount` | 冻结，当前票价位于 `session_zone.price` |
+| `session_seat` 行列、座位编号、分配优先级及增删 | 冻结 |
+| `activity_session.start_time`、`end_time` | 普通编辑冻结，专用改期流程留到 Day 22 |
+| `whitelist_config`、`whitelist_member` | 所属发布者仍可维护，保留上述配置语义 |
+
+这些跨表生命周期限制由 Service 维护，不由白名单表的单行 `CHECK` 推断。当前新增配置入口锁定 Activity 并检查 `DRAFT`，发布后返回 `409 ACTIVITY_NOT_DRAFT`。通用核心资源编辑入口尚未开放，普通编辑请求返回 `404` 或 `405`。
+
+AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architecture.md#at-04-与-at-16-的阶段验收)。状态转换见 [state-machines.md](state-machines.md)。预约、票单、支付及改期的完整业务验收仍在对应阶段完成。
+
+## 11. 版本记录
 
 - **V1**：四张基础表采用物理外键，训练基础关系模型与引用完整性。
 - **V2.0**：移除物理外键，保留逻辑关联与数据库基础约束；新增座位占用状态，明确 Service 校验、条件更新和巡检职责。
 - **V2.1**：增加 `ticket_order`、`ticket_order_item`、`ticket` 三张票务表，支持独立门票、订单明细及退款后座位重新销售。
-- **V2.2（本版）**：新增 `app_user`、`user_session_purchase`；为 `activity_session` 增加 `max_tickets_per_user` 与 `seat_mode`，实现以复合主键和原子条件更新为核心的账号场次限购并发模型，并衔接两种座位分配模式。**共 9 张已设计表，0 个物理 FOREIGN KEY。**
+- **V2.2**：新增 `app_user`、`user_session_purchase`；为 `activity_session` 增加 `max_tickets_per_user` 与 `seat_mode`，实现以复合主键和原子条件更新为核心的账号场次限购并发模型，并衔接两种座位分配模式。共 9 张已设计表，0 个物理 FOREIGN KEY。
+- **V2.3（本版）**：新增 `whitelist_config`、`whitelist_member`，通过配置记录存在与否区分未配置与显式空名单。共 11 张已设计表，0 个物理 FOREIGN KEY。
