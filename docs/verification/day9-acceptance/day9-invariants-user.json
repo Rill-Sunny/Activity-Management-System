@@ -1,0 +1,14 @@
+{
+  "observation" : {
+    "detected" : [ {
+      "reservation_id" : 5,
+      "user_id" : 9223372036854775807,
+      "session_id" : 19,
+      "violation" : "INVALID_RESERVATION_SCOPE"
+    } ],
+    "fixtureRestored" : true,
+    "invariants" : "PASS",
+    "corruption" : "USER"
+  },
+  "observedAtDatabaseTime" : "2026-10-28T15:48:33.761"
+}

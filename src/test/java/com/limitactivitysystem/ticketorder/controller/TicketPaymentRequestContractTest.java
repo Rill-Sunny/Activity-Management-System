@@ -7,6 +7,7 @@ import com.limitactivitysystem.ticketorder.dto.TicketPaymentResponse;
 import com.limitactivitysystem.ticketorder.dto.TicketResponse;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderErrorCode;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
+import com.limitactivitysystem.ticketorder.exception.PaymentConcurrencyException;
 import com.limitactivitysystem.ticketorder.service.TicketPaymentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -86,6 +87,16 @@ class TicketPaymentRequestContractTest {
         mvc.perform(post("/ticket-orders/50/pay")).andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
         verifyNoInteractions(payments);
+    }
+
+    @Test void exhaustedConcurrencyRetriesReturnATechnical503WithoutSqlDetails() throws Exception {
+        given(payments.pay(50L)).willThrow(new PaymentConcurrencyException(
+                PaymentConcurrencyException.Reason.LOCK_WAIT_TIMEOUT, 3, new IllegalStateException("Private SQL details")));
+        mvc.perform(post("/ticket-orders/50/pay").header(HttpHeaders.AUTHORIZATION, bearer("USER")))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value(PaymentConcurrencyException.CODE))
+                .andExpect(jsonPath("$.reason").value("LOCK_WAIT_TIMEOUT"))
+                .andExpect(jsonPath("$.attempts").value(3));
     }
 
     @Test void anOldTokenFromADisabledAccountIsUnauthorized() throws Exception {

@@ -15,12 +15,12 @@ import org.springframework.validation.annotation.Validated;
 @Service
 @Validated
 public class TicketPaymentService {
-    private final TicketPaymentTransactionService payment;
+    private final PaymentRetryExecutor payment;
     private final TicketPaymentFailureService failures;
     private final CurrentUserProvider currentUser;
     private final PaymentTelemetry telemetry;
 
-    public TicketPaymentService(TicketPaymentTransactionService payment, TicketPaymentFailureService failures,
+    public TicketPaymentService(PaymentRetryExecutor payment, TicketPaymentFailureService failures,
                                 CurrentUserProvider currentUser, PaymentTelemetry telemetry) {
         this.payment = payment;
         this.failures = failures;
@@ -37,7 +37,7 @@ public class TicketPaymentService {
         try {
             // Principal extraction performs no SQL; the payment transaction still locks Order first.
             userId = currentUser.getAuthenticatedUserId();
-            result = executePayment(orderId);
+            result = executePayment(userId, orderId);
         } catch (RuntimeException | Error failure) {
             telemetry.record(userId, orderId, failure, System.nanoTime() - started);
             throw failure;
@@ -46,9 +46,9 @@ public class TicketPaymentService {
         return result;
     }
 
-    private TicketPaymentResponse executePayment(Long orderId) {
+    private TicketPaymentResponse executePayment(Long userId, Long orderId) {
         try {
-            return payment.pay(orderId);
+            return payment.pay(userId, orderId);
         } catch (TicketOrderException exception) {
             if (exception.getErrorCode() != TicketOrderErrorCode.INSUFFICIENT_INVENTORY) { throw exception; }
             // The payment proxy has completed rollback. Technical failures never enter this branch.

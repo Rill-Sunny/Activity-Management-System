@@ -1,0 +1,13 @@
+{
+  "observation" : {
+    "detected" : [ {
+      "reservation_id" : 9,
+      "session_id" : 27,
+      "violation" : "ACTIVE_RESERVATION_WITHOUT_QUOTA"
+    } ],
+    "fixtureRestored" : true,
+    "invariants" : "PASS",
+    "corruption" : "QUOTA"
+  },
+  "observedAtDatabaseTime" : "2026-10-28T15:48:34.103"
+}

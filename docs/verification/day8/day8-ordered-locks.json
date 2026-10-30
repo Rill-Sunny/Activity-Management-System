@@ -1,0 +1,31 @@
+{
+  "observation" : {
+    "transactions" : [ {
+      "failure" : { },
+      "lockOrder" : [ 3, 4 ],
+      "transaction" : "A",
+      "connectionId" : 67,
+      "completion" : "COMMIT",
+      "sqlSequence" : [ "BEGIN ISOLATION LEVEL READ COMMITTED", "SELECT * FROM ticket_order WHERE order_id = 3 FOR UPDATE", "ACQUIRED 3", "SELECT * FROM ticket_order WHERE order_id = 4 FOR UPDATE", "ACQUIRED 4", "COMMIT" ]
+    }, {
+      "failure" : { },
+      "lockOrder" : [ 3, 4 ],
+      "transaction" : "B",
+      "connectionId" : 68,
+      "completion" : "COMMIT",
+      "sqlSequence" : [ "BEGIN ISOLATION LEVEL READ COMMITTED", "SELECT * FROM ticket_order WHERE order_id = 3 FOR UPDATE", "ACQUIRED 3", "SELECT * FROM ticket_order WHERE order_id = 4 FOR UPDATE", "ACQUIRED 4", "COMMIT" ]
+    } ],
+    "bothCommitted" : true,
+    "observedLockWait" : {
+      "waitingConnectionId" : 68,
+      "blockingConnectionId" : 67,
+      "objectName" : "ticket_order",
+      "indexName" : "PRIMARY",
+      "lockType" : "RECORD",
+      "lockMode" : "X,REC_NOT_GAP",
+      "lockStatus" : "WAITING"
+    },
+    "resourcesUnchanged" : true
+  },
+  "observedAtDatabaseTime" : "2026-10-28T11:08:35.739"
+}

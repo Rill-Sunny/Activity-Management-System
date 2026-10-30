@@ -1,6 +1,6 @@
-# 活动、白名单与票单状态机
+# 活动、白名单、票单、预约与退款状态机
 
-本页记录 Day 4 至 Day 6 的状态、操作限制及后续实现边界。资格通过表示通过账号、归属和名单校验，不代表已满足交易状态、时间、库存或限购条件。
+本页记录业务状态、操作限制与已冻结 Schema 的接入边界。资格通过表示通过账号、归属和名单校验，不代表已满足交易状态、时间、库存或限购条件。
 
 ## Activity 生命周期
 
@@ -113,4 +113,58 @@ stateDiagram-v2
 
 缺货关闭事务重新锁单。如果另一个请求已经提交 PAID，则返回原支付结果，不写 CLOSED；关闭先提交时，等待的支付读取 CLOSED 并拒绝。技术异常不会触发缺货关闭。
 
-过期判断与关闭状态转换是不同事件。当前没有定时过期扫描、主动取消或技术事务自动重试，这些留到 Day 8；退款也不在本阶段实现。锁顺序及失败码见 [支付资源组件](payment-resources.md)，决策见 [ADR-007](decisions.md#adr-007完整支付与缺货后独立关闭)。
+过期判断与关闭状态转换是不同事件。Day 8 已实现定时过期扫描、主动取消及事务外技术重试；三条路径围绕同一订单行协调。验证与当前范围见 [Day 8 并发说明](day8-concurrency.md)。退款在后续阶段实现。
+
+## 免费预约状态机
+
+V4 定义 `free_reservation` 与 `free_session_quota`，创建与取消 API 已按[预约事务契约](free-reservations.md)接入。成功创建即 ACTIVE 并占用一份名额；取消只返还一次，重新预约 INSERT 新记录。
+
+```mermaid
+stateDiagram-v2
+	[*] --> ACTIVE: 名额原子扣 1 与新预约 INSERT 同事务
+	ACTIVE --> CANCELLED: cancel，条件更新与返还 1 同事务
+```
+
+预约只有 ACTIVE、CANCELLED 两个状态。取消保留原行并写 cancelled_at。重新预约新建另一条 ACTIVE 记录，不存在旧 CANCELLED 行恢复为 ACTIVE 的业务路径。当前有效唯一键只覆盖 ACTIVE，允许同账号同场次保留多次取消历史。
+
+用户主动取消必须早于场次开始，只在 ACTIVE 条件更新影响一行时返还名额；重复取消不再返还。记录的 ACTIVE 状态也不能替代场次生命周期检查，场次取消后的系统失效处理按后续专用流程实现。
+
+创建中的名额扣减与 INSERT、取消中的状态变更与返还均在同一事务。中途异常回滚全部变更。状态机、唯一性、重约无优先权的验证见 [Day 9 免费预约验收](day9-concurrency.md)。
+
+## Ticket 退票状态
+
+Ticket 的退票转换在 Day 11 的实际退款成功事务中执行：
+
+```mermaid
+stateDiagram-v2
+	VALID --> REFUNDED: Day 11 refund succeeds
+```
+
+Day 10 只负责建立并接受合法申请。即使已计算 refundAmount，选中的 Ticket 也保持 VALID。Seat、Zone 库存与购票限购计数只在 Day 11 的生效事务中恢复。
+
+| 对象 | Day 10 合法申请提交后的状态 |
+|---|---|
+| Refund Request | PENDING |
+| Refund Item | PENDING |
+| Ticket，包括申请中的票 | VALID |
+| Seat | SOLD |
+| Zone remains | 申请前的原值 |
+| user_session_purchase.valid_count | 申请前的原值 |
+| Ticket Order | 原支付状态，不由申请接口转换 |
+
+## 门票退款申请与逐票明细
+
+Day 10 申请接口创建 PENDING 主申请及 PENDING 逐票明细。下图定义后续处理路径，PROCESSING、SUCCEEDED、FAILED 的执行入口由 Day 11 实现：
+
+```mermaid
+stateDiagram-v2
+	[*] --> PENDING: 申请合法受理，保存申请时间与逐票金额
+	PENDING --> PROCESSING: 开始处理
+	PROCESSING --> SUCCEEDED: 退款与对应资源变更成功
+	PENDING --> FAILED: 处理失败
+	PROCESSING --> FAILED: 处理失败
+```
+
+受理成功不改变 Ticket 的 VALID 状态，也不恢复库存、座位或限购。后续处理使用持久化的 requested_at、original_price、fee_rate、refund_amount，不按执行时刻重新判断原申请政策。FAILED 明细须保存 failure_reason，并释放同票处理中唯一键；历史保留。
+
+一张申请对应多条逐票明细，每张 Ticket 独立记录成交价与退款结果。Schema、锁顺序、幂等规则见 [退款申请契约](ticket-refunds.md)，请求与响应见 [退款 API](api/ticket-refunds.md)。

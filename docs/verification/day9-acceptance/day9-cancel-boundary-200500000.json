@@ -1,0 +1,21 @@
+{
+  "observation" : {
+    "invariants" : "PASS",
+    "startTime" : "2026-10-28T21:00:00",
+    "remaining" : 10,
+    "response" : {
+      "status" : 200,
+      "record" : {
+        "reservationId" : 29,
+        "userId" : 128,
+        "sessionId" : 106,
+        "status" : "CANCELLED",
+        "createdAt" : "2026-10-28T19:58:00",
+        "cancelledAt" : "2026-10-28T20:05:00"
+      },
+      "error" : null
+    },
+    "databaseTime" : "2026-10-28T20:05:00"
+  },
+  "observedAtDatabaseTime" : "2026-10-28T15:48:31.144"
+}

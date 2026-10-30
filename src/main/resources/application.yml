@@ -23,6 +23,17 @@ security:
   jwt:
     secret-base64: ${JWT_SECRET_BASE64}
 
+ticket-refund:
+  # Match the datasource DATETIME time zone; snapshot the server clock once per application.
+  time-zone: Asia/Shanghai
+
+ticket-order:
+  expiration:
+    enabled: true
+    batch-size: 100
+    scan-delay-ms: 5000
+    initial-delay-ms: 5000
+
 management:
   endpoints:
     web:

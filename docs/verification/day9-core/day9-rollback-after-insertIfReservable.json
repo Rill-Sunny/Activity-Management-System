@@ -1,0 +1,15 @@
+{
+  "observedAtDatabaseTime" : "2026-10-28T13:55:33.591",
+  "observation" : {
+    "successfulMutationsBeforeFailure" : {
+      "initializeForPublishedFreeSession" : 1,
+      "takeOne" : 1,
+      "insertIfReservable" : 1
+    },
+    "injectedAfter" : ".insertIfReservable",
+    "invariants" : "PASS",
+    "remaining" : 10,
+    "committedReservations" : [ ],
+    "snapshotRestored" : true
+  }
+}

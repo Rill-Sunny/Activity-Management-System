@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Mapper
 public interface TicketOrderMapper {
@@ -90,6 +91,31 @@ public interface TicketOrderMapper {
             """)
     @Transactional(propagation = Propagation.MANDATORY)
     int closePendingForInsufficientInventory(@Param("orderId") Long orderId);
+
+    @Update("""
+            UPDATE ticket_order SET status = 'CLOSED', closed_reason = 'USER_CANCELLED'
+            WHERE order_id = #{orderId} AND buyer_id = #{buyerId} AND status = 'PENDING_PAYMENT'
+            """)
+    @Transactional(propagation = Propagation.MANDATORY)
+    int closePendingForBuyer(@Param("orderId") Long orderId, @Param("buyerId") Long buyerId);
+
+    /** The conditional UPDATE locks the same Order row as payment and rechecks its current state. */
+    @Update("""
+            UPDATE ticket_order SET status = 'CLOSED', closed_reason = 'EXPIRED'
+            WHERE order_id = #{orderId} AND status = 'PENDING_PAYMENT'
+              AND expires_at <= CURRENT_TIMESTAMP(3)
+            """)
+    @Transactional(propagation = Propagation.MANDATORY)
+    int closePendingIfExpired(@Param("orderId") Long orderId);
+
+    /** Non-locking, bounded scan using idx_ticket_order_expiry (status, expires_at). */
+    @Select("""
+            SELECT order_id FROM ticket_order
+            WHERE status = 'PENDING_PAYMENT' AND expires_at <= CURRENT_TIMESTAMP(3)
+            ORDER BY expires_at, order_id
+            LIMIT #{limit}
+            """)
+    List<Long> findExpiredPendingOrderIds(@Param("limit") int limit);
 
     /** The lookup supports creation idempotency; conflict recovery still needs a Service transaction boundary. */
     @Select("""

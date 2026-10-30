@@ -1,0 +1,183 @@
+{
+  "observedAtDatabaseTime" : "2026-10-28T12:02:18.57",
+  "observation" : {
+    "participants" : 20,
+    "transport" : "HTTP pay + closeExpiredOrder Service",
+    "finalState" : {
+      "tickets" : 0,
+      "status" : "CLOSED",
+      "closedReason" : "EXPIRED",
+      "soldSeats" : 0,
+      "validPurchaseCount" : 0,
+      "remainingInventory" : 10,
+      "orderId" : 3
+    },
+    "outcomes" : [ {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 46
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : true,
+      "durationMs" : 37
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 43
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 37
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 44
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 37
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 43
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 37
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 46
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 37
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 47
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 36
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 46
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 36
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 48
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 36
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 49
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 36
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 50
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 35
+    } ],
+    "observedSimultaneousDatabaseWaiters" : 20,
+    "competingOperations" : 10,
+    "paymentInvariants" : "PASS",
+    "durationMs" : 63,
+    "scenario" : "PAY_VS_CLOSE_AFTER_EXPIRY",
+    "paymentRequests" : 10
+  }
+}

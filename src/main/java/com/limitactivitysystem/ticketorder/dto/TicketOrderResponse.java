@@ -14,5 +14,6 @@ public record TicketOrderResponse(
         LocalDateTime createdAt,
         LocalDateTime expiresAt,
         LocalDateTime paidAt,
+        String closedReason,
         List<TicketOrderItemResponse> items) {
 }

@@ -1,0 +1,10 @@
+{
+  "observation" : {
+    "paidResourcesUnchanged" : true,
+    "applicationRows" : 0,
+    "code" : "REFUND_AMOUNT_CALCULATION_ERROR",
+    "httpStatus" : 500,
+    "scenario" : "AMOUNT_ERROR"
+  },
+  "observedAtDatabaseTime" : "2026-10-29T12:37:20.519"
+}

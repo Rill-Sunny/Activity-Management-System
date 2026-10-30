@@ -1,0 +1,22 @@
+{
+  "observedAtDatabaseTime" : "2026-10-28T12:57:58.729",
+  "observation" : {
+    "invariants" : "PASS",
+    "loser" : {
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    },
+    "cancelledHistoryId" : 31,
+    "winner" : {
+      "record" : {
+        "reservationId" : 32,
+        "userId" : 117,
+        "sessionId" : 115,
+        "status" : "ACTIVE",
+        "createdAt" : "2026-10-28T12:57:58.716",
+        "cancelledAt" : null
+      },
+      "error" : null
+    }
+  }
+}

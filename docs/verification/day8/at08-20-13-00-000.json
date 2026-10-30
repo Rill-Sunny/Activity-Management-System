@@ -1,0 +1,11 @@
+{
+  "observation" : {
+    "finalStatus" : "CLOSED",
+    "createdAt" : "2026-10-28T19:58:00",
+    "paymentDatabaseTime" : "2026-10-28T20:13:00",
+    "activityCloseTime" : "2026-10-28T20:00:00",
+    "result" : "ORDER_EXPIRED",
+    "expiresAt" : "2026-10-28T20:13:00"
+  },
+  "observedAtDatabaseTime" : "2026-10-28T11:08:42.328"
+}

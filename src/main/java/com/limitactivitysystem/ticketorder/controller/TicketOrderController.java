@@ -5,6 +5,7 @@ import com.limitactivitysystem.ticketorder.dto.TicketOrderResponse;
 import com.limitactivitysystem.ticketorder.dto.TicketPaymentResponse;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderErrorCode;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
+import com.limitactivitysystem.ticketorder.service.TicketOrderCloseService;
 import com.limitactivitysystem.ticketorder.service.TicketPaymentService;
 import com.limitactivitysystem.ticketorder.service.TicketOrderQueryService;
 import com.limitactivitysystem.ticketorder.service.TicketOrderService;
@@ -26,11 +27,14 @@ public class TicketOrderController {
     private final TicketOrderService orders;
     private final TicketOrderQueryService queries;
     private final TicketPaymentService payments;
+    private final TicketOrderCloseService closing;
 
-    public TicketOrderController(TicketOrderService orders, TicketOrderQueryService queries, TicketPaymentService payments) {
+    public TicketOrderController(TicketOrderService orders, TicketOrderQueryService queries,
+                                 TicketPaymentService payments, TicketOrderCloseService closing) {
         this.orders = orders;
         this.queries = queries;
         this.payments = payments;
+        this.closing = closing;
     }
 
     @PostMapping
@@ -42,6 +46,11 @@ public class TicketOrderController {
     @GetMapping("/{orderId}")
     public TicketOrderResponse getOwnOrder(@PathVariable("orderId") @Positive Long orderId) {
         return queries.getOwnOrder(orderId);
+    }
+
+    @PostMapping("/{orderId}/cancel")
+    public TicketOrderResponse cancel(@PathVariable("orderId") @Positive Long orderId) {
+        return closing.cancelOrder(orderId);
     }
 
     @PostMapping("/{orderId}/pay")

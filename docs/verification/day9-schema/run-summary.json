@@ -1,0 +1,46 @@
+{
+    "recordedAt":  "2026-10-28T12:24:26.6711792+08:00",
+    "result":  "PASS",
+    "tests":  125,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "suites":  [
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.FreeReservationSchemaMySqlIntegrationTest",
+                       "tests":  24,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.controller.PublisherActivityPublishTest",
+                       "tests":  57,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ],
+    "artifacts":  [
+                      {
+                          "file":  "day9-active-key-race.json",
+                          "sha256":  "DC9F4AE37ECFB83F0139B49702746CA239F5C342FEBC2655C3517F2A365F786F"
+                      },
+                      {
+                          "file":  "day9-last-free-quota.json",
+                          "sha256":  "FFA4101D6D61429BE40E38A5D3705347E5D808F8F95B13D5B44E54976EBEE77E"
+                      },
+                      {
+                          "file":  "day9-reservation-history.json",
+                          "sha256":  "A9D653C05EB6C1A970F735F0E8805C88CADB60383036E910C77E86570D6384B9"
+                      }
+                  ],
+    "scope":  "Schema constraints and transactional SQL contract; reservation APIs are a subsequent implementation step"
+}

@@ -1,6 +1,7 @@
 package com.limitactivitysystem.observability;
 
 import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
+import com.limitactivitysystem.ticketorder.exception.PaymentConcurrencyException;
 import com.limitactivitysystem.whitelist.exception.QualificationDeniedException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -24,6 +25,8 @@ public class PaymentTelemetry {
     private final Counter success;
     private final Map<FailureReason, Counter> failures = new EnumMap<>(FailureReason.class);
     private final Timer duration;
+    private final Map<PaymentConcurrencyException.Reason, Counter> retries = new EnumMap<>(PaymentConcurrencyException.Reason.class);
+    private final Timer retryDuration;
 
     public PaymentTelemetry(MeterRegistry registry) {
         success = registry.counter("payment.success");
@@ -31,6 +34,23 @@ public class PaymentTelemetry {
             failures.put(reason, registry.counter("payment.failure", "reason", reason.name()));
         }
         duration = registry.timer("payment.duration");
+        for (PaymentConcurrencyException.Reason reason : PaymentConcurrencyException.Reason.values()) {
+            retries.put(reason, registry.counter("payment.retry", "reason", reason.name()));
+        }
+        retryDuration = registry.timer("payment.retry.duration");
+    }
+
+    public void recordRetry(PaymentConcurrencyException.Reason reason) {
+        retries.get(reason).increment();
+    }
+
+    public void recordRetries(Long userId, Long orderId, int retryCount, PaymentConcurrencyException.Reason reason,
+                              boolean successful, long elapsedNanos) {
+        long elapsed = Math.max(0, elapsedNanos);
+        retryDuration.record(elapsed, TimeUnit.NANOSECONDS);
+        log.info("Ticket payment retry requestId={} userId={} orderId={} retryCount={} durationMs={} reason={} outcome={}",
+                safeRequestId(), userId, orderId, retryCount, TimeUnit.NANOSECONDS.toMillis(elapsed), reason.name(),
+                successful ? "SUCCESS" : "FAILED");
     }
 
     public void record(Long userId, Long orderId, Throwable failure, long elapsedNanos) {

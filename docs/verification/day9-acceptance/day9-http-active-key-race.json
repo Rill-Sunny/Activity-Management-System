@@ -1,0 +1,27 @@
+{
+  "observation" : {
+    "sessionId" : 121,
+    "responses" : [ {
+      "status" : 201,
+      "record" : {
+        "reservationId" : 34,
+        "userId" : 143,
+        "sessionId" : 121,
+        "status" : "ACTIVE",
+        "createdAt" : "2026-10-28T15:48:31.679",
+        "cancelledAt" : null
+      },
+      "error" : null
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_ALREADY_ACTIVE"
+    } ],
+    "remaining" : 9,
+    "precheckMissedExisting" : true,
+    "invariants" : "PASS",
+    "userId" : 143,
+    "bothTransactionsDeductedBeforeInsert" : true
+  },
+  "observedAtDatabaseTime" : "2026-10-28T15:48:32.064"
+}

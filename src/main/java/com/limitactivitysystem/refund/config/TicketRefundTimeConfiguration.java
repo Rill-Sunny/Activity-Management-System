@@ -1,0 +1,15 @@
+package com.limitactivitysystem.refund.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import java.time.Clock;
+import java.time.ZoneId;
+
+@Configuration(proxyBeanMethods = false)
+public class TicketRefundTimeConfiguration {
+    @Bean("ticketRefundClock")
+    public Clock ticketRefundClock(@Value("${ticket-refund.time-zone:Asia/Shanghai}") String timeZone) {
+        return Clock.system(ZoneId.of(timeZone));
+    }
+}

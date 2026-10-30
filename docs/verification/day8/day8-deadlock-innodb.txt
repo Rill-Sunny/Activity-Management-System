@@ -1,0 +1,90 @@
+LATEST DETECTED DEADLOCK
+------------------------
+2026-10-28 11:08:35 0x20dc
+*** (1) TRANSACTION:
+TRANSACTION 110127, ACTIVE 0 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 3 lock struct(s), heap size 1128, 2 row lock(s)
+MySQL thread id 67, OS thread handle 11596, query id 28142 localhost 127.0.0.1 root statistics
+SELECT order_id, buyer_id, session_id, request_id, total_amount, status,
+       created_at, expires_at, paid_at, closed_reason
+FROM ticket_order WHERE order_id = 4 FOR UPDATE
+
+*** (1) HOLDS THE LOCK(S):
+RECORD LOCKS space id 816 page no 4 n bits 72 index PRIMARY of table `qual_it_cebed5f792324737910c07363251455a`.`ticket_order` trx id 110127 lock_mode X locks rec but not gap
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 12; compact format; info bits 0
+ 0: len 8; hex 8000000000000003; asc         ;;
+ 1: len 6; hex 00000001ae2d; asc      -;;
+ 2: len 7; hex 82000000d30110; asc        ;;
+ 3: len 8; hex 8000000000000006; asc         ;;
+ 4: len 8; hex 8000000000000002; asc         ;;
+ 5: len 30; hex 63653732316232392d653633362d346336352d616535662d626431316163; asc ce721b29-e636-4c65-ae5f-bd11ac; (total 36 bytes);
+ 6: len 6; hex 800000000a00; asc       ;;
+ 7: len 15; hex 50454e44494e475f5041594d454e54; asc PENDING_PAYMENT;;
+ 8: len 7; hex 99bb38b2231770; asc   8 # p;;
+ 9: len 7; hex 99bb38b5e31770; asc   8   p;;
+ 10: SQL NULL;
+ 11: SQL NULL;
+
+
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 816 page no 4 n bits 72 index PRIMARY of table `qual_it_cebed5f792324737910c07363251455a`.`ticket_order` trx id 110127 lock_mode X locks rec but not gap waiting
+Record lock, heap no 3 PHYSICAL RECORD: n_fields 12; compact format; info bits 0
+ 0: len 8; hex 8000000000000004; asc         ;;
+ 1: len 6; hex 00000001ae2e; asc      .;;
+ 2: len 7; hex 81000000d50110; asc        ;;
+ 3: len 8; hex 8000000000000006; asc         ;;
+ 4: len 8; hex 8000000000000002; asc         ;;
+ 5: len 30; hex 37363639646331372d313730332d346666352d393964612d393031333531; asc 7669dc17-1703-4ff5-99da-901351; (total 36 bytes);
+ 6: len 6; hex 800000000a00; asc       ;;
+ 7: len 15; hex 50454e44494e475f5041594d454e54; asc PENDING_PAYMENT;;
+ 8: len 7; hex 99bb38b223178e; asc   8 #  ;;
+ 9: len 7; hex 99bb38b5e3178e; asc   8    ;;
+ 10: SQL NULL;
+ 11: SQL NULL;
+
+
+*** (2) TRANSACTION:
+TRANSACTION 110128, ACTIVE 0 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 3 lock struct(s), heap size 1128, 2 row lock(s)
+MySQL thread id 68, OS thread handle 20576, query id 28143 localhost 127.0.0.1 root statistics
+SELECT order_id, buyer_id, session_id, request_id, total_amount, status,
+       created_at, expires_at, paid_at, closed_reason
+FROM ticket_order WHERE order_id = 3 FOR UPDATE
+
+*** (2) HOLDS THE LOCK(S):
+RECORD LOCKS space id 816 page no 4 n bits 72 index PRIMARY of table `qual_it_cebed5f792324737910c07363251455a`.`ticket_order` trx id 110128 lock_mode X locks rec but not gap
+Record lock, heap no 3 PHYSICAL RECORD: n_fields 12; compact format; info bits 0
+ 0: len 8; hex 8000000000000004; asc         ;;
+ 1: len 6; hex 00000001ae2e; asc      .;;
+ 2: len 7; hex 81000000d50110; asc        ;;
+ 3: len 8; hex 8000000000000006; asc         ;;
+ 4: len 8; hex 8000000000000002; asc         ;;
+ 5: len 30; hex 37363639646331372d313730332d346666352d393964612d393031333531; asc 7669dc17-1703-4ff5-99da-901351; (total 36 bytes);
+ 6: len 6; hex 800000000a00; asc       ;;
+ 7: len 15; hex 50454e44494e475f5041594d454e54; asc PENDING_PAYMENT;;
+ 8: len 7; hex 99bb38b223178e; asc   8 #  ;;
+ 9: len 7; hex 99bb38b5e3178e; asc   8    ;;
+ 10: SQL NULL;
+ 11: SQL NULL;
+
+
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 816 page no 4 n bits 72 index PRIMARY of table `qual_it_cebed5f792324737910c07363251455a`.`ticket_order` trx id 110128 lock_mode X locks rec but not gap waiting
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 12; compact format; info bits 0
+ 0: len 8; hex 8000000000000003; asc         ;;
+ 1: len 6; hex 00000001ae2d; asc      -;;
+ 2: len 7; hex 82000000d30110; asc        ;;
+ 3: len 8; hex 8000000000000006; asc         ;;
+ 4: len 8; hex 8000000000000002; asc         ;;
+ 5: len 30; hex 63653732316232392d653633362d346336352d616535662d626431316163; asc ce721b29-e636-4c65-ae5f-bd11ac; (total 36 bytes);
+ 6: len 6; hex 800000000a00; asc       ;;
+ 7: len 15; hex 50454e44494e475f5041594d454e54; asc PENDING_PAYMENT;;
+ 8: len 7; hex 99bb38b2231770; asc   8 # p;;
+ 9: len 7; hex 99bb38b5e31770; asc   8   p;;
+ 10: SQL NULL;
+ 11: SQL NULL;
+
+*** WE ROLL BACK TRANSACTION (2)
+------------

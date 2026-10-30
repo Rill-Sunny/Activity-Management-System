@@ -1,0 +1,28 @@
+{
+  "observedAtDatabaseTime" : "2026-10-29T11:15:59.396",
+  "observation" : {
+    "submittedAt" : "2026-11-04T11:15:59.338",
+    "response" : {
+      "refundId" : 17,
+      "buyerId" : 138,
+      "orderId" : 52,
+      "requestId" : "clock-wait",
+      "reason" : "USER_REQUEST",
+      "requestedAt" : "2026-11-04T11:15:59.338",
+      "status" : "PENDING",
+      "createdAt" : "2026-10-29T11:15:59.391",
+      "items" : [ {
+        "refundItemId" : 20,
+        "refundId" : 17,
+        "ticketId" : 187,
+        "originalPrice" : 10.01,
+        "feeRate" : 0.1500,
+        "refundAmount" : 8.51,
+        "status" : "PENDING",
+        "failureReason" : null
+      } ]
+    },
+    "clockAfterSubmission" : "2026-11-04T11:15:59.339",
+    "serverClockReads" : 1
+  }
+}

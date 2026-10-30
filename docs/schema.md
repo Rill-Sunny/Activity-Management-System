@@ -1,10 +1,12 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.3（增加活动与场次白名单配置、白名单成员）**  
+> **版本：V2.5（增加退款申请、逐票金额与政策时间快照）**
+>
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：11 张已设计表：1 张用户表 + 4 张活动／座位基础表 + 3 张票务交易表 + 1 张账号场次购票计数表 + 2 张白名单表；预约、商品、赠票流水和退款明细仍未设计**  
-> **核心决策：全部 11 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
+> **当前状态：15 张已设计表：1 张用户表 + 4 张活动／座位基础表 + 3 张票务交易表 + 1 张账号场次购票计数表 + 2 张白名单表 + 2 张免费预约／名额表 + 2 张退款申请／明细表；商品、赠票流水仍未设计**
+>
+> **核心决策：全部 15 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
 ## 0. 架构决策：为什么改为逻辑关联
 
@@ -41,10 +43,13 @@
 app_user.id                           ← activity.publisher_id
 app_user.id                           ← ticket_order.buyer_id
 app_user.id                           ← user_session_purchase.user_id
+app_user.id                           ← free_reservation.user_id
 activity.activity_id                  ← activity_session.activity_id
 activity_session.activity_session_id  ← session_zone.session_id
 activity_session.activity_session_id  ← ticket_order.session_id
 activity_session.activity_session_id  ← user_session_purchase.session_id
+activity_session.activity_session_id  ← free_reservation.session_id
+activity_session.activity_session_id  ← free_session_quota.session_id（每场次一行）
 session_zone.zone_id                  ← session_seat.zone_id
 session_zone.zone_id                  ← ticket_order_item.zone_id
 ticket_order.order_id                 ← ticket_order_item.order_id
@@ -684,7 +689,7 @@ WHERE user_id = #{userId}
 
 **迁移注意：** 以上 `CREATE TABLE` 面向新库建表；若之前已在现有数据库创建带外键的表，请先备份数据、执行 `SHOW CREATE TABLE` 确认约束名称，并在迁移脚本中显式 `ALTER TABLE ... DROP FOREIGN KEY ...`。不要直接重复运行 `CREATE TABLE`，也不要通过 `SET foreign_key_checks=0` 代替真正删除外键约束。
 
-**下一步：** 本版已补齐用户身份、账号场次限购及选座模式。下一阶段依需求设计免费预约、退款明细、赠票库存操作、商品及售后表，并执行“订单创建 → 模拟支付 → 座位分配 → 票单生成 → 部分退款”端到端事务及并发测试。
+**下一步：** 免费预约 Schema 与名额事务契约已在 §11 冻结，创建与取消 API 已接入。退款明细、赠票库存操作、商品及售后表随对应阶段设计。
 
 ### 9.1 已有 V2.1 数据库的增量迁移示例
 
@@ -788,10 +793,34 @@ ALTER TABLE activity_session
 
 AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architecture.md#at-04-与-at-16-的阶段验收)。状态转换见 [state-machines.md](state-machines.md)。预约、票单、支付及改期的完整业务验收仍在对应阶段完成。
 
-## 11. 版本记录
+## 11. 免费预约与独立名额（V2.4 新增）
+
+规范 DDL 为 [V4__create_free_reservation_tables.sql](../src/main/resources/db/migration/V4__create_free_reservation_tables.sql)，设计取舍与事务边界见[免费预约 Schema](free-reservations.md)。V1～V3 保持原迁移历史，已有库通过 V4 增加两张表。
+
+`free_reservation` 保存 `reservation_id`、`user_id`、`session_id`、`status`、`created_at`、`cancelled_at`。状态仅 ACTIVE / CANCELLED；取消保留原行，重新预约新建另一行。`active_session_id` 为 VIRTUAL 生成列：ACTIVE 时为 session_id，其余合法状态为 NULL。`UNIQUE(user_id, active_session_id)` 仅限制有效预约，不限制同账号同场次的 CANCELLED 历史条数。
+
+`free_session_quota` 以 session_id 为主键，保存已发布容量快照 capacity 和运行计数 remaining。首次预约事务按 FREE / PUBLISHED 场次惰性初始化，重复初始化不重置剩余量。数据库 CHECK 要求 capacity > 0、0 ≤ remaining ≤ capacity。扣减使用 `UPDATE ... SET remaining = remaining - 1 WHERE session_id = ? AND remaining > 0`，只有影响一行才可继续写预约，并与预约 INSERT 同事务提交。
+
+取消先锁 quota，再条件取消原 ACTIVE 记录；只在状态更新影响一行时返还一份名额。完整契约包含用户归属、数据库时间和场次生命周期校验。FREE 预约不依赖 Zone、Seat、Ticket 或 user_session_purchase。
+
+用户与场次存在性、FREE 归属、快照等于发布容量属于逻辑关联约束，由 FreeReservationService 与[对账 SQL](../tests/sql/reservation_invariants.sql)维护。创建与取消接口见[免费预约 API](api/reservations.md)。
+
+## 12. 门票退款申请与逐票明细（V2.5 新增）
+
+[V5__create_ticket_refund_tables.sql](../src/main/resources/db/migration/V5__create_ticket_refund_tables.sql) 建立 ticket_refund_request 与 ticket_refund_item。主申请保存买家、订单、请求键、原因、服务器申请时间、状态及政策时间快照；明细按 Ticket 保存实际成交价、手续费比例、应退金额、状态和失败原因。字段、金额类型和受理边界见 [退款申请契约](ticket-refunds.md)。
+
+主表 UNIQUE(buyer_id, request_id) 保护申请幂等。明细 UNIQUE(refund_id, ticket_id) 拒绝申请内重复票，生成列 claimed_ticket_id 的唯一键保证同票在 PENDING、PROCESSING、SUCCEEDED 明细中只出现一次。FAILED 行的生成键为 NULL，保留失败历史并允许后续新申请。
+
+主表不持久化 total_refund。退款汇总按 refund_id 对逐票明细的 refund_amount 求和，避免汇总列与明细金额不同步。
+
+金额 CHECK 要求原价为正、费率在 [0,1]、退款金额在 [0,原价] 且等于逐票两位 ROUND 的计算结果；FAILED 明细必须有 failure_reason。Java 使用 BigDecimal 与 HALF_UP。外部关联由受理 Service 沿 Ticket → OrderItem → Order 验证，沿用零物理 FK。
+
+## 13. 版本记录
 
 - **V1**：四张基础表采用物理外键，训练基础关系模型与引用完整性。
 - **V2.0**：移除物理外键，保留逻辑关联与数据库基础约束；新增座位占用状态，明确 Service 校验、条件更新和巡检职责。
 - **V2.1**：增加 `ticket_order`、`ticket_order_item`、`ticket` 三张票务表，支持独立门票、订单明细及退款后座位重新销售。
 - **V2.2**：新增 `app_user`、`user_session_purchase`；为 `activity_session` 增加 `max_tickets_per_user` 与 `seat_mode`，实现以复合主键和原子条件更新为核心的账号场次限购并发模型，并衔接两种座位分配模式。共 9 张已设计表，0 个物理 FOREIGN KEY。
-- **V2.3（本版）**：新增 `whitelist_config`、`whitelist_member`，通过配置记录存在与否区分未配置与显式空名单。共 11 张已设计表，0 个物理 FOREIGN KEY。
+- **V2.3**：新增 `whitelist_config`、`whitelist_member`，通过配置记录存在与否区分未配置与显式空名单。共 11 张已设计表，0 个物理 FOREIGN KEY。
+- **V2.4**：新增 `free_reservation`、`free_session_quota`，采用生成有效键保留预约历史，通过独立名额条件更新保护剩余量。共 13 张已设计表，0 个物理 FOREIGN KEY。
+- **V2.5（本版）**：新增 `ticket_refund_request`、`ticket_refund_item`，保存服务器申请时间、政策与逐票金额快照，保护申请幂等及同票有效退款唯一性。共 15 张已设计表，0 个物理 FOREIGN KEY。

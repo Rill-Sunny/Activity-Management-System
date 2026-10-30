@@ -10,6 +10,8 @@ import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
 import com.limitactivitysystem.ticketorder.service.TicketPaymentFailureService;
 import com.limitactivitysystem.ticketorder.service.TicketPaymentService;
 import com.limitactivitysystem.ticketorder.service.TicketPaymentTransactionService;
+import com.limitactivitysystem.ticketorder.service.PaymentRetryExecutor;
+import com.limitactivitysystem.ticketorder.service.PaymentRetryBackoff;
 import com.limitactivitysystem.whitelist.exception.QualificationDeniedException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -46,7 +48,9 @@ class PaymentTelemetryTest {
 
     @BeforeEach void captureOnlyThePaymentLogger() {
         given(user.getAuthenticatedUserId()).willReturn(1L);
-        payment = new TicketPaymentService(transaction, closure, user, new PaymentTelemetry(registry));
+        var telemetry = new PaymentTelemetry(registry);
+        payment = new TicketPaymentService(new PaymentRetryExecutor(transaction, new PaymentRetryBackoff(), telemetry),
+                closure, user, telemetry);
         logger = (Logger) LoggerFactory.getLogger(PaymentTelemetry.class);
         logs = new ListAppender<>(); logs.start(); logger.addAppender(logs);
         MDC.put("requestId", "server-request-id");

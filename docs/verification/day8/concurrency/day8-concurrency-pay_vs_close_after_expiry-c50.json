@@ -1,0 +1,423 @@
+{
+  "observedAtDatabaseTime" : "2026-10-28T12:02:20.786",
+  "observation" : {
+    "participants" : 50,
+    "transport" : "HTTP pay + closeExpiredOrder Service",
+    "finalState" : {
+      "tickets" : 0,
+      "status" : "CLOSED",
+      "closedReason" : "EXPIRED",
+      "soldSeats" : 0,
+      "validPurchaseCount" : 0,
+      "remainingInventory" : 10,
+      "orderId" : 6
+    },
+    "outcomes" : [ {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 74
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : true,
+      "durationMs" : 40
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 62
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 41
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 57
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 45
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 55
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 42
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 66
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 43
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 67
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 42
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 60
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 41
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 69
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 46
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 64
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 42
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 72
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 46
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 56
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 43
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 53
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 41
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 71
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 45
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 76
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 43
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 60
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 45
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 53
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 46
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 57
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 43
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 51
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 42
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 61
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 44
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 66
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 44
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 77
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 45
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 74
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 42
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 78
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 46
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 68
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 44
+    }, {
+      "action" : "PAY",
+      "httpStatus" : 409,
+      "code" : "ORDER_NOT_PENDING",
+      "status" : "409",
+      "ticketIds" : [ ],
+      "closed" : null,
+      "durationMs" : 77
+    }, {
+      "action" : "CLOSE",
+      "httpStatus" : null,
+      "code" : null,
+      "status" : null,
+      "ticketIds" : [ ],
+      "closed" : false,
+      "durationMs" : 45
+    } ],
+    "observedSimultaneousDatabaseWaiters" : 50,
+    "competingOperations" : 25,
+    "paymentInvariants" : "PASS",
+    "durationMs" : 100,
+    "scenario" : "PAY_VS_CLOSE_AFTER_EXPIRY",
+    "paymentRequests" : 25
+  }
+}

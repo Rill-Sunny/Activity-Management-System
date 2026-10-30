@@ -20,6 +20,10 @@ final class IsolatedQualificationMySqlDataSource extends HikariDataSource {
     private boolean schemaCreated;
 
     IsolatedQualificationMySqlDataSource(DataSourceProperties properties) throws Exception {
+        this(properties, 6);
+    }
+
+    IsolatedQualificationMySqlDataSource(DataSourceProperties properties, int maximumPoolSize) throws Exception {
         baseUrl = properties.determineUrl();
         login = properties.determineUsername();
         credential = properties.determinePassword();
@@ -38,7 +42,8 @@ final class IsolatedQualificationMySqlDataSource extends HikariDataSource {
             setJdbcUrl(databaseUrl.substring(0, slash + 1) + schema + (query < 0 ? "" : baseUrl.substring(query)));
             setUsername(login);
             setPassword(credential);
-            setMaximumPoolSize(6);
+            setMaximumPoolSize(maximumPoolSize);
+            if (maximumPoolSize > 6) { setMinimumIdle(4); }
             try (var connection = getConnection()) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__create_schema.sql"));
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V3__create_whitelist_tables.sql"));

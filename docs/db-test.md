@@ -1,5 +1,7 @@
 # Smoke Test
 
+第 1 节保留 V2.2 九表的历史验证记录。当前 Schema 为 V2.4，共 13 张业务表；免费预约 V4 迁移、24 项约束与并发 SQL 验证见[免费预约 Schema](free-reservations.md)，当前总览以 [schema.md](schema.md) 为准。
+
 ## 1. 九张业务表与零物理外键
 
 预期：九张业务表存在，使用 InnoDB，DDL 与 schema V2.2 一致，物理外键数量为 0。`flyway_schema_history` 不计入业务表。

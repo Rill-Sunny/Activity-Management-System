@@ -1,0 +1,101 @@
+{
+  "observedAtDatabaseTime" : "2026-10-28T13:55:33.359",
+  "observation" : {
+    "distinctTransactionConnections" : [ 432, 451, 434, 440, 446, 450, 439, 438, 449, 445, 443, 448, 435, 442, 444, 447, 433, 436, 437, 441 ],
+    "remaining" : 0,
+    "concurrency" : 20,
+    "responses" : [ {
+      "status" : 201,
+      "record" : {
+        "reservationId" : 15,
+        "userId" : 67,
+        "sessionId" : 64,
+        "status" : "ACTIVE",
+        "createdAt" : "2026-10-28T13:55:33.298",
+        "cancelledAt" : null
+      },
+      "error" : null
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    } ],
+    "activeReservations" : 1,
+    "accounts" : [ 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86 ],
+    "initialRemaining" : 1,
+    "invariants" : "PASS",
+    "success" : 1
+  }
+}

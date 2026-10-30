@@ -142,3 +142,38 @@ ORD-05 只对 `INSUFFICIENT_INVENTORY` 要求关闭旧单。支付事务先完�
 限购、名单、座位、连座和期限拒绝保留各自语义，不套用缺货关闭。数据库断连、SQL 错误和未知异常不转换成库存不足。当前不实现定时过期、用户取消、死锁自动重试、Redis、RabbitMQ 超时或退款。
 
 支付事务和缺货关闭都独立于调用方外围事务。调用者不能用外围回滚撤销已经完成的支付。原 `requestId` 仍只保护创建幂等；支付幂等依靠当前订单状态、行锁与数据库原子提交。接口见 [模拟支付 API](api/ticket-payments.md)，证据见 [支付验收](payment-resources.md)。
+
+## ADR-008：免费预约有效唯一键与独立名额
+
+状态：Schema V2.4 与 V4 迁移已冻结，创建与取消 API 已按契约接入，数据库原子性、时间与资格边界均有验证。
+
+`free_reservation` 采用与 Ticket 相同的 VIRTUAL active key 思路：ACTIVE 时生成 session_id，CANCELLED 时生成 NULL，数据库唯一索引为 `(user_id, active_session_id)`。取消更新旧行并记录取消时间，重新预约 INSERT 新行，保留全部历史。同账号可预约不同场次。
+
+独立当前表加历史表同样可行，但增加当前指针与历史的双表维护。本阶段单表状态历史配合生成唯一键已满足需求。普通 `(user_id, session_id)` 唯一键阻断重新预约；加入 status 的三列唯一键又限制多条取消历史，均不采用。
+
+名额位于独立 `free_session_quota`，与付费 Zone、Seat、Ticket 分离。capacity 是发布冻结快照，remaining 为运行库存。资格检查持有 Session 共享锁，独立名额行避免接着更新同一 Session 计数产生锁升级。
+
+首次预约事务按已发布 FREE 场次惰性初始化 quota，主键冲突只做 no-op，不覆盖剩余量。条件扣 1 和预约 INSERT 同事务；有效唯一键冲突或其他异常回滚名额。取消采用 quota → reservation 的统一写锁顺序，状态条件成功后只返还一次，失败整体回滚。
+
+数据库约束负责单行形态与有效唯一性，Service 负责身份、FREE 归属、当前资格、时间及生命周期；跨表对账验证 remaining + ACTIVE 数量 = capacity。设计、原子 SQL、替代方案与验证见[免费预约 Schema](free-reservations.md)。
+
+## ADR-009：退款受理保存逐票金额与申请时政策
+
+状态：Day 10 已实施；Schema V2.5、V5 迁移及受理契约冻结。当前入口只产生 PENDING，实际生效属于 Day 11。
+
+本次明确冻结四项决定：
+
+1. 退款资格使用服务端 requestedAt。认证后、等待业务锁前从注入的 Clock 读取一次，按 Asia/Shanghai 保存到 DATETIME(3)；后续处理使用该快照。
+2. 普通退款最初 48 小时以 activity.openTime 为起点，窗口为 [openTime, openTime + 48h)，不从付款时间计算。场次开始优先于免费窗口；随后遵循 REF-02 的 30d、14d、10d 阶梯。
+3. Java 金额计算使用 BigDecimal，金额 scale=2，数据库使用 DECIMAL。原价来自每张 Ticket.paidPrice。
+4. 舍入模式为 RoundingMode.HALF_UP。逐票计算 originalPrice × (1 − feeRate) 后保留两位；实际手续费由原价减已舍入退款金额得到。
+
+退款主申请与逐票明细为一对多。主表保存政策版本、开售时间、场次开始时间与申请时间，明细保存每张票的原价、费率和应退金额。生产使用 Clock.system，测试使用 Fixed Clock。主表不保存汇总金额，汇总值按 refund_id 对逐票 refund_amount 求和得到。
+
+TicketRefundPolicy.evaluate 接收申请时间、活动开售时间、场次开始时间和 Ticket 成交价，返回是否允许、手续费比例、退款比例、手续费金额、退款金额和拒绝原因。OrdinaryTicketRefundPolicy 只计算这些显式输入，不读取时钟；后续特殊退款可实现同一接口。
+
+申请键为 UNIQUE(buyer_id, request_id)，相同键比较订单、原因和完整票集合。主表冲突退出事务后重新读取；不同键也受逐票 claimed_ticket_id 唯一键保护，同票不能同时处于多条 PENDING、PROCESSING、SUCCEEDED 明细。FAILED 明细保留历史并释放该键。
+
+所有权检查沿 Ticket → TicketOrderItem → TicketOrder，核对指定订单和当前买家。申请主表与全部明细在一个独立 READ_COMMITTED 事务提交。当前阶段不修改门票、订单状态或支付资源。具体字段、锁顺序、API 和证据见 [退款申请契约](ticket-refunds.md)。
+
+错误码分别表达所有权、票状态、场次已开始、退款窗口关闭、重复申请及幂等内容冲突。REFUND_AMOUNT_CALCULATION_ERROR 使用 HTTP 500，表示服务端金额数据或计算问题；它和非法客户端字段的 400 分开，事务完整回滚。Day 10 不执行实际退款、资源恢复或后续异步流程。

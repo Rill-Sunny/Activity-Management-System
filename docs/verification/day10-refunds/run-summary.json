@@ -1,0 +1,90 @@
+﻿{
+    "recordedAtUtc":  "2026-10-29T03:20:27.9981917Z",
+    "result":  "PASS",
+    "tests":  158,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "suites":  [
+                   {
+                       "suite":  "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+                       "tests":  24,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketRefundApplicationMySqlIntegrationTest",
+                       "tests":  49,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.security.SecurityAccessTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+                       "tests":  41,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ],
+    "sources":  [
+                    {
+                        "file":  "src/main/resources/db/migration/V5__create_ticket_refund_tables.sql",
+                        "sha256":  "035B5973664B483A73089DBC574E5B22D082B9D58EE771F604F199533F30ADBC"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/service/TicketRefundService.java",
+                        "sha256":  "DADBF6F92BCC56F61B5AF1D4AC005807EACDCC58A2BA370FEFF1653BAD33405A"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/service/TicketRefundApplicationService.java",
+                        "sha256":  "F70969722DB1F6305574D9081979ECF1E9FC8CFE9BCB28C88851D25A23178108"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/service/OrdinaryTicketRefundPolicy.java",
+                        "sha256":  "37CAA94F7EBCDB54ADA61A11F002A6593A190DD67B3F461976C9AA6F8DEBE0A1"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/mapper/RefundTicketMapper.java",
+                        "sha256":  "8A355AE28D0DB13EF0E632F577C57BF9F9055E47EB647DDE9D791681AD6FA5AE"
+                    }
+                ],
+    "artifacts":  [
+                      {
+                          "file":  "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest.txt",
+                          "sha256":  "FA11F78CF4C2A5EB8AEFB66ACE6974DE5AABA1B1BD22B1B63507DA1FD488A8C7"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.activity.integration.TicketRefundApplicationMySqlIntegrationTest.txt",
+                          "sha256":  "394BB0D32F7DFAB75B32F9B16BDFACC58E95D1E5EFC8CFD848DE33E35FF7ACAB"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.security.SecurityAccessTest.txt",
+                          "sha256":  "2109B95605F674059C0CA1364CE8101D8A1F6670598D08DF83B4A654BBC8CC5A"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.txt",
+                          "sha256":  "3D5FCB6DF2063C94CB4014BBF2910FADE70B2E254602AF092722F9C962B13F79"
+                      },
+                      {
+                          "file":  "day10-refund-partial-pending.json",
+                          "sha256":  "3BC59D2A9AC1CA07C8ED7943B4F4F860C2B5A700171EA5B21058344CC1468C4A"
+                      },
+                      {
+                          "file":  "day10-refund-time-snapshot.json",
+                          "sha256":  "8835FC7D900A842A2421EEFB94391D32C454986998398296DD7381972E87E2B9"
+                      },
+                      {
+                          "file":  "day10-refund-before-lock-time.json",
+                          "sha256":  "23933DE1EDA19F7574452D6F4A5DF65BED94E815A0DAADC418D788DA4697818A"
+                      }
+                  ]
+}

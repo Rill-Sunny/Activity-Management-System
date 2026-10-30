@@ -1,0 +1,140 @@
+{
+    "recordedAt":  "2026-10-28T12:06:04.8165777+08:00",
+    "result":  "PASS",
+    "tests":  72,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "concurrencyLevels":  [
+                              20,
+                              50
+                          ],
+    "suites":  [
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketOrderSmallConcurrencyMySqlIntegrationTest",
+                       "tests":  6,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketOrderClosingMySqlIntegrationTest",
+                       "tests":  21,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.PaymentRetryMySqlIntegrationTest",
+                       "tests":  3,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.ticketorder.service.PaymentRetryExecutorTest",
+                       "tests":  42,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ],
+    "artifacts":  [
+                      {
+                          "file":  "day8-concurrency-pay_vs_cancel-c20.json",
+                          "scenario":  "PAY_VS_CANCEL",
+                          "participants":  20,
+                          "databaseWaiters":  20,
+                          "finalState":  {
+                                             "tickets":  0,
+                                             "status":  "CLOSED",
+                                             "closedReason":  "USER_CANCELLED",
+                                             "soldSeats":  0,
+                                             "validPurchaseCount":  0,
+                                             "remainingInventory":  10,
+                                             "orderId":  1
+                                         },
+                          "sha256":  "60CE5EB37BFD6BD98E012C15BC9449914265525B01663CC59C5B1EF9CB989195"
+                      },
+                      {
+                          "file":  "day8-concurrency-pay_vs_cancel-c50.json",
+                          "scenario":  "PAY_VS_CANCEL",
+                          "participants":  50,
+                          "databaseWaiters":  50,
+                          "finalState":  {
+                                             "tickets":  1,
+                                             "status":  "PAID",
+                                             "closedReason":  "NONE",
+                                             "soldSeats":  1,
+                                             "validPurchaseCount":  1,
+                                             "remainingInventory":  9,
+                                             "orderId":  4
+                                         },
+                          "sha256":  "9B516E8D2984A3057934F3CFCC6B826A04DB6FF59E94C7A85650DE7C31258FC6"
+                      },
+                      {
+                          "file":  "day8-concurrency-pay_vs_close_after_expiry-c20.json",
+                          "scenario":  "PAY_VS_CLOSE_AFTER_EXPIRY",
+                          "participants":  20,
+                          "databaseWaiters":  20,
+                          "finalState":  {
+                                             "tickets":  0,
+                                             "status":  "CLOSED",
+                                             "closedReason":  "EXPIRED",
+                                             "soldSeats":  0,
+                                             "validPurchaseCount":  0,
+                                             "remainingInventory":  10,
+                                             "orderId":  3
+                                         },
+                          "sha256":  "373943C8207F0499991712DA3AF11749C81B6C2E0AD1C6AC0F7910D6C51D12BE"
+                      },
+                      {
+                          "file":  "day8-concurrency-pay_vs_close_after_expiry-c50.json",
+                          "scenario":  "PAY_VS_CLOSE_AFTER_EXPIRY",
+                          "participants":  50,
+                          "databaseWaiters":  50,
+                          "finalState":  {
+                                             "tickets":  0,
+                                             "status":  "CLOSED",
+                                             "closedReason":  "EXPIRED",
+                                             "soldSeats":  0,
+                                             "validPurchaseCount":  0,
+                                             "remainingInventory":  10,
+                                             "orderId":  6
+                                         },
+                          "sha256":  "5618727FC7E71F975F05F946BF9BC5DE51672E3E57F788914B01F765D673F40A"
+                      },
+                      {
+                          "file":  "day8-concurrency-pay_vs_close_before_expiry-c20.json",
+                          "scenario":  "PAY_VS_CLOSE_BEFORE_EXPIRY",
+                          "participants":  20,
+                          "databaseWaiters":  20,
+                          "finalState":  {
+                                             "tickets":  1,
+                                             "status":  "PAID",
+                                             "closedReason":  "NONE",
+                                             "soldSeats":  1,
+                                             "validPurchaseCount":  1,
+                                             "remainingInventory":  9,
+                                             "orderId":  2
+                                         },
+                          "sha256":  "5065327C833145E9B22187932CA3E6055D3E046B1A45D34D7B560EE43505E538"
+                      },
+                      {
+                          "file":  "day8-concurrency-pay_vs_close_before_expiry-c50.json",
+                          "scenario":  "PAY_VS_CLOSE_BEFORE_EXPIRY",
+                          "participants":  50,
+                          "databaseWaiters":  50,
+                          "finalState":  {
+                                             "tickets":  1,
+                                             "status":  "PAID",
+                                             "closedReason":  "NONE",
+                                             "soldSeats":  1,
+                                             "validPurchaseCount":  1,
+                                             "remainingInventory":  9,
+                                             "orderId":  5
+                                         },
+                          "sha256":  "3BAF8756EE8CC9C08EF4E683F6EFFBCAE3BDE6674E60DE220FBE6D97783E71F0"
+                      }
+                  ]
+}

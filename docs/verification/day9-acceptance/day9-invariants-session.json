@@ -1,0 +1,25 @@
+{
+  "observation" : {
+    "detected" : [ {
+      "reservation_id" : 6,
+      "user_id" : 33,
+      "session_id" : 9223372036854775807,
+      "violation" : "INVALID_RESERVATION_SCOPE"
+    }, {
+      "session_id" : 21,
+      "session_capacity" : 10,
+      "quota_capacity" : 10,
+      "remaining" : 9,
+      "active_count" : 0,
+      "violation" : "QUOTA_RESERVATION_MISMATCH"
+    }, {
+      "reservation_id" : 6,
+      "session_id" : 9223372036854775807,
+      "violation" : "ACTIVE_RESERVATION_WITHOUT_QUOTA"
+    } ],
+    "fixtureRestored" : true,
+    "invariants" : "PASS",
+    "corruption" : "SESSION"
+  },
+  "observedAtDatabaseTime" : "2026-10-28T15:48:33.85"
+}

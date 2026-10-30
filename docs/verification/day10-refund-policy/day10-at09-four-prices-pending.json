@@ -1,0 +1,66 @@
+{
+  "observedAtDatabaseTime" : "2026-10-29T11:35:32.35",
+  "observation" : {
+    "allTickets" : [ {
+      "ticketId" : 207,
+      "orderItemId" : 207,
+      "seatId" : 501,
+      "paidPrice" : 100.00,
+      "status" : "VALID",
+      "issuedAt" : "2026-10-29T11:35:32.333"
+    }, {
+      "ticketId" : 208,
+      "orderItemId" : 208,
+      "seatId" : 502,
+      "paidPrice" : 300.00,
+      "status" : "VALID",
+      "issuedAt" : "2026-10-29T11:35:32.334"
+    }, {
+      "ticketId" : 209,
+      "orderItemId" : 209,
+      "seatId" : 503,
+      "paidPrice" : 800.00,
+      "status" : "VALID",
+      "issuedAt" : "2026-10-29T11:35:32.334"
+    }, {
+      "ticketId" : 210,
+      "orderItemId" : 210,
+      "seatId" : 504,
+      "paidPrice" : 1200.00,
+      "status" : "VALID",
+      "issuedAt" : "2026-10-29T11:35:32.334"
+    } ],
+    "selectedTicketIds" : [ 208, 210 ],
+    "response" : {
+      "refundId" : 20,
+      "buyerId" : 150,
+      "orderId" : 57,
+      "requestId" : "at09-two-of-four",
+      "reason" : "USER_REQUEST",
+      "requestedAt" : "2026-10-29T11:35:32.34",
+      "status" : "PENDING",
+      "createdAt" : "2026-10-29T11:35:32.344",
+      "items" : [ {
+        "refundItemId" : 23,
+        "refundId" : 20,
+        "ticketId" : 208,
+        "originalPrice" : 300.00,
+        "feeRate" : 0.1500,
+        "refundAmount" : 255.00,
+        "status" : "PENDING",
+        "failureReason" : null
+      }, {
+        "refundItemId" : 24,
+        "refundId" : 20,
+        "ticketId" : 210,
+        "originalPrice" : 1200.00,
+        "feeRate" : 0.1500,
+        "refundAmount" : 1020.00,
+        "status" : "PENDING",
+        "failureReason" : null
+      } ]
+    },
+    "paidResourcesUnchanged" : true,
+    "stage" : "application acceptance"
+  }
+}

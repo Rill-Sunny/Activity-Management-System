@@ -1,0 +1,14 @@
+{
+  "observation" : {
+    "invariants" : "PASS",
+    "startTime" : "2026-10-28T21:00:00",
+    "remaining" : 9,
+    "response" : {
+      "status" : 409,
+      "record" : null,
+      "error" : "SESSION_STARTED"
+    },
+    "databaseTime" : "2026-10-28T21:00:00.001"
+  },
+  "observedAtDatabaseTime" : "2026-10-28T15:48:31.494"
+}

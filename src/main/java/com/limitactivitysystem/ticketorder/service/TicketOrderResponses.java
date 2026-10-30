@@ -14,6 +14,7 @@ final class TicketOrderResponses {
     static TicketOrderResponse from(TicketOrder order, List<TicketOrderItem> items) {
         return new TicketOrderResponse(order.getOrderId(), order.getRequestId(), order.getSessionId(),
                 order.getTotalAmount(), order.getStatus(), order.getCreatedAt(), order.getExpiresAt(), order.getPaidAt(),
+                order.getClosedReason(),
                 items.stream().map(item -> new TicketOrderItemResponse(item.getOrderItemId(), item.getZoneId(),
                         AllocationMode.valueOf(item.getAllocationMode()), item.getRequestedSeatId(), item.getQuantity(),
                         item.getAcceptNonAdjacent(), item.getUnitPrice())).toList());

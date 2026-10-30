@@ -1,0 +1,22 @@
+{
+  "observedAtDatabaseTime" : "2026-10-28T13:55:33.808",
+  "observation" : {
+    "successfulMutationsBeforeFailure" : {
+      "cancelIfActiveBeforeStart" : 1,
+      "restoreOne" : 1
+    },
+    "injectedAfter" : ".restoreOne",
+    "invariants" : "PASS",
+    "remaining" : 9,
+    "committedReservations" : [ {
+      "reservation_id" : 18,
+      "user_id" : 98,
+      "session_id" : 76,
+      "status" : "ACTIVE",
+      "created_at" : "2026-10-28T13:55:33.788",
+      "cancelled_at" : null,
+      "active_session_id" : 76
+    } ],
+    "snapshotRestored" : true
+  }
+}

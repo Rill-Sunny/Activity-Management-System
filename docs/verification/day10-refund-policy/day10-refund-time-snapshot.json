@@ -1,0 +1,35 @@
+{
+  "observedAtDatabaseTime" : "2026-10-29T11:35:28.236",
+  "observation" : {
+    "original" : {
+      "refundId" : 8,
+      "buyerId" : 54,
+      "orderId" : 18,
+      "requestId" : "replay",
+      "reason" : "USER_REQUEST",
+      "requestedAt" : "2026-10-29T11:35:28.217",
+      "status" : "PENDING",
+      "createdAt" : "2026-10-29T11:35:28.222",
+      "items" : [ {
+        "refundItemId" : 9,
+        "refundId" : 8,
+        "ticketId" : 69,
+        "originalPrice" : 10.01,
+        "feeRate" : 0.1500,
+        "refundAmount" : 8.51,
+        "status" : "PENDING",
+        "failureReason" : null
+      }, {
+        "refundItemId" : 10,
+        "refundId" : 8,
+        "ticketId" : 71,
+        "originalPrice" : 20.03,
+        "feeRate" : 0.1500,
+        "refundAmount" : 17.03,
+        "status" : "PENDING",
+        "failureReason" : null
+      } ]
+    },
+    "replayAfterStartIsIdentical" : true
+  }
+}

@@ -1,0 +1,137 @@
+﻿{
+    "recordedAtUtc":  "2026-10-29T04:40:04.5530006Z",
+    "result":  "PASS",
+    "stage":  "Day 10 legal application acceptance only",
+    "tests":  172,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "experiment":  {
+                       "ticketPrices":  [
+                                            200,
+                                            400,
+                                            800,
+                                            1200
+                                        ],
+                       "selected":  [
+                                        "B",
+                                        "D"
+                                    ],
+                       "feeRate":  0.15,
+                       "refunds":  [
+                                       340,
+                                       1020
+                                   ],
+                       "sumFromPersistedItems":  1360,
+                       "totalStoredOnRequest":  false,
+                       "requestStatus":  "PENDING",
+                       "itemStatus":  "PENDING",
+                       "paidResourcesUnchanged":  true
+                   },
+    "suites":  [
+                   {
+                       "suite":  "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+                       "tests":  30,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketRefundApplicationMySqlIntegrationTest",
+                       "tests":  57,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.security.SecurityAccessTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+                       "tests":  41,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ],
+    "sources":  [
+                    {
+                        "file":  "src/main/resources/db/migration/V5__create_ticket_refund_tables.sql",
+                        "sha256":  "035B5973664B483A73089DBC574E5B22D082B9D58EE771F604F199533F30ADBC"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/exception/TicketRefundErrorCode.java",
+                        "sha256":  "FCB84B67957F006ADB6B75D4CF9BC49F6215AB3832F2CC9CE3FBA610EDAD3ADE"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/service/OrdinaryTicketRefundPolicy.java",
+                        "sha256":  "78A8BFFAA7FC081ABE237CD6FD8B374DD55C5FFC24EE573D82BC367BBAD52FFE"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/service/TicketRefundService.java",
+                        "sha256":  "02830749DCE6007E250E0646401FC1C097F1B90D4DEB35391B309BA5808154F2"
+                    },
+                    {
+                        "file":  "src/main/java/com/limitactivitysystem/refund/service/TicketRefundApplicationService.java",
+                        "sha256":  "CB17D12646A714EBAE533DEB55A8E3945F8F5FFA1027F31B03E9FA2B098288E3"
+                    },
+                    {
+                        "file":  "src/test/java/com/limitactivitysystem/refund/service/OrdinaryTicketRefundPolicyTest.java",
+                        "sha256":  "771CC9DEEACFCACB6BB98BAA28C70F57D70AC11E948F93D1429B38D80F43B177"
+                    },
+                    {
+                        "file":  "src/test/java/com/limitactivitysystem/activity/integration/TicketRefundApplicationMySqlIntegrationTest.java",
+                        "sha256":  "9B1B6C2F76E4FAF8ED9F277D0A196156272F765A687EABFD3E928E02933D4CEF"
+                    }
+                ],
+    "artifacts":  [
+                      {
+                          "file":  "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest.txt",
+                          "sha256":  "9AAF88D91947744506AF4DA10F51E27C5C6B6CD6454DE95200D3285AAE3287A1"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.activity.integration.TicketRefundApplicationMySqlIntegrationTest.txt",
+                          "sha256":  "D066F1DBAB0FDBAB52435960965EBE7ED7A63DCF3B3E3170A40487192F57FDC1"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.security.SecurityAccessTest.txt",
+                          "sha256":  "2CD416216732758842C4137F8720BA1499755FF4DF73B871D7EE6759BAC26DED"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.txt",
+                          "sha256":  "207FFD0F40F7DDF37744E2D6A3FA446864B3D36619C1BBFAACD7769CBBBBC399"
+                      },
+                      {
+                          "file":  "day10-refund-partial-pending.json",
+                          "sha256":  "040D3C2E5BEEF02D066BBB67C7FAEEF881CEEDF05C312444D711B732A9D0A82F"
+                      },
+                      {
+                          "file":  "day10-refund-time-snapshot.json",
+                          "sha256":  "013AF1184C5ECBB78945C5B3FE98767A7F491364FB4074868AFC765046ACC202"
+                      },
+                      {
+                          "file":  "day10-refund-before-lock-time.json",
+                          "sha256":  "D5B3C1A79F13CEC46908F23142819DA70FD0BD6E830E888713C463248040B91F"
+                      },
+                      {
+                          "file":  "day10-at09-four-prices-pending.json",
+                          "sha256":  "163C2D201D1DA06ACA520E8DEC7E937DE7F76D46E1417324B6C4231A2FB60893"
+                      },
+                      {
+                          "file":  "day10-refund-error-window_closed.json",
+                          "sha256":  "D2DFC74D8633DD4072A49638E594C03FBD430FF58CBE6FE69D701FE3858DA719"
+                      },
+                      {
+                          "file":  "day10-refund-error-not_allowed.json",
+                          "sha256":  "170D7C0A0787F18A85CA26F02E2611B6EBF0B959B01BB2A70643D4FFC8653002"
+                      },
+                      {
+                          "file":  "day10-refund-error-amount_error.json",
+                          "sha256":  "910960B77931C988D5AC330731413997C084DD7F1DD07DE4B2D039B4822A1ACE"
+                      }
+                  ]
+}

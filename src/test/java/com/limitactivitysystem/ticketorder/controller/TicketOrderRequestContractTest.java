@@ -71,7 +71,7 @@ class TicketOrderRequestContractTest {
             LocalDateTime created = LocalDateTime.of(2099, 1, 1, 0, 0);
             return new TicketOrderService.CreationResult(new TicketOrderResponse(50L, accepted.getRequestId(),
                     accepted.getSessionId(), BigDecimal.TEN, "PENDING_PAYMENT", created,
-                    created.plusMinutes(15), null, List.of()), true);
+                    created.plusMinutes(15), null, null, List.of()), true);
         });
     }
 

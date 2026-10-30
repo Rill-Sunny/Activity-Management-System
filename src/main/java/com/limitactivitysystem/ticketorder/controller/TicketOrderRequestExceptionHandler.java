@@ -1,6 +1,7 @@
 package com.limitactivitysystem.ticketorder.controller;
 
 import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
+import com.limitactivitysystem.ticketorder.exception.PaymentConcurrencyException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -28,6 +29,15 @@ public class TicketOrderRequestExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 exception.getErrorCode().getHttpStatus(), exception.getMessage());
         problem.setProperty("code", exception.getErrorCode().name());
+        return problem;
+    }
+
+    @ExceptionHandler(PaymentConcurrencyException.class)
+    public ProblemDetail paymentConcurrencyExhausted(PaymentConcurrencyException exception) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+        problem.setProperty("code", PaymentConcurrencyException.CODE);
+        problem.setProperty("reason", exception.getReason().name());
+        problem.setProperty("attempts", exception.getAttempts());
         return problem;
     }
 }

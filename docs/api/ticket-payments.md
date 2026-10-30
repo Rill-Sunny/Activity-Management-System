@@ -63,11 +63,14 @@ Authorization: Bearer <JWT>
 | 指定座位冲突、无所需连座 | `409 SEAT_NOT_AVAILABLE` / `ADJACENT_SEATS_UNAVAILABLE` | 保留待支付状态 |
 | Zone 库存不足 | `409 INSUFFICIENT_INVENTORY` | 支付完全回滚后，另开短事务关闭仍为 PENDING_PAYMENT 的原单 |
 | 最终状态条件更新未生效 | `409 ORDER_PAYMENT_CONFLICT` | 全部回滚 |
+| 死锁或锁等待超时连续三次失败 | `503 PAYMENT_CONCURRENCY_RETRY_EXHAUSTED` | 每次完整回滚，保留最后读取到的订单状态 |
 
 缺货关闭记录 `closed_reason = INSUFFICIENT_INVENTORY`。关闭事务重新锁定订单：如果另一请求已经支付成功，返回其原支付结果，不覆盖 PAID；如果已经进入其他状态，保留该状态。
 
 数据库断连、SQL 错误及未知异常继续作为技术失败向外传播，不转换为缺货，不执行缺货关闭。关闭事务自身失败也会向外传播，不能声称已安全关闭。
 
-当前没有定时过期扫描、用户取消、死锁自动重试、Redis、RabbitMQ 超时或退款流程。锁与事务设计见 [locking.md](../locking.md#ticket-payment-resources)。
+支付只对明确的 MySQL 并发错误重试：死锁 `1213 / 40001`，以及锁等待超时 `1205 / HY000` 或连接器返回的 `1205 / 40001`。最多三次总尝试，重试前分别等待 50–75ms、100–125ms。每次失败事务结束后，下一次尝试重新锁订单、复查资格、占限购、扣库存、分座并出票。业务拒绝、断连、SQL 语法错误与未知异常不重试。
+
+重试耗尽响应包含 `code`、`reason`（`DEADLOCK` 或 `LOCK_WAIT_TIMEOUT`）和 `attempts: 3`，不包含 SQL 或异常栈。主动取消与数据库分批过期扫描已接入；支付本身的过期拒绝不执行关闭，扫描独立关闭到期的待支付订单。锁与事务设计见 [locking.md](../locking.md#ticket-payment-resources)，实验证据见[支付重试验证](../payment-retry-verification.md)。
 
 支付尝试产生 `payment.success`、按固定原因分类的 `payment.failure` 和 `payment.duration`。已认证管理端点可读取这些指标。它们统计 Service 请求结果，包含重复支付成功读取；不等于新增成交订单数。日志字段及自动对账范围见[支付对账与可观测性](../payment-verification.md)。

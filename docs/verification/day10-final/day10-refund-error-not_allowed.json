@@ -1,0 +1,10 @@
+{
+  "observation" : {
+    "paidResourcesUnchanged" : true,
+    "applicationRows" : 0,
+    "code" : "REFUND_NOT_ALLOWED",
+    "httpStatus" : 409,
+    "scenario" : "NOT_ALLOWED"
+  },
+  "observedAtDatabaseTime" : "2026-10-29T12:37:20.398"
+}

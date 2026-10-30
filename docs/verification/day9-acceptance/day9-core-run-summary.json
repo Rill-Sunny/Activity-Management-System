@@ -1,0 +1,147 @@
+﻿{
+    "startedAtUtc":  "2026-10-28T07:48:16.3770159Z",
+    "recordedAtUtc":  "2026-10-28T07:48:38.0578838Z",
+    "result":  "PASS",
+    "tests":  111,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "acceptance":  {
+                       "AT-01":  "PASS",
+                       "AT-02":  "PASS",
+                       "AT-03":  "PASS"
+                   },
+    "invariantSql":  {
+                         "file":  "tests/sql/reservation_invariants.sql",
+                         "sha256":  "A06AD9487E2948AD8D1F186E3D7AA68E20C6B0CACDE1FACA22D85BBDD96D9D8D"
+                     },
+    "suites":  [
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+                       "tests":  41,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.FreeReservationSchemaMySqlIntegrationTest",
+                       "tests":  30,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.reservation.controller.ReservationRequestContractTest",
+                       "tests":  40,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ],
+    "artifacts":  [
+                      {
+                          "file":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.txt",
+                          "sha256":  "6645A0A0E40D0972BA5D78D51B1DF4A0FF21F6653B69CEC9357725F53DC7938C"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.activity.integration.FreeReservationSchemaMySqlIntegrationTest.txt",
+                          "sha256":  "E99964C0E8F8E5C1541F13BC415F1F273143039B025013CF2C30D3A385352122"
+                      },
+                      {
+                          "file":  "com.limitactivitysystem.reservation.controller.ReservationRequestContractTest.txt",
+                          "sha256":  "A8BC4DA419A9240A7C04B671F7136F5DF60DC3848B3020CEE16D7FC0F7BFBF80"
+                      },
+                      {
+                          "file":  "day9-at01-multiple-sessions-user.json",
+                          "sha256":  "CD40465FC276F4BEA69F552EFD8B48C1CAB22262E7115E05DBDBA225E4E302B2"
+                      },
+                      {
+                          "file":  "day9-at01-multiple-sessions-publisher.json",
+                          "sha256":  "DDAE6883B235C4E67FE7087C631BC06804F2530562281C54F36E3192567EB0E7"
+                      },
+                      {
+                          "file":  "day9-at03-history.json",
+                          "sha256":  "F3C6E4E2CACF8DD86D8FC7CFD9EEAF7C44004DF4040954DC008B0D26A8A7FE97"
+                      },
+                      {
+                          "file":  "day9-at03-public-pool-former-owner.json",
+                          "sha256":  "752859D0CA5BA0D96BE80B8394E5369D52558CB168057E753ACC563FC7E5CAF7"
+                      },
+                      {
+                          "file":  "day9-at03-public-pool-other-account.json",
+                          "sha256":  "00A376AE0E4DFDBF7504063EFA0D6CAAD4DC8CD5AF86CE930BC267065CFCA64D"
+                      },
+                      {
+                          "file":  "day9-at02-last-slot-c20.json",
+                          "sha256":  "A0970E6D8E14DB1EDA6A7F25B43A30D03C25D2FB17DD5777C38A01B92F35F5A3"
+                      },
+                      {
+                          "file":  "day9-http-active-key-race.json",
+                          "sha256":  "6842E839F11B5F3A9B9094897AED04C73C90E1C2540EFF38E8D86CA9CD5E4B51"
+                      },
+                      {
+                          "file":  "day9-http-cancel-race.json",
+                          "sha256":  "40A9DE7AC219A336737AB966CB9B6814022AF8DD80FEE78D0311DE62F41449A8"
+                      },
+                      {
+                          "file":  "day9-cancel-boundary-200500000.json",
+                          "sha256":  "3E4857D43EAE1BE8520C9B49F39BFB7E647973CC52AAA2186D441E79F1B7564D"
+                      },
+                      {
+                          "file":  "day9-cancel-boundary-205959999.json",
+                          "sha256":  "2FDF4E8D9D38E6BAD41FD36410161FB3B6018A24174AC9F23EC559FF0B1A8E0F"
+                      },
+                      {
+                          "file":  "day9-cancel-boundary-210000000.json",
+                          "sha256":  "7741A36F26EEF91BA76AE87D6B9DB71CA6FE6FF8DF7C321F0F3F86E76170B043"
+                      },
+                      {
+                          "file":  "day9-cancel-boundary-210000001.json",
+                          "sha256":  "42E60F53DFA759A2305DA9D876B3529C93F185FBF47C97F4CB20E53881A4BB7B"
+                      },
+                      {
+                          "file":  "day9-rollback-after-takeOne.json",
+                          "sha256":  "BBB57573C577D8852E97D8ABB8F0DAFAAC56F47BAB0819F64FD58E947FEE98FF"
+                      },
+                      {
+                          "file":  "day9-rollback-after-insertIfReservable.json",
+                          "sha256":  "C049BCC83F008E46BD65C55F4BB01982F23F06A54A0F8A388D765AC0F2623A45"
+                      },
+                      {
+                          "file":  "day9-rollback-after-cancelIfActiveBeforeStart.json",
+                          "sha256":  "7DD7742A5E7AF8390E77031146EBF8090676D1962EC54542F240BD96F0EEE5E1"
+                      },
+                      {
+                          "file":  "day9-rollback-after-restoreOne.json",
+                          "sha256":  "693F09800D8604BB749B1E0B0059560527632A64CD8E954C854430212E454826"
+                      },
+                      {
+                          "file":  "day9-invariants-user.json",
+                          "sha256":  "5CDC7B29ACB1111FAF9BCA9FCE8B5B0AD10AA54E82A7D7BFE2BB2F40CA5C2EB2"
+                      },
+                      {
+                          "file":  "day9-invariants-session.json",
+                          "sha256":  "BF9ABEBFAA16CFD958089609980A75D1833AA2596B61FACA9DD520185445D7DB"
+                      },
+                      {
+                          "file":  "day9-invariants-activity.json",
+                          "sha256":  "03D4B31A9AC8A2CBE08D48ED4CB1CF79008C15DA9248250B53517DCAAB7A07EF"
+                      },
+                      {
+                          "file":  "day9-invariants-paid_activity.json",
+                          "sha256":  "70104A1A357ADEC4926C1631F89850977FB1D3FC95947920B8760194BA0E5286"
+                      },
+                      {
+                          "file":  "day9-invariants-quota.json",
+                          "sha256":  "CEE13F33FA8A8154D2A5738362233660F138D4A30404C59357566CB242F2C98E"
+                      },
+                      {
+                          "file":  "day9-invariants-capacity.json",
+                          "sha256":  "277373F8B2B389372F9F5285C56D169A613FEB6BFCC29E9C15FCD5F75C31D933"
+                      },
+                      {
+                          "file":  "day9-invariants-remaining.json",
+                          "sha256":  "AC4A44D69A0A56EF70A72DB660D4DB012B6472CF4D49BFC15CBA5F6077765DD0"
+                      }
+                  ]
+}

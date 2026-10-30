@@ -1,10 +1,12 @@
 # 当前架构与阶段验收
 
-本页记录已实现的身份、活动配置、白名单管理、资格查询、票单创建、本人详情及模拟支付。免费预约与专用改期流程尚未实现。
+本页记录已实现的身份、活动配置、白名单管理、资格查询、票单创建、本人详情、模拟支付，以及免费预约创建和取消。专用改期流程随对应阶段实现。
 
 Day 5 的 [票单 API](ticket-orders.md)已接通生产端点与业务事务，资格判断、创建窗口、资源归属、价格快照、只读预检查、按原明细比较的幂等重放及本人订单详情已实现。
 
 Day 6 的[支付资源组件](payment-resources.md)已接入 Day 7 [模拟支付 API](api/ticket-payments.md)，包括订单行锁、当前资格复查、原子限购和库存、两种配座、Ticket 签发、PAID 条件更新与幂等重放。缺货关闭在支付回滚后的独立事务完成。
+
+Day 9 的[免费预约 API](api/reservations.md)直接生成 ACTIVE 记录并占用一份独立名额。取消在场次开始前条件生效、只返还一次；重新预约新建记录并重新检查当前资格。
 
 ## 请求与可信身份
 
@@ -23,6 +25,7 @@ HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Con
 | `PublisherActivityPublishService` | 锁定 Activity，完成跨表完整性校验，最后条件更新为 `PUBLISHED` |
 | `PublisherWhitelistService` | 管理活动与场次名单，允许所属活动为 `DRAFT` 或 `PUBLISHED` |
 | `QualificationService` | 确认账号、活动及场次关系，按当前适用名单判断资格 |
+| `FreeReservationService` | 创建与取消使用独立事务，协调当前资格、数据库时间、quota 行锁、预约唯一键和历史保留 |
 | `TicketOrderService` | 在创建事务之外协调按购买者作用域的重放、首次创建与冲突恢复 |
 | `TicketOrderCreationService` | 在独立事务中检查新下单条件，原子写入主表与全部明细 |
 | `TicketOrderReplayService` | 在独立只读事务中比较原订单购买意图，返回原单或幂等冲突 |
@@ -48,7 +51,7 @@ HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Con
 
 | 方法 | 使用位置 | 返回与事务要求 |
 |---|---|---|
-| `check(activityId, sessionId)` | 当前创建票单及后续预约 | 从 `CurrentUserProvider` 取得账号，返回通过资格校验的可信用户 ID，要求已有业务事务 |
+| `check(activityId, sessionId)` | 当前创建票单及免费预约创建 | 从 `CurrentUserProvider` 取得账号，返回通过资格校验的可信用户 ID，要求已有业务事务 |
 | `checkAgain(activityId, sessionId)` | 当前待支付订单支付 | 使用订单持久化的活动与场次 ID，重新检查当前资格，要求已有业务事务 |
 | `canParticipate(userId, activityId, sessionId)` | 内部布尔查询 | 调用方提供可信用户 ID，独立调用使用 `READ_COMMITTED`，不能把结果带到另一个事务当作支付授权 |
 
