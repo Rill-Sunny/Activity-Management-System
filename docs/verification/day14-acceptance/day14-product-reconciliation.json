@@ -1,0 +1,310 @@
+{
+  "script" : "tests/sql/product_invariants.sql",
+  "checks" : {
+    "[1] change=USER" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] field=publisherId" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] kind=NULL_SCOPE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] kind=ZERO_PRICE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] operation=CREATE_PRODUCT" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] point=insert" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] scenario=PUBLIC_ACTIVE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] table=product" : {
+      "violations" : 1,
+      "corruptFixture" : true
+    },
+    "[1] template=STANDARD_7D" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[1] type=PUBLIC, scope=ACTIVITY, session=NONE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] change=DISABLED" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] field=status" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] kind=NEGATIVE_STOCK" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] kind=UNKNOWN_TYPE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] operation=CREATE_SKU" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] point=insertSku" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] scenario=WHITELIST_IN" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] table=sku" : {
+      "violations" : 2,
+      "corruptFixture" : true
+    },
+    "[2] template=SPECIAL_NO_REASON_RETURN" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[2] type=PUBLIC, scope=NONE, session=FIRST" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[3] field=createdAt" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[3] kind=FRACTIONAL_STOCK" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[3] kind=LIMIT" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[3] operation=EDIT_SKU" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[3] point=publish" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[3] scenario=WHITELIST_OUT" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[3] table=member" : {
+      "violations" : 1,
+      "corruptFixture" : true
+    },
+    "[3] type=PRODUCT_WHITELIST, scope=SESSION, session=FIRST" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[4] field=firstOnSaleAt" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[4] kind=POLICY" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[4] kind=STRING_STOCK" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[4] operation=PUBLISH" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[4] scenario=ACTIVITY_VALID" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[4] type=TICKET_REQUIRED, scope=NONE, session=NONE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[5] field=refundPolicyVersion" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[5] kind=OVERFLOW_STOCK" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[5] kind=PUBLICATION" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[5] operation=OFF_SALE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[5] scenario=ACTIVITY_REFUNDED_ONLY" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[5] type=TICKET_REQUIRED, scope=ACTIVITY, session=FIRST" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[6] field=totalStock" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[6] kind=PRICE_PRECISION" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[6] kind=SKU_NEGATIVE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[6] operation=ADD_MEMBER" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[6] scenario=SESSION_OTHER" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[6] type=TICKET_REQUIRED, scope=SESSION, session=NONE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[7] field=userId" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[7] kind=SKU_OVER_TOTAL" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[7] kind=STRING_PRICE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[7] operation=REMOVE_MEMBER" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[7] scenario=SESSION_VALID" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[7] type=TICKET_REQUIRED, scope=SESSION, session=OTHER" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[8] kind=EXTRA_FIELD" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[8] kind=SKU_PRICE" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[8] operation=READ_OWN" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[9] kind=EMPTY_NAME" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "[9] kind=MEMBER_ID" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "aPaidOrderWithoutAnyValidTicketDoesNotGrantQualification()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "activityScopeAcceptsAnotherSessionButNeverAnotherActivity()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "anOwnedProductPathCannotBeUsedToEditAnotherPublishersSku()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "day14CatalogDoesNotImplementProductTransactionsOrConsumeSkuStock()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "freeReservationsAndGiftSeatsCannotStandInForOrdinaryTickets()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "hiddenParentsAndForeignSkusCannotBeQueriedThroughPublicIds()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "identicalSkuNamesAreSerializedAndCannotCreateTwoStockPools()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "independentServiceQueriesRejectInactiveAccountsAndDoNotConsumeStock()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "onlyTheCurrentOwningActivePublisherCanManageTheCatalog()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "partialRefundStillProvidesTicketQualificationUntilTheLastValidTicketIsRefunded()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "productWhitelistIsIndependentAndPublicDoesNotInheritActivityRestrictions()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "publicReadsAndOwnQualificationPreviewDoNotWriteAnyResources()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "publicationRequiresSkuAndPublishedParentAndOffSaleHidesOnlyTheProduct()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "publishAndReadBlackMZeroStockWithoutSubstitutingWhiteL()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "qualificationCannotJoinARepeatableReadCallerAndReuseAnOldSnapshot()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "qualificationReadAndWhitelistRemovalCoordinateOnTheActualProductRow()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "skuConfigurationChangesOnlyInDraftAndUsesExactDecimals()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "specialTemplateIsDisplayedWithoutErasingQualityOrQualificationLossHandling()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    },
+    "v8MigrationPreservesExistingTablesAndUsesNoPhysicalForeignKeys()" : {
+      "violations" : 0,
+      "corruptFixture" : false
+    }
+  },
+  "cases" : 76
+}

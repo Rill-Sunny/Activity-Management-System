@@ -168,7 +168,7 @@ ORD-05 只对 `INSUFFICIENT_INVENTORY` 要求关闭旧单。支付事务先完�
 3. Java 金额计算使用 BigDecimal，金额 scale=2，数据库使用 DECIMAL。原价来自每张 Ticket.paidPrice。
 4. 舍入模式为 RoundingMode.HALF_UP。逐票计算 originalPrice × (1 − feeRate) 后保留两位；实际手续费由原价减已舍入退款金额得到。
 
-退款主申请与逐票明细为一对多。主表保存政策版本、开售时间、场次开始时间与申请时间，明细保存每张票的原价、费率和应退金额。生产使用 Clock.system，测试使用 Fixed Clock。主表不保存汇总金额，汇总值按 refund_id 对逐票 refund_amount 求和得到。
+退款主申请与逐票明细为一对多。主表保存政策版本、开售时间、场次开始时间与申请时间，明细保存每张票的原价、费率和应退金额。Day 13 将生产时间源由 Clock.system 改为 DatabaseRefundClock，与数据库出票时间一致；测试仍可注入 Fixed Clock 验证精确边界。主表不保存汇总金额，汇总值按 refund_id 对逐票 refund_amount 求和得到。根因、影响与回归见 [阶段测试报告](reports/test-report.md#bug-003刚支付后退款被误判早于出票)。
 
 TicketRefundPolicy.evaluate 接收申请时间、活动开售时间、场次开始时间和 Ticket 成交价，返回是否允许、手续费比例、退款比例、手续费金额、退款金额和拒绝原因。OrdinaryTicketRefundPolicy 只计算这些显式输入，不读取时钟；后续特殊退款可实现同一接口。
 
@@ -177,3 +177,55 @@ TicketRefundPolicy.evaluate 接收申请时间、活动开售时间、场次开�
 所有权检查沿 Ticket → TicketOrderItem → TicketOrder，核对指定订单和当前买家。申请主表与全部明细在一个独立 READ_COMMITTED 事务提交。当前阶段不修改门票、订单状态或支付资源。具体字段、锁顺序、API 和证据见 [退款申请契约](ticket-refunds.md)。
 
 错误码分别表达所有权、票状态、场次已开始、退款窗口关闭、重复申请及幂等内容冲突。REFUND_AMOUNT_CALCULATION_ERROR 使用 HTTP 500，表示服务端金额数据或计算问题；它和非法客户端字段的 400 分开，事务完整回滚。Day 10 不执行实际退款、资源恢复或后续异步流程。
+
+## ADR-010：GIFT 操作保留逐座历史，不绑定领取人
+
+V7 新增 gift_inventory_operation 与 gift_inventory_operation_item，采用 UNIQUE(publisher_id, request_id) 保护发布者操作幂等，采用 UNIQUE(operation_id, seat_id) 保护同次操作座位去重。所有关联沿用逻辑引用，不增加物理外键。
+
+当前仅支持 ALLOCATE，持久化状态只有 SUCCEEDED。分配事务已将 Seat 占用、Zone 扣减、主操作和完整 Seat 明细一起提交，失败一起回滚。记录 quantity 不能替代记录具体 Seat；Seat 当前状态也不能替代操作历史。
+
+publisher_id 是操作者，不能解释为赠票领取人。模型不增加领取人平台账号、实名或核销字段，不生成普通 Ticket。未来若增加 RELEASE，必须有来源操作及来源座位明细，不通过改写旧分配历史释放资源。字段、边界和验证见 [GIFT 操作模型](gift-inventory.md)。
+
+## ADR-011：商品域资格、限购与订单边界
+
+日期：2026-11-02。状态：Product、SKU、商品独立名单和资格查询已通过 V8 实现；订单/支付等后续实体仍是设计。最新编码任务明确要求同时支持 ACTIVITY/SESSION，D14-Q1 已据该指令确定；D14-Q2、核心规则版本选择仍待确认。
+
+依照 PRD、ITEM、RET、LINK 已明确的约束：
+
+1. Product 承载发布者、关联活动、购买资格、Product 维度共享限购和两种预设售后模板。SKU 承载规格、价格与独立库存，缺货规格不能由其他 SKU 替代。
+2. user_product_purchase 的复合主键为 (user_id, product_id)，全部 SKU 共享 valid_count，没有 user_sku_purchase。
+3. 商品资格只取 PUBLIC、TICKET_REQUIRED、PRODUCT_WHITELIST。独立商品成员表与 Product 资格配置配合；商品名单为空即拒绝，不继承活动/场次名单。
+4. 商品建单不扣 SKU、不占 Product 限购。订单保存原始单价、资格范围、模板及必要确认快照；模拟支付与售后留到后续阶段。
+5. 商品订单包含多 Product、多 SKU，商品支付整单成功或整单失败；不得静默删项、换规格。缺货旧单资源回滚后安全关闭，用户确认新清单后新建订单。
+6. SPECIAL_NO_REASON_RETURN 只约束普通无理由退货，不能用它一概拒绝质量问题、失去持票资格或活动取消等特殊处理。
+7. 商品订单设计固定拒绝跨 Publisher：主单发布者由全部 SKU → Product 的真实归属推导，不能相信客户端 publisherId。只有同一 Publisher 下是否允许跨 Activity 尚待确认；这不影响多 Product、多 SKU 的既定能力。商品订单尚未实现，本条不是已运行的订单接口验收结果。
+
+以下记录最新指令已经明确的范围，以及仍待确认的推荐方案：
+
+| 待确认项 | 推荐 | 需要确认的原因 |
+|---|---|---|
+| D14-Q1：持票范围（已由后续任务明确） | 每个 Product 选择 ACTIVITY 或指定 SESSION，已实现。 | 最新第 15、16 项要求两种范围，已补真实有效票和部分退款验证。 |
+| D14-Q2：同发布者订单的活动边界 | 跨 Publisher 固定拒绝；推荐同 Publisher 可跨 Activity，但跨 Activity 选择仍待确认。 | 仅剩活动组合边界影响主单形态和多活动 guard，不将“跨 Publisher”继续列为未决。 |
+| D14-Q3：规则编辑（后续全局选择待答） | 当前只提供 DRAFT SKU 创建/完整修改，ON_SALE/OFF_SALE 禁止修改 SKU 价格与库存；不提供 Product 核心规则编辑。 | 本轮按编码任务明确最小编辑范围，不将未收到的对话框回答当成全局冻结授权。后续若开放修改须另定版本/快照协议。 |
+
+字段、单行约束、逻辑引用和后续设计见 [商品域设计](product-domain.md)。当前运行 Schema 为 V2.7、20 张业务表、V8；订单、限购计数和 guard 不计入现有表。已实测的目录切片见 [Day 14 验证](day14-products.md)。
+
+## ADR-012：持票资格使用账号活动保护行协调
+
+日期：2026-11-02。状态：技术设计，尚未接入当前票务 Service；Day 16/20 必须用真实事务验证。
+
+选用 (user_id, activity_id) 唯一的 user_activity_qualification_guard 作为共同锁对象。它不保存最终资格真相，不以缓存有效票数、资格布尔值或版本号代替 Ticket 当前查询。同一个用户多个活动按 activity_id 升序获取保护行。
+
+商品支付在保护行内重查适用范围的有效票并完成成交。票务支付和退款处理的有效票变动也必须取得同一保护行，位置在限购、Zone、Seat、Ticket 写锁之前。只有商品支付使用保护行、票务仍绕过它的方案无效。普通退款受理不改变有效票集合，不提前接入资源锁。
+
+退票先提交时，商品支付重查无票并拒绝；商品先提交时，随后退最后有效票必须触发 LINK 售后。保护行保证串行判定，不能替代可靠联动事件。Day 19/20 要求退票、版本变化与资格变化 Outbox 同事务提交；消费者再按明细范围快照和当前有效票独立处理售后，不在退票事务反向锁商品订单。
+
+完整先后顺序、失败回滚、跨场次范围和提交后中断场景见 [商品域并发设计](product-domain.md#最后一张票退款与商品支付) 与 [计划锁顺序](locking.md#product-qualification-and-payment-design)。这些是后续验收要求，尚未运行，不计为 PASS。
+
+## ADR-013：两种预设模板只表达普通退货政策
+
+状态：Day 14 的数据库枚举、版本与 API 展示已验证；售后处理尚未实现。
+
+STANDARD_7D 表达项目的常规七日无理由模板；SPECIAL_NO_REASON_RETURN 表达不支持普通无理由退货，并要求后续购买时明确确认。两种模板都不用于一概排除质量问题、限定资格丧失、活动取消等特殊原因。API 展示 refundPolicy、refundPolicyVersion、requiresPolicyAcknowledgement 和服务端说明，不增加一个把所有场景统一关闭的 returnable=false 字段。
+
+未来售后必须先区分业务原因，再应用对应流程；不能把 `template == SPECIAL_NO_REASON_RETURN` 直接映射为所有售后拒绝。本轮只冻结并验证模板存储与展示，没有宣称普通退货、质量处理、联动退款或模拟物流已经能运行。两种模板逐项数据库/API 一致性及公开商品资格均在 [Day 14 最终验收](day14-products.md#day-14-acceptance) 留证。

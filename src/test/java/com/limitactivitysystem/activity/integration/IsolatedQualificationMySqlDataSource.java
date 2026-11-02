@@ -8,6 +8,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Owns one random schema. V2 is deliberately excluded because it contains USE limit_activity_system. */
@@ -24,6 +25,11 @@ final class IsolatedQualificationMySqlDataSource extends HikariDataSource {
     }
 
     IsolatedQualificationMySqlDataSource(DataSourceProperties properties, int maximumPoolSize) throws Exception {
+        this(properties, maximumPoolSize, List.of("db/migration/V1__create_schema.sql", "db/migration/V3__create_whitelist_tables.sql"));
+    }
+
+    /** Empty bootstrap lets migration tests create the schema through Flyway itself. */
+    IsolatedQualificationMySqlDataSource(DataSourceProperties properties, int maximumPoolSize, List<String> bootstrapMigrations) throws Exception {
         baseUrl = properties.determineUrl();
         login = properties.determineUsername();
         credential = properties.determinePassword();
@@ -45,8 +51,9 @@ final class IsolatedQualificationMySqlDataSource extends HikariDataSource {
             setMaximumPoolSize(maximumPoolSize);
             if (maximumPoolSize > 6) { setMinimumIdle(4); }
             try (var connection = getConnection()) {
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V1__create_schema.sql"));
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V3__create_whitelist_tables.sql"));
+                for (String migration : bootstrapMigrations) {
+                    ScriptUtils.executeSqlScript(connection, new ClassPathResource(migration));
+                }
             }
         } catch (Exception exception) {
             try { close(); } catch (RuntimeException cleanup) { exception.addSuppressed(cleanup); }

@@ -1,0 +1,70 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:08:10.477",
+  "observation" : {
+    "failureClass" : "CannotAcquireLockException",
+    "retry" : {
+      "refundId" : 41,
+      "buyerId" : 111,
+      "orderId" : 39,
+      "requestId" : "21ee32e3-2701-4109-8093-f789c6effd10",
+      "reason" : "USER_REQUEST",
+      "requestedAt" : "2026-11-01T15:08:10.419",
+      "status" : "SUCCEEDED",
+      "createdAt" : "2026-11-01T15:08:10.424",
+      "processedAt" : "2026-11-01T15:08:10.462",
+      "result" : "SIMULATED_REFUND_SUCCEEDED",
+      "items" : [ {
+        "refundItemId" : 135,
+        "refundId" : 41,
+        "ticketId" : 146,
+        "originalPrice" : 10.01,
+        "feeRate" : 0.1500,
+        "refundAmount" : 8.51,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:10.462",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      }, {
+        "refundItemId" : 136,
+        "refundId" : 41,
+        "ticketId" : 147,
+        "originalPrice" : 10.01,
+        "feeRate" : 0.1500,
+        "refundAmount" : 8.51,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:10.462",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      }, {
+        "refundItemId" : 137,
+        "refundId" : 41,
+        "ticketId" : 148,
+        "originalPrice" : 20.03,
+        "feeRate" : 0.1500,
+        "refundAmount" : 17.03,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:10.462",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      }, {
+        "refundItemId" : 138,
+        "refundId" : 41,
+        "ticketId" : 149,
+        "originalPrice" : 20.03,
+        "feeRate" : 0.1500,
+        "refundAmount" : 17.03,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:10.462",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      } ]
+    },
+    "http" : 503,
+    "failedRequest" : {
+      "status" : "FAILED",
+      "result" : "TECHNICAL_FAILURE",
+      "processed_at" : "2026-11-01T15:08:10.442"
+    },
+    "rollbackObservedBeforeIndependentFailureTransaction" : true
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:05:54.501",
+  "observation" : {
+    "invariants" : "PASS",
+    "outcomes" : [ {
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    }, {
+      "record" : {
+        "reservationId" : 27,
+        "userId" : 121,
+        "sessionId" : 100,
+        "status" : "ACTIVE",
+        "createdAt" : "2026-11-01T15:05:54.493",
+        "cancelledAt" : null
+      },
+      "error" : null
+    } ]
+  }
+}

@@ -4,6 +4,9 @@ import org.springframework.http.HttpStatus;
 
 public enum TicketRefundErrorCode {
     INVALID_REFUND_REQUEST(HttpStatus.BAD_REQUEST),
+    REFUND_NOT_FOUND(HttpStatus.NOT_FOUND),
+    REFUND_NOT_PENDING(HttpStatus.CONFLICT),
+    REFUND_RESOURCE_CONFLICT(HttpStatus.CONFLICT),
     REFUND_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
     REFUND_ACCESS_DENIED(HttpStatus.FORBIDDEN),
     REFUND_USER_DISABLED(HttpStatus.FORBIDDEN),

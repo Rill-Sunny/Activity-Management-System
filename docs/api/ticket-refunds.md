@@ -31,6 +31,8 @@ buyerId、refundRate、feeRate、refundAmount、originalPrice、requestedAt、st
 	"requestedAt": "2026-10-29T11:00:00.123",
 	"status": "PENDING",
 	"createdAt": "2026-10-29T11:00:00.130",
+	"processedAt": null,
+	"result": null,
 	"items": [
 		{
 			"refundItemId": 201,
@@ -40,7 +42,9 @@ buyerId、refundRate、feeRate、refundAmount、originalPrice、requestedAt、st
 			"feeRate": 0.1500,
 			"refundAmount": 8.51,
 			"status": "PENDING",
-			"failureReason": null
+			"failureReason": null,
+			"processedAt": null,
+			"result": null
 		},
 		{
 			"refundItemId": 202,
@@ -50,7 +54,9 @@ buyerId、refundRate、feeRate、refundAmount、originalPrice、requestedAt、st
 			"feeRate": 0.1500,
 			"refundAmount": 17.03,
 			"status": "PENDING",
-			"failureReason": null
+			"failureReason": null,
+			"processedAt": null,
+			"result": null
 		}
 	]
 }
@@ -62,7 +68,7 @@ buyerId、refundRate、feeRate、refundAmount、originalPrice、requestedAt、st
 
 服务锁定并验证 order.buyer_id 等于当前账号，再对每个 ticketId 检查 `Ticket.order_item_id → TicketOrderItem.order_id → TicketOrder.buyer_id`。同一用户另一订单的票也不能混入。每张票必须为 VALID，整单状态须为 PAID 或 PARTIALLY_REFUNDED；任一票失败则整笔申请不写入。
 
-requested_at 在认证通过后、等待订单锁之前读取一次服务器 Clock，按 Asia/Shanghai 时区转为本地时间，截断到毫秒后保存。手续费按活动 open_time、场次 start_time 与该申请时间计算，逐票使用 BigDecimal、两位 HALF_UP。政策版本及开售、开始时间快照保存在主申请，逐票的原价、费率、应退金额直接持久化。处理或重放不重新计算政策。
+requested_at 在认证通过后、等待订单锁之前读取一次数据库时间，通过可注入的 DatabaseRefundClock 按 Asia/Shanghai 时区转为本地时间，截断到毫秒后保存。它与出票使用同一时间源，避免应用与数据库时钟偏差导致刚出票申请被误拒绝。手续费按活动 open_time、场次 start_time 与该申请时间计算，逐票使用 BigDecimal、两位 HALF_UP。政策版本及开售、开始时间快照保存在主申请，逐票的原价、费率、应退金额直接持久化。处理或重放不重新计算政策。
 
 相同账号、相同 requestId、相同 orderId、reason、票集合返回原申请，仍返回 201。票 ID 输入顺序不影响幂等。更换内容返回 409 REFUND_IDEMPOTENCY_CONFLICT。不同 requestId 也不能对已有 PENDING、PROCESSING 或 SUCCEEDED 申请的同一票重复受理。
 
@@ -92,3 +98,28 @@ requested_at 在认证通过后、等待订单锁之前读取一次服务器 Clo
 指定 200、400、800、1200 四票价，申请 B + D 的逐票与汇总结果见 [四票价申请实验](../ticket-refunds.md#四票价申请实验)。主表不保存 total_refund，汇总取持久化明细之和。
 
 技术异常退出事务并完整回滚，不创建半张退款单。领域、政策和测试入口见 [Day 10 普通门票退款申请契约](../ticket-refunds.md)。
+
+## 处理已受理退款
+
+`POST /ticket-refunds/{refundId}/process` 要求买家 JWT，路径 ID 必须为正整数，请求不带正文。提交任何正文（包括金额、票 ID 或费率）返回 `400 INVALID_REFUND_REQUEST`。当前接口执行模拟退款，不调用外部资金渠道。
+
+成功返回 `200`，沿用申请响应结构，主申请和全部明细的 `status` 均为 `SUCCEEDED`。新增的 `processedAt` 为数据库处理时间，`result` 为 `SIMULATED_REFUND_SUCCEEDED`；两字段在申请受理时为 null。`requestedAt`、逐票 `originalPrice`、`feeRate`、`refundAmount` 保留受理值。相同 `refundId` 重复处理返回原结果，不重复恢复资源。
+
+处理同时恢复限购、Zone 库存和 Seat，并将 Ticket 转为 `REFUNDED`。订单剩余有效票大于零时为 `PARTIALLY_REFUNDED`，否则为 `REFUNDED`。一个申请内的所有票一起提交；任意一步失败全部回滚。数据库技术异常在处理事务结束后由独立短事务记录 `FAILED`，主申请及明细的 `result` 为 `TECHNICAL_FAILURE`，明细 `failureReason` 为异常类型。
+
+| 情况 | HTTP / code |
+|---|---|
+| 申请不存在 | 404 REFUND_NOT_FOUND |
+| 申请或订单买家与当前账号不符 | 403 REFUND_ACCESS_DENIED |
+| 订单不存在 | 404 REFUND_ORDER_NOT_FOUND |
+| 申请为 PROCESSING 或非技术原因的 FAILED | 409 REFUND_NOT_PENDING |
+| 技术失败重试时，原 Ticket 已被另一申请占用 | 409 REFUND_ALREADY_REQUESTED |
+| 订单不是 PAID 或 PARTIALLY_REFUNDED | 409 REFUND_ORDER_NOT_PAID |
+| Ticket 或关联明细不存在 | 404 REFUND_TICKET_NOT_FOUND |
+| Ticket 不属于原订单 | 409 REFUND_TICKET_NOT_IN_ORDER |
+| Ticket 已经退款 | 409 REFUND_TICKET_NOT_VALID |
+| 资源关联、容量、状态或条件更新不一致 | 409 REFUND_RESOURCE_CONFLICT |
+| 数据库连接中断或锁超时 | 503 REFUND_TECHNICAL_FAILURE |
+| SQL 语法等其他数据库技术异常 | 500 REFUND_TECHNICAL_FAILURE |
+
+此入口不重算退款政策，不重新检查场次开始时间或白名单。已及时受理的申请即使在场次开始后处理，仍使用原报价。技术失败后仍向原 `refundId` 调用本接口，保留原 requestId、票集合、时间与报价，重新取得同票唯一占用后再处理。成功重试清除失败原因，返回成功处理时间与结果。失败记录与并发成功竞争时不覆盖成功状态。失败记录自身不可用时保留原技术异常和回滚后的状态，后续仍可用原 ID 重试。

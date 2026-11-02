@@ -1,0 +1,10 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:06:11.596",
+  "observation" : {
+    "findings" : [ {
+      "violation" : "GIFT_STOCK",
+      "resource_id" : "186"
+    } ],
+    "expectedViolation" : "GIFT_STOCK"
+  }
+}

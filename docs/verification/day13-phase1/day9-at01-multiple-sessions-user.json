@@ -1,0 +1,24 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:05:51.556",
+  "observation" : {
+    "activityId" : 15,
+    "sessionCount" : 3,
+    "duplicateRejectedForBothSessions" : true,
+    "reservations" : [ {
+      "reservationId" : 11,
+      "userId" : 45,
+      "sessionId" : 43,
+      "status" : "ACTIVE",
+      "createdAt" : "2026-11-01T15:05:51.518",
+      "cancelledAt" : null
+    }, {
+      "reservationId" : 12,
+      "userId" : 45,
+      "sessionId" : 44,
+      "status" : "ACTIVE",
+      "createdAt" : "2026-11-01T15:05:51.527",
+      "cancelledAt" : null
+    } ],
+    "invariants" : "PASS"
+  }
+}

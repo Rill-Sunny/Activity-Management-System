@@ -1,0 +1,9 @@
+{
+  "observation" : {
+    "scopeIsolation" : true,
+    "orderId" : 1,
+    "lastRefundQualified" : false,
+    "partialStillQualified" : true
+  },
+  "observedAtDatabaseTime" : "2026-11-02T11:14:14.376"
+}

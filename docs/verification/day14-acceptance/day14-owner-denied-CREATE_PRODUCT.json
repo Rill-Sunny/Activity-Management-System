@@ -1,0 +1,11 @@
+{
+  "observedAtDatabaseTime" : "2026-11-02T11:32:02.286",
+  "observation" : {
+    "catalogSnapshotUnchanged" : true,
+    "actorPublisher" : 49,
+    "code" : "PRODUCT_ACCESS_DENIED",
+    "ownerPublisher" : 50,
+    "operation" : "CREATE_PRODUCT",
+    "http" : 403
+  }
+}

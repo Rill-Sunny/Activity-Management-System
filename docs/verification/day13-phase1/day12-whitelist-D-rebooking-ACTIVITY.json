@@ -1,0 +1,20 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:08:18.374",
+  "observation" : {
+    "sameBuyerJwt" : true,
+    "freeRemaining" : 2,
+    "rebookingHttp" : 403,
+    "cancelled" : {
+      "reservationId" : 1,
+      "userId" : 16,
+      "sessionId" : 10,
+      "status" : "CANCELLED",
+      "createdAt" : "2026-11-01T15:08:18.341",
+      "cancelledAt" : "2026-11-01T15:08:18.356"
+    },
+    "rebookingCode" : "QUALIFICATION_DENIED",
+    "scope" : "ACTIVITY",
+    "historyPreserved" : true,
+    "resourceSnapshotUnchangedAfterRejection" : true
+  }
+}

@@ -14,6 +14,12 @@ public class TicketRefundRequest {
     private String policyVersion;
     private LocalDateTime openTimeSnapshot;
     private LocalDateTime startTimeSnapshot;
+    private LocalDateTime processedAt;
+    private String result;
+    public LocalDateTime getProcessedAt() { return processedAt; }
+    public void setProcessedAt(LocalDateTime processedAt) { this.processedAt = processedAt; }
+    public String getResult() { return result; }
+    public void setResult(String result) { this.result = result; }
     public Long getRefundId() { return refundId; }
     public void setRefundId(Long refundId) { this.refundId = refundId; }
     public Long getBuyerId() { return buyerId; }

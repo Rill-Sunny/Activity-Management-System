@@ -17,6 +17,22 @@ import java.util.List;
 
 @Mapper
 public interface SessionSeatMapper {
+    @Select("""
+            SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status
+            FROM session_seat WHERE seat_id = #{seatId} FOR UPDATE
+            """)
+    @ResultMap("sessionSeatResultMap")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    SessionSeat findByIdForUpdate(@Param("seatId") Long seatId);
+
+    @Update("""
+            UPDATE session_seat SET allocation_status = 'AVAILABLE'
+            WHERE seat_id = #{seatId} AND zone_id = #{zoneId} AND allocation_status = 'SOLD'
+            """)
+    @Transactional(propagation = Propagation.MANDATORY)
+    int releaseSold(@Param("seatId") Long seatId, @Param("zoneId") Long zoneId);
+
 
     @Insert("""
             INSERT INTO session_seat (zone_id, row_no, seat_no, allocation_priority, allocation_status)

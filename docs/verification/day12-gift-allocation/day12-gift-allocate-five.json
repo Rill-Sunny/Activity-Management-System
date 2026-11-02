@@ -1,0 +1,21 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:09:55.707",
+  "observation" : {
+    "totalAmount" : 6,
+    "response" : {
+      "operationId" : 20,
+      "requestId" : "gift-op-001",
+      "publisherId" : 101,
+      "sessionId" : 35,
+      "zoneId" : 102,
+      "operationType" : "ALLOCATE",
+      "quantity" : 5,
+      "status" : "SUCCEEDED",
+      "createdAt" : "2026-10-31T22:09:55.69",
+      "seatIds" : [ 334, 335, 336, 337, 338 ]
+    },
+    "occupiedSeatOrder" : [ 334, 335, 336, 337, 338 ],
+    "paidResourcesUnchanged" : true,
+    "stockRemaining" : 1
+  }
+}

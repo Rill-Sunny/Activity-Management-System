@@ -1,0 +1,34 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:05:51.418",
+  "observation" : {
+    "remainingAfterCancel" : 1,
+    "remainingAfterCompetition" : 0,
+    "loser" : {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_QUOTA_EXHAUSTED"
+    },
+    "cancelledHistory" : {
+      "reservationId" : 9,
+      "userId" : 42,
+      "sessionId" : 40,
+      "status" : "CANCELLED",
+      "createdAt" : "2026-11-01T15:05:51.374",
+      "cancelledAt" : "2026-11-01T15:05:51.384"
+    },
+    "invariants" : "PASS",
+    "formerOwnerWon" : true,
+    "winner" : {
+      "status" : 201,
+      "record" : {
+        "reservationId" : 10,
+        "userId" : 42,
+        "sessionId" : 40,
+        "status" : "ACTIVE",
+        "createdAt" : "2026-11-01T15:05:51.4",
+        "cancelledAt" : null
+      },
+      "error" : null
+    }
+  }
+}

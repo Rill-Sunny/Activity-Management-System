@@ -1,0 +1,26 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:05:54.255",
+  "observation" : {
+    "restoreExecutions" : 1,
+    "reservationId" : 24,
+    "responses" : [ {
+      "status" : 409,
+      "record" : null,
+      "error" : "RESERVATION_NOT_ACTIVE"
+    }, {
+      "status" : 200,
+      "record" : {
+        "reservationId" : 24,
+        "userId" : 116,
+        "sessionId" : 94,
+        "status" : "CANCELLED",
+        "createdAt" : "2026-11-01T15:05:54.239",
+        "cancelledAt" : "2026-11-01T15:05:54.248"
+      },
+      "error" : null
+    } ],
+    "invariants" : "PASS",
+    "initialRemaining" : 9,
+    "remaining" : 10
+  }
+}

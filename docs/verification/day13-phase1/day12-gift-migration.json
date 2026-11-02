@@ -1,0 +1,13 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:06:21.379",
+  "observation" : {
+    "beforeVersion" : "6",
+    "repeatExecuted" : 0,
+    "existingTablesUnchanged" : 15,
+    "afterVersion" : "7",
+    "executed" : 1,
+    "physicalForeignKeys" : 0,
+    "retainedFixtureTime" : "2026-11-01T15:06:16.932",
+    "businessTables" : 17
+  }
+}

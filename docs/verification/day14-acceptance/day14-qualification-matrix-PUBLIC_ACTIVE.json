@@ -1,0 +1,12 @@
+{
+  "observedAtDatabaseTime" : "2026-11-02T11:32:04.846",
+  "observation" : {
+    "qualificationScope" : "NONE",
+    "reason" : "ALLOWED",
+    "allowed" : true,
+    "catalogAndTicketSnapshotUnchanged" : true,
+    "http" : 200,
+    "qualificationType" : "PUBLIC",
+    "scenario" : "PUBLIC_ACTIVE"
+  }
+}

@@ -5,11 +5,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import java.time.Clock;
 import java.time.ZoneId;
+import com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper;
 
 @Configuration(proxyBeanMethods = false)
 public class TicketRefundTimeConfiguration {
     @Bean("ticketRefundClock")
-    public Clock ticketRefundClock(@Value("${ticket-refund.time-zone:Asia/Shanghai}") String timeZone) {
-        return Clock.system(ZoneId.of(timeZone));
+    public Clock ticketRefundClock(@Value("${ticket-refund.time-zone:Asia/Shanghai}") String timeZone, DatabaseTimeMapper time) {
+        return new DatabaseRefundClock(time, ZoneId.of(timeZone));
     }
 }

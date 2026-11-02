@@ -1,0 +1,21 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:23:41.641",
+  "observation" : {
+    "automaticRefunds" : 0,
+    "sameBuyerJwt" : true,
+    "resourceSnapshotUnchanged" : true,
+    "change" : "MEMBER_REMOVED",
+    "paymentReplayIsOriginal" : true,
+    "seatStatus" : "SOLD",
+    "orderStatus" : "PAID",
+    "ticket" : {
+      "ticketId" : 1,
+      "orderItemId" : 1,
+      "seatId" : 1,
+      "paidPrice" : 10.00,
+      "status" : "VALID",
+      "issuedAt" : "2026-10-31T22:23:41.6"
+    },
+    "scope" : "ACTIVITY"
+  }
+}

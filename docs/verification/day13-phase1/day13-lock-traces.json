@@ -1,0 +1,517 @@
+{
+  "reservation" : [ {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findByIdForShare",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findById",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findById",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeReservationMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findByIdForShare",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findByIdForShare",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findByIdForShare",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistConfigMapper.findByScopeForShare",
+    "sql" : "SELECT config_id, scope_type, scope_id, created_at, updated_at FROM whitelist_config WHERE scope_type = ? AND scope_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistConfigMapper.findByScopeForShare",
+    "sql" : "SELECT config_id, scope_type, scope_id, created_at, updated_at FROM whitelist_config WHERE scope_type = ? AND scope_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findById",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findByIdForShare",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findByIdForShare",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeReservationMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeSessionQuotaMapper.initializeForPublishedFreeSession",
+    "sql" : "INSERT INTO free_session_quota(session_id, capacity, remaining) SELECT s.activity_session_id, s.capacity, s.capacity FROM activity_session s JOIN activity a ON a.activity_id = s.activity_id WHERE s.activity_session_id = ? AND a.type = 'FREE' AND a.status = 'PUBLISHED' ON DUPLICATE KEY UPDATE session_id = free_session_quota.session_id"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeSessionQuotaMapper.findBySessionIdForUpdate",
+    "sql" : "SELECT session_id, capacity, remaining FROM free_session_quota WHERE session_id = ? FOR UPDATE"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeReservationMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeReservationMapper.findActive",
+    "sql" : "SELECT reservation_id, user_id, session_id, status, created_at, cancelled_at FROM free_reservation WHERE user_id = ? AND active_session_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeSessionQuotaMapper.takeOne",
+    "sql" : "UPDATE free_session_quota SET remaining = remaining - 1 WHERE session_id = ? AND remaining > 0"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeReservationMapper.insertIfReservable",
+    "sql" : "INSERT INTO free_reservation(user_id, session_id) SELECT ?, s.activity_session_id FROM activity_session s JOIN activity a ON a.activity_id = s.activity_id WHERE s.activity_session_id = ? AND a.type = 'FREE' AND a.status = 'PUBLISHED' AND s.status = 'SCHEDULED' AND CURRENT_TIMESTAMP(3) >= a.open_time AND CURRENT_TIMESTAMP(3) < a.close_time AND CURRENT_TIMESTAMP(3) < s.start_time"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeReservationMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.reservation.mapper.FreeReservationMapper.findById",
+    "sql" : "SELECT reservation_id, user_id, session_id, status, created_at, cancelled_at FROM free_reservation WHERE reservation_id = ?"
+  } ],
+  "payment" : [ {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.findByBuyerIdAndRequestId",
+    "sql" : "SELECT order_id, buyer_id, session_id, request_id, total_amount, status, created_at, expires_at, paid_at, closed_reason FROM ticket_order WHERE buyer_id = ? AND request_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findById",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findById",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findByIdForShare",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findByIdForShare",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findByIdForShare",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistConfigMapper.findByScopeForShare",
+    "sql" : "SELECT config_id, scope_type, scope_id, created_at, updated_at FROM whitelist_config WHERE scope_type = ? AND scope_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistConfigMapper.findByScopeForShare",
+    "sql" : "SELECT config_id, scope_type, scope_id, created_at, updated_at FROM whitelist_config WHERE scope_type = ? AND scope_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistMemberMapper.findIdByConfigIdAndUserIdForShare",
+    "sql" : "SELECT member_id FROM whitelist_member WHERE config_id = ? AND user_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findByIdForShare",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findByIdForShare",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findById",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findById",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findById",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findById",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper.findValidCount",
+    "sql" : "SELECT COALESCE(( SELECT valid_count FROM user_session_purchase WHERE user_id = ? AND session_id = ? ), 0)"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.insertDuringCreationWindow",
+    "sql" : "INSERT INTO ticket_order (buyer_id, session_id, request_id, total_amount, status) SELECT ?, ?, ?, ?, 'PENDING_PAYMENT' FROM DUAL WHERE CURRENT_TIMESTAMP(3) >= ? AND CURRENT_TIMESTAMP(3) < ? AND CURRENT_TIMESTAMP(3) < ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderItemMapper.batchInsert",
+    "sql" : "INSERT INTO ticket_order_item (order_id, zone_id, allocation_mode, requested_seat_id, quantity, unit_price, accept_non_adjacent) VALUES (?, ?, ?, ?, ?, ?, ?) , (?, ?, ?, ?, ?, ?, ?) , (?, ?, ?, ?, ?, ?, ?) , (?, ?, ?, ?, ?, ?, ?)"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.findById",
+    "sql" : "SELECT order_id, buyer_id, session_id, request_id, total_amount, status, created_at, expires_at, paid_at, closed_reason FROM ticket_order WHERE order_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderItemMapper.findByOrderId",
+    "sql" : "SELECT order_item_id, order_id, zone_id, allocation_mode, requested_seat_id, quantity, unit_price, accept_non_adjacent FROM ticket_order_item WHERE order_id = ? ORDER BY order_item_id"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.findByIdForUpdate",
+    "sql" : "SELECT order_id, buyer_id, session_id, request_id, total_amount, status, created_at, expires_at, paid_at, closed_reason FROM ticket_order WHERE order_id = ? FOR UPDATE"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findByIdForShare",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findById",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findById",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findByIdForShare",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findByIdForShare",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findByIdForShare",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistConfigMapper.findByScopeForShare",
+    "sql" : "SELECT config_id, scope_type, scope_id, created_at, updated_at FROM whitelist_config WHERE scope_type = ? AND scope_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistConfigMapper.findByScopeForShare",
+    "sql" : "SELECT config_id, scope_type, scope_id, created_at, updated_at FROM whitelist_config WHERE scope_type = ? AND scope_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.whitelist.mapper.WhitelistMemberMapper.findIdByConfigIdAndUserIdForShare",
+    "sql" : "SELECT member_id FROM whitelist_member WHERE config_id = ? AND user_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findByIdForShare",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findByIdForShare",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderItemMapper.findByOrderId",
+    "sql" : "SELECT order_item_id, order_id, zone_id, allocation_mode, requested_seat_id, quantity, unit_price, accept_non_adjacent FROM ticket_order_item WHERE order_id = ? ORDER BY order_item_id"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper.ensureExists",
+    "sql" : "INSERT INTO user_session_purchase (user_id, session_id, valid_count) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE valid_count = valid_count"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper.tryIncrease",
+    "sql" : "UPDATE user_session_purchase SET valid_count = valid_count + ? WHERE user_id = ? AND session_id = ? AND ? > 0 AND ? > 0 AND valid_count <= ? - ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findById",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ? FOR UPDATE",
+    "zoneId" : "1"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ? FOR UPDATE",
+    "zoneId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ? FOR UPDATE",
+    "zoneId" : "3"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ? FOR UPDATE",
+    "zoneId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.decreaseStock",
+    "sql" : "UPDATE session_zone SET remains_amount = remains_amount - ? WHERE zone_id = ? AND zone_type = 'PAID' AND ? > 0 AND remains_amount >= ?",
+    "zoneId" : "1"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.decreaseStock",
+    "sql" : "UPDATE session_zone SET remains_amount = remains_amount - ? WHERE zone_id = ? AND zone_type = 'PAID' AND ? > 0 AND remains_amount >= ?",
+    "zoneId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.decreaseStock",
+    "sql" : "UPDATE session_zone SET remains_amount = remains_amount - ? WHERE zone_id = ? AND zone_type = 'PAID' AND ? > 0 AND remains_amount >= ?",
+    "zoneId" : "3"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.decreaseStock",
+    "sql" : "UPDATE session_zone SET remains_amount = remains_amount - ? WHERE zone_id = ? AND zone_type = 'PAID' AND ? > 0 AND remains_amount >= ?",
+    "zoneId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findById",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.occupySeat",
+    "sql" : "UPDATE session_seat SET allocation_status = 'SOLD' WHERE seat_id = ? AND zone_id = ? AND allocation_status = 'AVAILABLE'",
+    "zoneId" : "1",
+    "seatId" : "1"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.occupySeat",
+    "sql" : "UPDATE session_seat SET allocation_status = 'SOLD' WHERE seat_id = ? AND zone_id = ? AND allocation_status = 'AVAILABLE'",
+    "zoneId" : "2",
+    "seatId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.occupySeat",
+    "sql" : "UPDATE session_seat SET allocation_status = 'SOLD' WHERE seat_id = ? AND zone_id = ? AND allocation_status = 'AVAILABLE'",
+    "zoneId" : "3",
+    "seatId" : "3"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.occupySeat",
+    "sql" : "UPDATE session_seat SET allocation_status = 'SOLD' WHERE seat_id = ? AND zone_id = ? AND allocation_status = 'AVAILABLE'",
+    "zoneId" : "4",
+    "seatId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketMapper.insert",
+    "sql" : "INSERT INTO ticket (order_item_id, seat_id, paid_price, status) VALUES (?, ?, ?, 'VALID')"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketMapper.insert",
+    "sql" : "INSERT INTO ticket (order_item_id, seat_id, paid_price, status) VALUES (?, ?, ?, 'VALID')"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketMapper.insert",
+    "sql" : "INSERT INTO ticket (order_item_id, seat_id, paid_price, status) VALUES (?, ?, ?, 'VALID')"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketMapper.insert",
+    "sql" : "INSERT INTO ticket (order_item_id, seat_id, paid_price, status) VALUES (?, ?, ?, 'VALID')"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketMapper.findByOrderId",
+    "sql" : "SELECT t.ticket_id, t.order_item_id, t.seat_id, t.paid_price, t.status, t.issued_at FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id WHERE i.order_id = ? ORDER BY t.ticket_id"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.markPaidIfPayable",
+    "sql" : "UPDATE ticket_order o JOIN activity_session s ON s.activity_session_id = o.session_id JOIN activity a ON a.activity_id = s.activity_id SET o.status = 'PAID', o.paid_at = CURRENT_TIMESTAMP(3) WHERE o.order_id = ? AND o.status = 'PENDING_PAYMENT' AND CURRENT_TIMESTAMP(3) >= o.created_at AND CURRENT_TIMESTAMP(3) < o.expires_at AND s.status = 'SCHEDULED' AND CURRENT_TIMESTAMP(3) < s.start_time AND a.status = 'PUBLISHED' AND a.type = 'PAID'"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.findById",
+    "sql" : "SELECT order_id, buyer_id, session_id, request_id, total_amount, status, created_at, expires_at, paid_at, closed_reason FROM ticket_order WHERE order_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketMapper.findByOrderId",
+    "sql" : "SELECT t.ticket_id, t.order_item_id, t.seat_id, t.paid_price, t.status, t.issued_at FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id WHERE i.order_id = ? ORDER BY t.ticket_id"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderItemMapper.findByOrderId",
+    "sql" : "SELECT order_item_id, order_id, zone_id, allocation_mode, requested_seat_id, quantity, unit_price, accept_non_adjacent FROM ticket_order_item WHERE order_id = ? ORDER BY order_item_id"
+  } ],
+  "refund" : [ {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.findById",
+    "sql" : "SELECT * FROM ticket_refund_request WHERE refund_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.findByIdForUpdate",
+    "sql" : "SELECT order_id, buyer_id, session_id, request_id, total_amount, status, created_at, expires_at, paid_at, closed_reason FROM ticket_order WHERE order_id = ? FOR UPDATE"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.findByIdForUpdate",
+    "sql" : "SELECT * FROM ticket_refund_request WHERE refund_id = ? FOR UPDATE"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findByIdForShare",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.findItemsForUpdate",
+    "sql" : "SELECT refund_item_id AS refundItemId, refund_id AS refundId, ticket_id AS ticketId, original_price AS originalPrice, fee_rate AS feeRate, refund_amount AS refundAmount, status, failure_reason AS failureReason, processed_at AS processedAt, result FROM ticket_refund_item FORCE INDEX (uq_refund_item_ticket) WHERE refund_id = ? ORDER BY ticket_id FOR UPDATE"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.findResource",
+    "sql" : "SELECT t.ticket_id AS ticketId, t.order_item_id AS orderItemId, i.order_id AS orderId, o.buyer_id AS buyerId, o.session_id AS sessionId, i.zone_id AS zoneId, t.seat_id AS seatId FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id JOIN ticket_order o ON o.order_id = i.order_id WHERE t.ticket_id = ?",
+    "ticketId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.findResource",
+    "sql" : "SELECT t.ticket_id AS ticketId, t.order_item_id AS orderItemId, i.order_id AS orderId, o.buyer_id AS buyerId, o.session_id AS sessionId, i.zone_id AS zoneId, t.seat_id AS seatId FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id JOIN ticket_order o ON o.order_id = i.order_id WHERE t.ticket_id = ?",
+    "ticketId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper.findForUpdate",
+    "sql" : "SELECT valid_count FROM user_session_purchase WHERE user_id = ? AND session_id = ? FOR UPDATE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ? FOR UPDATE",
+    "zoneId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ? FOR UPDATE",
+    "zoneId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findByIdForUpdate",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ? FOR UPDATE",
+    "seatId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.findByIdForUpdate",
+    "sql" : "SELECT seat_id, zone_id, row_no, seat_no, allocation_priority, allocation_status FROM session_seat WHERE seat_id = ? FOR UPDATE",
+    "seatId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.lockTicket",
+    "sql" : "SELECT ticket_id, order_item_id, seat_id, paid_price, status, issued_at FROM ticket WHERE ticket_id = ? FOR UPDATE",
+    "ticketId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.findResource",
+    "sql" : "SELECT t.ticket_id AS ticketId, t.order_item_id AS orderItemId, i.order_id AS orderId, o.buyer_id AS buyerId, o.session_id AS sessionId, i.zone_id AS zoneId, t.seat_id AS seatId FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id JOIN ticket_order o ON o.order_id = i.order_id WHERE t.ticket_id = ?",
+    "ticketId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.lockTicket",
+    "sql" : "SELECT ticket_id, order_item_id, seat_id, paid_price, status, issued_at FROM ticket WHERE ticket_id = ? FOR UPDATE",
+    "ticketId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.findResource",
+    "sql" : "SELECT t.ticket_id AS ticketId, t.order_item_id AS orderItemId, i.order_id AS orderId, o.buyer_id AS buyerId, o.session_id AS sessionId, i.zone_id AS zoneId, t.seat_id AS seatId FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id JOIN ticket_order o ON o.order_id = i.order_id WHERE t.ticket_id = ?",
+    "ticketId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.markProcessing",
+    "sql" : "UPDATE ticket_refund_request SET status = 'PROCESSING' WHERE refund_id = ? AND status = 'PENDING'"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.markItemProcessing",
+    "sql" : "UPDATE ticket_refund_item SET status = 'PROCESSING' WHERE refund_item_id = ? AND status = 'PENDING'"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.markItemProcessing",
+    "sql" : "UPDATE ticket_refund_item SET status = 'PROCESSING' WHERE refund_item_id = ? AND status = 'PENDING'"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper.tryDecrease",
+    "sql" : "UPDATE user_session_purchase SET valid_count = valid_count - ? WHERE user_id = ? AND session_id = ? AND ? > 0 AND valid_count >= ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.restoreStock",
+    "sql" : "UPDATE session_zone SET remains_amount = remains_amount + ? WHERE zone_id = ? AND session_id = ? AND zone_type = 'PAID' AND ? > 0 AND remains_amount <= total_amount - ?",
+    "zoneId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.restoreStock",
+    "sql" : "UPDATE session_zone SET remains_amount = remains_amount + ? WHERE zone_id = ? AND session_id = ? AND zone_type = 'PAID' AND ? > 0 AND remains_amount <= total_amount - ?",
+    "zoneId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.releaseSold",
+    "sql" : "UPDATE session_seat SET allocation_status = 'AVAILABLE' WHERE seat_id = ? AND zone_id = ? AND allocation_status = 'SOLD'",
+    "zoneId" : "2",
+    "seatId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionSeatMapper.releaseSold",
+    "sql" : "UPDATE session_seat SET allocation_status = 'AVAILABLE' WHERE seat_id = ? AND zone_id = ? AND allocation_status = 'SOLD'",
+    "zoneId" : "4",
+    "seatId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.markRefunded",
+    "sql" : "UPDATE ticket SET status = 'REFUNDED', refunded_at = ? WHERE ticket_id = ? AND status = 'VALID'",
+    "ticketId" : "2"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.markItemSucceeded",
+    "sql" : "UPDATE ticket_refund_item SET status = 'SUCCEEDED', processed_at = ?, result = 'SIMULATED_REFUND_SUCCEEDED' WHERE refund_item_id = ? AND status = 'PROCESSING'"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.markRefunded",
+    "sql" : "UPDATE ticket SET status = 'REFUNDED', refunded_at = ? WHERE ticket_id = ? AND status = 'VALID'",
+    "ticketId" : "4"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.markItemSucceeded",
+    "sql" : "UPDATE ticket_refund_item SET status = 'SUCCEEDED', processed_at = ?, result = 'SIMULATED_REFUND_SUCCEEDED' WHERE refund_item_id = ? AND status = 'PROCESSING'"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.RefundTicketMapper.countValidByOrder",
+    "sql" : "SELECT COUNT(*) FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id WHERE i.order_id = ? AND t.status = 'VALID'"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper.updateRefundSummary",
+    "sql" : "UPDATE ticket_order SET status = ? WHERE order_id = ? AND status IN ('PAID', 'PARTIALLY_REFUNDED') AND ? IN ('PARTIALLY_REFUNDED', 'REFUNDED')"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.markSucceeded",
+    "sql" : "UPDATE ticket_refund_request SET status = 'SUCCEEDED', processed_at = ?, result = 'SIMULATED_REFUND_SUCCEEDED' WHERE refund_id = ? AND status = 'PROCESSING'"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.findById",
+    "sql" : "SELECT * FROM ticket_refund_request WHERE refund_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.refund.mapper.TicketRefundMapper.findItems",
+    "sql" : "SELECT refund_item_id AS refundItemId, refund_id AS refundId, ticket_id AS ticketId, original_price AS originalPrice, fee_rate AS feeRate, refund_amount AS refundAmount, status, failure_reason AS failureReason, processed_at AS processedAt, result FROM ticket_refund_item WHERE refund_id = ? ORDER BY ticket_id"
+  } ],
+  "gift" : [ {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findById",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.identity.mapper.AppUserMapper.findByIdForShare",
+    "sql" : "SELECT id, username, password_hash, role, status, created_at FROM app_user WHERE id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findById",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findById",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivityMapper.findByIdForShare",
+    "sql" : "SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time FROM activity WHERE activity_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.ActivitySessionMapper.findByIdForShare",
+    "sql" : "SELECT activity_session_id, activity_id, start_time, end_time, capacity, status, max_tickets_per_user, seat_mode FROM activity_session WHERE activity_session_id = ? FOR SHARE"
+  }, {
+    "mapper" : "com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate",
+    "sql" : "SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount FROM session_zone WHERE zone_id = ? FOR UPDATE",
+    "zoneId" : "5"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftOperationMapper.findByRequest",
+    "sql" : "SELECT operation_id, request_id, publisher_id, session_id, zone_id, operation_type, quantity, status, created_at FROM gift_inventory_operation WHERE publisher_id = ? AND request_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftInventoryMapper.findAvailableSeats",
+    "sql" : "SELECT s.seat_id, s.zone_id, s.row_no, s.seat_no, s.allocation_priority, s.allocation_status FROM session_seat s WHERE s.zone_id = ? AND s.allocation_status = 'AVAILABLE' AND EXISTS (SELECT 1 FROM session_zone z WHERE z.zone_id = s.zone_id AND z.zone_type = 'GIFT') ORDER BY s.allocation_priority, s.row_no, s.seat_no, s.seat_id LIMIT ?",
+    "zoneId" : "5"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftInventoryMapper.occupySeat",
+    "sql" : "UPDATE session_seat s SET s.allocation_status = 'GIFT_ALLOCATED' WHERE s.seat_id = ? AND s.zone_id = ? AND s.allocation_status = 'AVAILABLE' AND EXISTS (SELECT 1 FROM session_zone z WHERE z.zone_id = s.zone_id AND z.zone_type = 'GIFT')",
+    "zoneId" : "5",
+    "seatId" : "5"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftInventoryMapper.occupySeat",
+    "sql" : "UPDATE session_seat s SET s.allocation_status = 'GIFT_ALLOCATED' WHERE s.seat_id = ? AND s.zone_id = ? AND s.allocation_status = 'AVAILABLE' AND EXISTS (SELECT 1 FROM session_zone z WHERE z.zone_id = s.zone_id AND z.zone_type = 'GIFT')",
+    "zoneId" : "5",
+    "seatId" : "6"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftInventoryMapper.decreaseStock",
+    "sql" : "UPDATE session_zone SET remains_amount = remains_amount - ? WHERE zone_id = ? AND session_id = ? AND zone_type = 'GIFT' AND ? > 0 AND remains_amount >= ?",
+    "zoneId" : "5"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftOperationMapper.insert",
+    "sql" : "INSERT INTO gift_inventory_operation(publisher_id, session_id, zone_id, request_id, quantity, operation_type, status) VALUES (?, ?, ?, ?, ?, 'ALLOCATE', 'SUCCEEDED')"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftOperationMapper.insertItem",
+    "sql" : "INSERT INTO gift_inventory_operation_item(operation_id, seat_id) VALUES (?, ?)",
+    "seatId" : "5"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftOperationMapper.insertItem",
+    "sql" : "INSERT INTO gift_inventory_operation_item(operation_id, seat_id) VALUES (?, ?)",
+    "seatId" : "6"
+  }, {
+    "mapper" : "com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper.currentTime",
+    "sql" : "SELECT CURRENT_TIMESTAMP(3)"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftOperationMapper.findById",
+    "sql" : "SELECT operation_id, request_id, publisher_id, session_id, zone_id, operation_type, quantity, status, created_at FROM gift_inventory_operation WHERE operation_id = ?"
+  }, {
+    "mapper" : "com.limitactivitysystem.gift.mapper.GiftOperationMapper.findSeatIds",
+    "sql" : "SELECT seat_id FROM gift_inventory_operation_item WHERE operation_id = ? ORDER BY seat_id"
+  } ]
+}

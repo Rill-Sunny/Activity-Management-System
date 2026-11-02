@@ -18,6 +18,13 @@ import java.util.List;
 
 @Mapper
 public interface TicketOrderMapper {
+    @Update("""
+            UPDATE ticket_order SET status = #{status}
+            WHERE order_id = #{orderId} AND status IN ('PAID', 'PARTIALLY_REFUNDED')
+              AND #{status} IN ('PARTIALLY_REFUNDED', 'REFUNDED')
+            """)
+    @Transactional(propagation = Propagation.MANDATORY)
+    int updateRefundSummary(@Param("orderId") Long orderId, @Param("status") String status);
 
     /** Creates a pending order. Reload by ID for database-created timestamps and other generated fields. */
     @Insert("""

@@ -1,0 +1,9 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:43:38.874",
+  "observation" : {
+    "paidTickets" : 0,
+    "committedItems" : 1,
+    "loser" : "uq_gift_operation_request",
+    "committedOperations" : 1
+  }
+}

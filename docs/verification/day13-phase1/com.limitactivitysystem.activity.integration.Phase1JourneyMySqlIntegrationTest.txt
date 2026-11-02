@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.limitactivitysystem.activity.integration.Phase1JourneyMySqlIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 14.95 s -- in com.limitactivitysystem.activity.integration.Phase1JourneyMySqlIntegrationTest

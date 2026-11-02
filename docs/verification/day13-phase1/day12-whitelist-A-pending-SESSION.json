@@ -1,0 +1,14 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:08:19.76",
+  "observation" : {
+    "orderId" : 8,
+    "sameBuyerJwt" : true,
+    "paymentCode" : "QUALIFICATION_DENIED",
+    "resourceSnapshotUnchanged" : true,
+    "tickets" : 0,
+    "zoneRemaining" : 4,
+    "paymentHttp" : 403,
+    "scope" : "SESSION",
+    "orderStatus" : "PENDING_PAYMENT"
+  }
+}

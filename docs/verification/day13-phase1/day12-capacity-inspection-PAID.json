@@ -1,0 +1,12 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:06:11.478",
+  "observation" : {
+    "findings" : [ {
+      "violation" : "PAID_STOCK",
+      "resource_id" : "185",
+      "expected_value" : 2,
+      "actual_value" : 1
+    } ],
+    "expectedViolation" : "PAID_STOCK"
+  }
+}

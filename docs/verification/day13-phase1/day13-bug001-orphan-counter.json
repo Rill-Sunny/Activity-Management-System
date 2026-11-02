@@ -1,0 +1,8 @@
+{
+  "newFindings" : [ {
+    "violation" : "COUNTER_USER_SESSION",
+    "resource_id" : "9223372036854775807:14",
+    "script" : "orphans.sql"
+  } ],
+  "legacyScriptsDetected" : 0
+}

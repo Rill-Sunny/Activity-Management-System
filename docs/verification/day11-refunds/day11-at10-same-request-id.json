@@ -1,0 +1,29 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T21:26:53.041",
+  "observation" : {
+    "successfulRefundAmount" : 8.51,
+    "resourcesRestored" : 1,
+    "ticketId" : 41,
+    "outcomes" : [ {
+      "code" : "",
+      "http" : 201,
+      "writes" : { }
+    }, {
+      "code" : "",
+      "http" : 201,
+      "writes" : {
+        "markSucceeded" : 1,
+        "tryDecrease" : 1,
+        "markProcessing" : 1,
+        "markRefunded" : 1,
+        "markItemProcessing" : 1,
+        "insertRequest" : 1,
+        "restoreStock" : 1,
+        "markItemSucceeded" : 1,
+        "releaseSold" : 1,
+        "updateRefundSummary" : 1,
+        "insertItem" : 1
+      }
+    } ]
+  }
+}

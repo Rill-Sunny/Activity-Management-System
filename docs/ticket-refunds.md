@@ -12,7 +12,7 @@
 
 ## 申请时间与政策快照
 
-认证通过后、等待业务锁之前，从专用 ticketRefundClock 读取一次服务器时间作为 requested_at。生产 Bean 为 Clock.system，ticket-refund.time-zone 显式配置为 Asia/Shanghai，与 JDBC 的 DATETIME 时区一致。保存前截断到毫秒，匹配 DATETIME(3)。后续所有政策判断使用这个值。重放返回原申请及其 requested_at、逐票金额，处理阶段使用已存快照。
+认证通过后、等待业务锁之前，从专用 ticketRefundClock 读取一次服务器时间作为 requested_at。生产 Bean 为 DatabaseRefundClock，通过 DatabaseTimeMapper 取得数据库 CURRENT_TIMESTAMP(3)，与出票共用时间源。ticket-refund.time-zone 显式配置为 Asia/Shanghai，与 JDBC 的 DATETIME 时区一致。保存前截断到毫秒，匹配 DATETIME(3)。后续所有政策判断使用这个值。重放返回原申请及其 requested_at、逐票金额，处理阶段使用已存快照。Day 13 修复的跨时间源误拒绝见 [阶段测试报告](reports/test-report.md#bug-003刚支付后退款被误判早于出票)。
 
 Clock 在受理入口注入。政策计算器是纯函数，只接收已保存的申请时间，不读取当前时间；同一申请的多张票因此共享同一政策时点。测试通过 Clock.fixed 固定时间，或替换为可切换 Fixed Clock 的测试时钟。
 
@@ -178,4 +178,30 @@ Day 10 只建立和受理合法申请。Ticket → REFUNDED、Seat → AVAILABLE
 	mvn '-Dtest=OrdinaryTicketRefundPolicyTest,TicketRefundApplicationMySqlIntegrationTest' test
 ```
 
-MySQL 用例要求 DB_PASSWORD，没有凭据时会跳过；跳过不算验收通过。当前交付只受理申请，实际退款执行、失败重试和资源恢复留到 Day 11。
+MySQL 用例要求 DB_PASSWORD，没有凭据时会跳过；跳过不算验收通过。Day 10 的受理接口只写申请，实际处理见下节。
+
+## Day 11 原子退款处理
+
+`POST /ticket-refunds/{refundId}/process` 只处理已有申请，使用受理时的逐票报价。当前买家必须同时拥有申请和订单。`SUCCEEDED` 重放原结果，`PENDING` 执行整笔处理，技术原因的 `FAILED` 使用原业务键重试，其他 `FAILED` 与 `PROCESSING` 拒绝。
+
+[TicketRefundProcessingService](../src/main/java/com/limitactivitysystem/refund/service/TicketRefundProcessingService.java) 在独立 `READ_COMMITTED` 事务中完成资源锁定、全部校验、限购恢复、按区域汇总恢复库存、逐座释放、Ticket 退票、明细结果和订单汇总。共同资源的锁顺序与支付一致，完整规则见 [locking.md](locking.md#ticket-refund-processing)。
+
+处理不调用 `TicketRefundPolicy`，不重新检查活动生命周期、场次开始时间或白名单。票的成交价与关联资源仍必须符合已受理记录。订单剩余 `VALID` Ticket 数决定 `PARTIALLY_REFUNDED` 或 `REFUNDED`，与申请数量无关。
+
+[V6 迁移](../src/main/resources/db/migration/V6__add_refund_processing_results.sql) 为两张退款表添加 `processed_at` 和 `result`。处理成功时保存同一个数据库时间及 `SIMULATED_REFUND_SUCCEEDED`，原申请时间和金额不变。当前模拟退款没有外部资金副作用。异常使资源事务全部回滚；数据库技术失败再由独立短事务记录 `FAILED`、`TECHNICAL_FAILURE` 和逐票 `failure_reason`。失败记录重新取锁检查状态，不覆盖并发成功。使用同一 `refundId` 重试时重新取得同票唯一占用，不新建申请。
+
+[处理集成测试](../src/test/java/com/limitactivitysystem/activity/integration/TicketRefundProcessingMySqlIntegrationTest.java) 使用实际下单、支付和受理产生夹具，覆盖部分退款、连续多次退款、整单退款、成功重放、跨场次开始与生命周期变更、同申请并发、同订单多申请并发、支付与退款竞争、真实 Order 锁等待、资源损坏及条件更新检查。故障注入在实际 SQL 写入之后抛出异常，比较全部八张相关表的完整快照，再用原申请重试。
+
+第 20～24 项补充 [退款对账 SQL](../tests/sql/refund_invariants.sql)、[RefundTelemetry](../src/main/java/com/limitactivitysystem/observability/RefundTelemetry.java) 及完整验收矩阵。指标区分调用结果与实际成功退款明细，逐用例检查正常数据无对账差异，故意损坏的夹具须能被对账发现。口径、日志字段和复跑方式见 [Day 11 退款验收](day11-refund-verification.md)。
+
+补齐第十三至二十四项后，十类回归共 398 项通过，失败、错误、跳过均为零。其中政策 30 项、Day 10 受理 57 项、Day 11 处理 70 项、退款指标日志 18 项，覆盖精确四票价 AT-09、同票 AT-10、双向支付退款锁等待、十四个故障场景、独立失败记录与重试、对账和基础观测。逐场景证据见 [Day 11 退款验收](day11-refund-verification.md)。
+
+```powershell
+	mvn '-Dtest=OrdinaryTicketRefundPolicyTest,TicketRefundApplicationMySqlIntegrationTest,TicketRefundProcessingMySqlIntegrationTest' test
+```
+
+连同支付、关单和安全回归复跑：
+
+```powershell
+	mvn '-Dtest=OrdinaryTicketRefundPolicyTest,TicketRefundApplicationMySqlIntegrationTest,TicketRefundProcessingMySqlIntegrationTest,RefundTelemetryTest,PaymentTelemetryTest,TicketPaymentMySqlIntegrationTest,TicketPaymentResourceMySqlIntegrationTest,TicketPaymentRequestContractTest,TicketOrderClosingMySqlIntegrationTest,SecurityAccessTest' test
+```

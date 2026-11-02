@@ -1,12 +1,12 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.5（增加退款申请、逐票金额与政策时间快照）**
+> **版本：V2.7（增加 Product、SKU 与独立商品白名单）**
 >
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：15 张已设计表：1 张用户表 + 4 张活动／座位基础表 + 3 张票务交易表 + 1 张账号场次购票计数表 + 2 张白名单表 + 2 张免费预约／名额表 + 2 张退款申请／明细表；商品、赠票流水仍未设计**
+> **当前状态：20 张现有业务表：原 17 张票务／预约／赠票表，加 Product、SKU、商品独立名单 3 张表；商品订单、共享限购计数与资格保护行仍是后续候选**
 >
-> **核心决策：全部 15 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
+> **核心决策：全部 20 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
 ## 0. 架构决策：为什么改为逻辑关联
 
@@ -59,6 +59,11 @@ activity.activity_id                  ← whitelist_config.scope_id（scope_type
 activity_session.activity_session_id  ← whitelist_config.scope_id（scope_type = SESSION）
 whitelist_config.config_id            ← whitelist_member.config_id
 app_user.id                           ← whitelist_member.user_id
+app_user.id                           ← gift_inventory_operation.publisher_id（操作发布者）
+activity_session.activity_session_id  ← gift_inventory_operation.session_id
+session_zone.zone_id                  ← gift_inventory_operation.zone_id（GIFT）
+gift_inventory_operation.operation_id ← gift_inventory_operation_item.operation_id
+session_seat.seat_id                  ← gift_inventory_operation_item.seat_id
 
 activity (1) → (N) activity_session (1) → (N) session_zone (1) → (N) session_seat
 ticket_order (1) → (N) ticket_order_item (1) → (N) ticket
@@ -815,7 +820,21 @@ AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architectur
 
 金额 CHECK 要求原价为正、费率在 [0,1]、退款金额在 [0,原价] 且等于逐票两位 ROUND 的计算结果；FAILED 明细必须有 failure_reason。Java 使用 BigDecimal 与 HALF_UP。外部关联由受理 Service 沿 Ticket → OrderItem → Order 验证，沿用零物理 FK。
 
-## 13. 版本记录
+[V6__add_refund_processing_results.sql](../src/main/resources/db/migration/V6__add_refund_processing_results.sql) 为两表添加可空的 `processed_at DATETIME(3)` 和 `result VARCHAR(100)`。受理时为空；模拟处理成功时与资源恢复一起写入处理时间及 `SIMULATED_REFUND_SUCCEEDED`。数据库技术失败在资源事务回滚后由独立短事务写入 `FAILED`、处理时间及 `TECHNICAL_FAILURE`，逐票异常类型复用既有 `failure_reason`。技术失败重试恢复原明细状态，重新取得同票唯一占用。订单汇总复用现有状态字段，按剩余有效票数计算，不增加金额汇总列。
+
+## 13. GIFT 资源操作与座位历史（V2.6 新增）
+
+[V7__add_gift_inventory_operations.sql](../src/main/resources/db/migration/V7__add_gift_inventory_operations.sql) 新建 `gift_inventory_operation` 和 `gift_inventory_operation_item`。主表记录操作者、请求键、场次、区域、操作类型、数量、状态和数据库时间，明细逐座保存 operation_id、seat_id 及时间。
+
+本切片仅允许 ALLOCATE 与 SUCCEEDED。分配事务将资源变化和完整历史一起提交，失败全部回滚，不产生持久化的处理中或失败历史。RELEASE 尚未实现，后续需要来源操作与来源座位关联。
+
+主表 `UNIQUE(publisher_id, request_id)` 保护操作幂等；明细 `UNIQUE(operation_id, seat_id)` 保护单次操作座位去重。seat_id 可在多次历史操作中出现，当前占用仍由 Seat 条件更新保护。区域、场次、发布者时间线和座位历史均有对应索引，沿用零物理外键。
+
+这些表没有领取人、实名、核销或 Ticket 字段。publisher_id 是操作者，不是赠票接收者。分配 Service 已校验权限、引用及 N 条明细对应 quantity，条件占用 Seat 和扣减 GIFT 库存与历史同事务提交。完整字段与接口见 [GIFT 操作模型](gift-inventory.md)。
+
+## 14. 版本记录
+
+2026-11-02 的 [商品域设计](product-domain.md) 中，Product、SKU、独立成员表已通过 V8 落库；四张商品订单、明细、共享限购、资格保护表仍未实施。两种持票范围明确支持，跨 Publisher 商品订单在设计上拒绝；同 Publisher 跨 Activity 及未来核心规则版本变更仍待确认，禁止把后续候选计入当前二十张表。
 
 - **V1**：四张基础表采用物理外键，训练基础关系模型与引用完整性。
 - **V2.0**：移除物理外键，保留逻辑关联与数据库基础约束；新增座位占用状态，明确 Service 校验、条件更新和巡检职责。
@@ -823,4 +842,18 @@ AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architectur
 - **V2.2**：新增 `app_user`、`user_session_purchase`；为 `activity_session` 增加 `max_tickets_per_user` 与 `seat_mode`，实现以复合主键和原子条件更新为核心的账号场次限购并发模型，并衔接两种座位分配模式。共 9 张已设计表，0 个物理 FOREIGN KEY。
 - **V2.3**：新增 `whitelist_config`、`whitelist_member`，通过配置记录存在与否区分未配置与显式空名单。共 11 张已设计表，0 个物理 FOREIGN KEY。
 - **V2.4**：新增 `free_reservation`、`free_session_quota`，采用生成有效键保留预约历史，通过独立名额条件更新保护剩余量。共 13 张已设计表，0 个物理 FOREIGN KEY。
-- **V2.5（本版）**：新增 `ticket_refund_request`、`ticket_refund_item`，保存服务器申请时间、政策与逐票金额快照，保护申请幂等及同票有效退款唯一性。共 15 张已设计表，0 个物理 FOREIGN KEY。
+- **V2.5**：新增 `ticket_refund_request`、`ticket_refund_item`，保存服务器申请时间、政策与逐票金额快照，保护申请幂等及同票有效退款唯一性。共 15 张已设计表，0 个物理 FOREIGN KEY。
+- **V2.6**：新增 `gift_inventory_operation`、`gift_inventory_operation_item`，冻结 ALLOCATE 成功操作及逐座历史，保护发布者请求键和单次操作座位唯一性，不记录领取人。共 17 张业务表，0 个物理 FOREIGN KEY。
+- **V2.7（本版）**：V8 新增 product、sku、product_whitelist_member，支持两种持票范围、预设模板、独立 SKU 库存与独立名单。共 20 张业务表，0 个物理 FOREIGN KEY。原 17 张定义不变，完整约束以 V8 为准。
+
+## 15. 商品目录与资格（V2.7）
+
+[V8__create_product_catalog.sql](../src/main/resources/db/migration/V8__create_product_catalog.sql) 定义 Product 的类型/范围完整组合、状态与首次上架时间、正数 Product 限购及两种预设售后模板。资格字段使用显式 IS NULL/IS NOT NULL，避免 CHECK 的 NULL 比较漏过非法组合。Service 根据 CurrentUserProvider 与 Activity 核对当前管理者和真实关联。
+
+SKU 的 price 为 DECIMAL(10,2)，total_stock/remains_stock 独立非负且余量不超过总量；同 Product 的规范化 sku_name 采用二进制比较唯一。创建和完整修改只匹配从未上架的 DRAFT Product，ON_SALE/OFF_SALE 不开放价格或库存修改，避免改写未来成交历史。
+
+product_whitelist_member 唯一键为 (product_id,user_id)，不复用 Activity/Session 名单。Product 的 qualification_type 已表示显式配置，PRODUCT_WHITELIST 且成员为零时拒绝，不额外建重复配置表。
+
+库存及引用巡检见 [product_invariants.sql](../tests/sql/product_invariants.sql)，响应和权限见 [商品 API](api/products.md)，真实迁移及业务验证见 [Day 14 记录](day14-products.md)。
+
+Day 14 最终验收复查后继续保持 V8 三表：资格配置内嵌 Product，独立名单保存成员，因此不再创建重复配置表。未冻结的商品订单、明细、user_product_purchase 和资格 guard 不预建占位版本；这些仍是后续模型。两种售后模板用受约束的枚举与版本保存，不引入全局 returnable 位。当前没有真实商品库存扣减或共享额度增加。

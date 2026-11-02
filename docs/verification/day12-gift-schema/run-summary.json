@@ -1,0 +1,54 @@
+{
+    "verifiedAt":  "2026-10-31T21:43:01.0826561+08:00",
+    "scope":  "Day 12 steps 0-3: GIFT history model and migration",
+    "tests":  195,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "giftMigration":  "V7__add_gift_inventory_operations.sql",
+    "businessTables":  17,
+    "physicalForeignKeys":  0,
+    "day11Gate":  {
+                      "tests":  70,
+                      "cleanReconciliationCases":  53,
+                      "deliberatelyCorruptCases":  17,
+                      "unexpectedViolations":  0
+                  },
+    "suites":  [
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+                       "tests":  41,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.GiftInventorySchemaMySqlIntegrationTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest",
+                       "tests":  29,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+                       "tests":  70,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.WhitelistQualificationConcurrencyMySqlIntegrationTest",
+                       "tests":  11,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ]
+}

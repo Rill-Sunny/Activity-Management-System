@@ -39,7 +39,7 @@
 
 `TicketOrderService.createOrder` 协调幂等重放与首次创建，首次创建由 `TicketOrderCreationService` 在创建事务中调用 `QualificationService.check(activityId, sessionId)`。该入口从 `CurrentUserProvider` 取得可信账号并使用同一套名单规则。`canParticipate` 保留为内部布尔查询，后续 `ReservationService` 复用业务资格入口。调用方另行校验发布状态、场次状态、开放窗口、限购和库存，资格通过不代表已取得可售资源。
 
-每次业务动作在自己的事务中重新调用本服务。创建订单时通过资格检查，不能代替该订单未来支付时的检查；已支付门票和已成功预约也不会因后来名单修改而自动撤销。D12 再执行包含实际订单、Ticket 和预约的完整回归。
+每次业务动作在自己的事务中重新调用本服务。创建订单时通过资格检查，不能代替该订单未来支付时的检查；已支付门票和已成功预约也不会因后来名单修改而自动撤销。Day 12 已通过包含真实订单、Ticket、退款和预约的 [A–D 完整回归](day12-whitelist-regression.md)。
 
 相同创建请求的幂等重放只读取原订单，不新增参与行为，因此名单改变后仍可返回匹配的原单；账号仍须有效，也不能以重放结果代替未来支付时的资格复查。
 
@@ -76,3 +76,7 @@
 [资格单元测试](../src/test/java/com/limitactivitysystem/whitelist/service/QualificationServiceTest.java)无需数据库，验证继承、覆盖、不回退、账号与父子关系检查。管理集成测试同时验证真实配置与成员数据下的资格结果，以及名单修改提交后后续查询的结果。
 
 [资格并发测试](../src/test/java/com/limitactivitysystem/activity/integration/WhitelistQualificationConcurrencyMySqlIntegrationTest.java)使用多个真实 MySQL 连接及独立随机 schema，验证名单修改与资格事务的协调，不提前实现支付或预约业务。
+
+[名单变化集成测试](../src/test/java/com/limitactivitysystem/activity/integration/WhitelistChangeMySqlIntegrationTest.java)的十四个场景使用真实管理及消费 API，覆盖活动级与场次级名单。待支付单在成员移除后支付失败；已有 Ticket、Seat、Order 和预约保持有效；移除成员后仍可取消预约或退款，但再次预约或使用新请求键购票须通过当前名单。所有步骤复用同一买家 JWT，并执行资源快照比较与对账。
+
+移除成员与取消配置分开验证：移除成员保留空名单，取消配置恢复活动级继承或公开规则。原订单创建请求的幂等重放只读取历史；即使返回 REFUNDED 订单，也不代表用户取得了新的参与资格。

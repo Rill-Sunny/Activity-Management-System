@@ -1,0 +1,11 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:08:08.396",
+  "observation" : {
+    "failedRefundId" : 27,
+    "successfulRefundAmount" : 8.51,
+    "failedRetryHttp" : 409,
+    "newProcessHttp" : 200,
+    "newRefundId" : 28,
+    "resourcesRestored" : 1
+  }
+}

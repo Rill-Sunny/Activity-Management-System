@@ -109,6 +109,23 @@ Service 的锁保持到订单与明细一起提交或回滚。[创建 MySQL 测�
 
 ## Ticket payment resources
 
+支付与退款处理共享以下资源顺序。退款处理的完整规则见本文末尾的 Ticket refund processing：
+
+`ticket_order → ticket_refund_request / ticket_refund_item → user_session_purchase → session_zone (zone_id ASC) → session_seat (seat_id ASC) → ticket (ticket_id ASC)`。
+
+支付跳过退款表；账号和资格共享锁仍在限购锁之前取得。订单退款汇总最后更新，但使用事务开始时已取得的 Order 锁。
+
+两条完整路径为：
+
+| 路径 | 取锁及最终写入顺序 |
+|---|---|
+| Payment | Order → Quota → Zone → Seat → Ticket → Order |
+| Refund | Order → Refund Request 及 Item → Quota → Zone → Seat → Ticket → Order |
+
+全部 Zone 按 `zone_id ASC`，全部 Seat 按 `seat_id ASC`。退款已有 Ticket 按 `ticket_id ASC` 逐票锁定；支付新增 Ticket 通过自增主键逐条插入，取得的 Ticket ID 递增。最后的 Order UPDATE 复用最先取得的锁。Refund 的最终成功写入也复用既有退款行锁，不反向取得新的锁。
+
+固定顺序只降低死锁概率，不能替代整事务重试。支付保留 Day 8 的 `PaymentRetryExecutor`，每次失败完整回滚后再进入新事务。退款当前由调用方复用原 `refundId` 重试，每次也从 `REQUIRES_NEW` 重新锁定、校验并恢复资源，不在失败事务中继续执行剩余步骤。
+
 支付写路径统一使用以下顺序，同层多个资源按主键升序获取：
 
 1. `ticket_order`：按主键 `findByIdForUpdate` 锁定订单，核对买家、状态、数据库有效期及场次生命周期。随后调用 `QualificationService.checkAgain`，按账号、Activity、Session、配置、成员的内部顺序取得当前资格共享锁。
@@ -284,4 +301,143 @@ quota 使用独立行，避免资格已持 Session 共享锁后再更新 Session
 
 每张票先沿 OrderItem、Order 检查关联，再只锁 Ticket 行并重新核对关联链和 VALID。任一票不合法时整笔受理回滚。同一订单上的请求由 Order 行串行协调；跨订单复用同买家 requestId 的竞争由唯一键处理。主表唯一键冲突退出并回滚后，重新进入独立事务读取原单，不能吞掉异常继续写失败事务。
 
-requested_at 在等待上述锁之前从服务器 Clock 读取一次，政策与金额保存为快照。锁等待跨过政策边界不更换申请时间。主申请 INSERT 后、首条明细 INSERT 后故障均有真实事务回滚测试。模型、复跑命令与记录见 [退款申请契约](ticket-refunds.md)。
+requested_at 在等待上述锁之前从 DatabaseRefundClock 读取一次数据库时间，该普通时间查询不取得业务行锁，与出票共用时间源。政策与金额保存为快照，锁等待跨过政策边界不更换申请时间。主申请 INSERT 后、首条明细 INSERT 后故障均有真实事务回滚测试。模型、复跑命令与记录见 [退款申请契约](ticket-refunds.md)。
+
+## Ticket refund processing
+
+`TicketRefundExecutionService.process` 在事务外协调，调用 `TicketRefundProcessingService.process` 的 `REQUIRES_NEW / READ_COMMITTED` 事务。处理使用已受理申请，不调用退款政策或购票资格检查，也不根据处理时间、当前活动状态或当前场次时间拒绝原申请。
+
+取锁顺序固定如下：
+
+1. 普通读取 Refund Request，仅发现 `order_id` 并初步校验买家，不获取行锁。
+2. `ticket_order FOR UPDATE`，校验订单买家。
+3. `ticket_refund_request FOR UPDATE`，重查买家、订单引用和状态。
+4. 当前账号共享锁。`SUCCEEDED` 返回原结果；`PROCESSING` 及非技术失败的 `FAILED` 返回 `REFUND_NOT_PENDING`。
+5. `ticket_refund_item FOR UPDATE`，使用 `(refund_id, ticket_id)` 唯一索引按 Ticket ID 升序读取。技术失败重试先将原 `FAILED` 明细和申请恢复为 `PENDING`，金额与业务键不变。恢复明细时重新取得同票唯一占用；另一个申请已占用该票时整笔回滚，返回 `REFUND_ALREADY_REQUESTED`。普通申请的全部明细必须为 `PENDING`。
+6. `user_session_purchase FOR UPDATE`，不创建缺失计数行。
+7. 全部 `session_zone FOR UPDATE`，按 `zone_id ASC`。
+8. 全部 `session_seat FOR UPDATE`，按全申请 `seat_id ASC`。
+9. 全部 `ticket FOR UPDATE`，按 `ticket_id ASC`。
+
+Ticket、OrderItem、Order 的普通关联查询仅用于发现要锁定的 Zone 和 Seat。锁票后再次核对关联，防止依据过时引用恢复错误资源。逐票检查 `VALID`、原订单归属、原成交价及 Seat 唯一性；Zone 必须属于订单场次，Seat 必须属于对应 Zone 且为 `SOLD`。
+
+所有校验通过后，申请和明细进入 `PROCESSING`。条件更新依次减少限购计数、按 Zone 汇总恢复库存、按 Seat ID 释放座位、按 Ticket ID 转换为 `REFUNDED` 并完成对应明细。所有资源早已持锁，写入阶段不反向取得共同资源锁。每条条件更新必须影响一行。
+
+额度更新要求 `valid_count >= quantity`；Zone 更新要求恢复后不超过 `total_amount`；Seat 仅允许 `SOLD → AVAILABLE`；Ticket 仅允许 `VALID → REFUNDED`。全部成功后，以订单当前剩余 `VALID` Ticket 数更新 `PARTIALLY_REFUNDED` 或 `REFUNDED`，最后完成主申请。票、明细和申请保存同一个数据库处理时间，金额始终来自受理快照。
+
+同一订单的不同申请由最先取得的 Order 锁串行处理。不能先锁申请再等待 Order，也不能先锁 Ticket 再等待 Zone。受理事务虽在锁 Ticket 后 INSERT 新退款行，但它已经持有同一 Order 锁，处理事务不可能同时持有该订单退款行并等待受理所持的 Ticket。
+
+任何异常都退出处理代理并完整回滚。资源变更不会与失败结果一起提交。业务拒绝直接返回原领域错误，数据库技术异常由事务外协调器交给 `TicketRefundFailureService.record` 的独立短事务记录。
+
+失败记录事务仍按普通发现订单、Order 排他锁、Request 排他锁、Item 升序取锁的顺序执行。它重新校验归属及当前 `PENDING` 状态；另一个处理已经成功时直接结束，不覆盖 `SUCCEEDED`。它仅将主申请及全部明细标为 `FAILED`，写入 `TECHNICAL_FAILURE`、处理时间和逐票异常类型，不修改限购、Zone、Seat 或 Ticket。
+
+原事务回滚后、失败记录前的间隙允许另一个处理成功，这正是重新读取状态的原因。失败记录自身出错也完整回滚，原始技术异常继续抛出，记录异常作为 suppressed exception 保留。技术失败可使用原 `refundId` 重试并重新竞争同票唯一键。已受理申请的时间和金额始终不重新计算。
+
+真实并发实验在支付先持锁、退款先持锁两种情况下观察 `user_session_purchase.PRIMARY` 等待，解除持有者后双方成功。SQL 追踪核对双方均先 Quota、再全部 Zone、再 Seat，同层按 ID 升序。AT-09、AT-10 与故障矩阵见 [退款验收](day11-refund-verification.md)。
+
+InnoDB 锁保持到事务提交或回滚；统一顺序降低死锁概率，无法排除其他路径和索引锁引起的死锁。依据：[MySQL 死锁处理](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks-handling.html)。运行时异常触发 Spring 默认整笔回滚，依据：[Spring 声明式事务回滚](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/rolling-back.html)。
+
+## GIFT allocation
+
+`GiftAllocationService` 在事务外协调，`GiftAllocationTransactionService` 使用 REQUIRES_NEW / READ_COMMITTED。每次尝试只处理一个 GIFT Zone，取锁顺序为：
+
+1. 当前 app_user 共享锁，确认 ACTIVE、PUBLISHER。
+2. Zone、Session 普通发现查询，不取得子资源锁。
+3. Activity 共享锁，确认当前发布者归属。
+4. Session 共享锁，重查父记录关系。
+5. session_zone 排他锁，重查 Session 归属及 GIFT 类型。
+6. 读取原操作键；新分配按优先级选择候选，再按 seat_id ASC 条件占用 Seat。
+7. 条件扣减已锁定 Zone 的 remains_amount，写新操作及升序 Seat 明细。
+8. 复查数据库时间及生命周期，提交所有资源和历史。
+
+候选顺序是 allocation_priority、row_no、seat_no、seat_id。候选查询不按优先级取得 Seat 写锁，Zone 锁保护选择窗口，真正占用始终按 Seat ID 升序。共同资源保持 Zone 在 Seat 之前；不取得 Order、Quota 或普通 Ticket 的锁，也不改变这些资源。
+
+账号、Activity 和 Session 共享锁保持到事务结束，与发布者权限、生命周期及名单管理的相应排他锁协调。GIFT 不调用参与者资格检查。新分配在取得 Zone 锁后及全部写入后检查 Session 未开始，真实锁等待跨过 start_time 时整笔回滚。
+
+同 Zone 请求由 Zone 排他锁串行协调，原键重放先于库存和生命周期的新操作检查。跨 Zone 竞争同发布者请求键由唯一索引处理，失败必须退出并回滚原事务，才进入 REQUIRES_NEW 重放读取。重放不分配新资源，仍检查当前归属，内容不一致返回冲突。固定顺序不排除其他索引或路径造成的死锁；技术失败可使用原 requestId 重新尝试完整事务。
+
+当前没有 RELEASE 路径。后续释放必须记录原操作和具体 Seat 来源，并检查与上述共同资源顺序兼容。接口及证据见 [GIFT 资源操作](gift-inventory.md)。
+
+## GIFT history queries
+
+`GiftAllocationQueryService` 的列表和详情查询使用 REQUIRES_NEW / READ_COMMITTED。与分配共用 `GiftOwnershipService`，顺序为当前账号共享锁 → Activity 共享锁 → Session 共享锁 → GIFT Zone 共享锁 → 普通读取操作及明细。列表每页最多 100 个操作，按 operation_id 升序读取。
+
+详情先普通读取操作以发现 Zone，不取得操作行锁；取得上述父资源共享锁后重新读取并核对操作关联。不能先锁操作、再反向等待 Zone。查询不锁 Seat，不取得 Order、Quota、Ticket 的锁，也不写业务资源。
+
+分配在修改资源及写历史前必须取得同一 Zone 排他锁，查询在结束前持有 Zone 共享锁，因此同次查询不会读到应用分配事务尚未提交的半组操作或明细。账号与父资源共享锁同时协调当前权限变更。历史读取不检查新分配的时间窗口或生命周期。
+
+真实 MySQL 实验在历史查询持有 Zone 共享锁时启动分配，观察 `session_zone` 的锁等待；查询完成释放后分配成功，前后操作历史与容量对账一致。证据见 [Day 12 完成验收](day12-completion.md)。固定顺序降低死锁风险，支付已有的整事务重试继续保留；GIFT 技术失败后使用原 requestId 重试完整事务。
+
+## Day 13 code and SQL audit
+
+[Phase1JourneyMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/Phase1JourneyMySqlIntegrationTest.java) 记录实际 Mapper ID、SQL 及 Zone/Seat ID。主链断言 Payment 和 Refund 的 Order、Quota、Zone、Seat、Ticket 顺序，GIFT 的 Zone、Seat、Operation 顺序，以及 Reservation 的 Quota、Reservation 顺序。多个 Zone 必须全部先于首个 Seat，同层实际 ID 必须升序。
+
+数据库追踪与上述文档一致，未发现先持 Seat 再获取新 Zone 的业务路径。共同资源等待与整笔回滚同时由支付/退款、预约和 GIFT 原有真实并发测试复核。退款新增数据库时间查询发生在业务锁之前，只取一次时间，不改变行锁顺序。实际 SQL 证据与源码对照见 [Phase 1 锁审计](reports/test-report.md#lock-order-audit)。
+
+## Product qualification and payment design
+
+2026-11-02 的未来交易接入协议，**不是当前 Mapper/Service 已实现路径**。两种持票范围已由后续编码任务明确；商品订单跨活动和未来核心规则版本选择仍待确认，详见 [ADR-011/012](decisions.md#adr-011商品域资格限购与订单边界)。V8 只实现下节的目录路径，不能声称票务已参与商品资格协调。
+
+### 共同锁层级
+
+1. 当前业务的 Order。票单、商品单是不同表，禁止持有一类订单锁后反向等待另一类订单。
+2. Refund Request/Item（仅已有退款处理路径需要），复用原有顺序。
+3. 当前账号共享锁；需要协调的 Activity/Session 共享锁在 guard 之前获取，同层按 ID 升序。只检查归属及必要状态，不重新运行已经受理退款的政策、时间或白名单。
+4. user_activity_qualification_guard 排他锁，按 (user_id, activity_id) ASC。同用户多活动时等价于 activity_id ASC。
+5. 当前域的限购计数：票务 user_session_purchase；商品 user_product_purchase 按 product_id ASC。两个计数域不在同一事务相互嵌套。
+6. 商品 Product 行按 product_id ASC 取得共享锁、当前资格/名单锁；随后 SKU 按 sku_id ASC 取得写锁。票务仍是全部 Zone ASC → 全部 Seat ASC → Ticket。
+7. 更新最初已锁的 Order；退款更新已持锁的 Request/Item，不反向发现并获取另一业务域订单。
+
+guard 惰性初始化使用 PK no-op，不能覆盖 qualification_version，也不能在已持 Quota、Product、SKU、Zone、Seat、Ticket 写锁后才插入或获取它。首次使用历史账号时 version=0 不表示无票，资格必须查真实 Ticket。
+
+### 商品支付候选路径
+
+```text
+ProductOrder
+→ Account / Activity / Session coordination
+→ all qualification guards, activityId ASC
+→ all Product quotas, productId ASC
+→ all Products, productId ASC
+→ all SKUs, skuId ASC
+→ original ProductOrder PAID
+```
+
+持票明细先从持久化的订单和配置发现所需保护范围；发现查询不取得子资源锁，取得相应锁后重新核对引用。所有 guard 和全部限购行在任何 SKU 写锁之前取得。Product 资格配置若获准修改，必须另外采用已确认的版本协议，不能用未锁定的旧配置发现遗漏 guard。
+
+持票资格在 guard 内用 READ_COMMITTED 当前查询，并禁用 MyBatis 旧缓存结果；不再 FOR UPDATE 全部票或取得票单锁。所有有效 Ticket 写事务已经遵守同一 guard 后，当前查询与该事务后续商品写入构成一个串行阶段。只读资格预览在返回后不持有锁，不能把它传给未来支付当作授权。
+
+Product 名单管理按 Account/Activity → Product 排他锁 → Member；不再获取 guard、额度或订单。商品支付持有 Product 共享锁再查询成员，名单为空也由 Product 行协调。Product/SKU 管理按父 Product 后子 SKU，禁止先 SKU 后 Product。
+
+### 票务接入位置
+
+计划接入后的支付路径是 Order → 现有账号/资格父行共享锁 → guard → 票务 Quota → 全部 Zone ASC → 全部 Seat ASC → 新 Ticket → Order。退款处理在发现 Order/Session/Activity 关系后，沿 Order → Refund/Item → 账号及父行协调 → guard → Quota → Zone → Seat → Ticket → 原汇总更新。
+
+父行协调用于稳定关系，不让已受理退款因为场次开始、名单删除或活动终态再次失效。Ticket 实际变动与 guard version 增加同事务完成；重放不增加版本，故障完整回滚。
+
+**接入是一个整体变更门槛**：保护行迁移、票务支付、退款处理、商品支付及其他有效票写入口必须一起纳入审计。当前这些 Service 尚未接入；未来在任一共享路径上遗漏保护行，不能通过设计验收。
+
+### 最后有效票的可靠交接
+
+退款持 guard 后确定作用域、更新 Ticket 与版本；未来资格变化 Outbox 也必须同事务保存。不得在门票退款事务中查询后再排他锁 product_order，否则会引入跨域订单的反向锁环和大事务。消费者在自己的事务重查当前资格，独立锁商品订单并处理相应明细。
+
+guard 先后次序的四种情况及 Day 16/20 测试见 [商品并发设计](product-domain.md#最后一张票退款与商品支付)。还要实测多活动反序输入、同 Product 跨 SKU、支付失败、退款失败、提交后宕机、重复和乱序事件。固定顺序只降低死锁风险；Day 16 仍应使用整事务 retry，并在真实 MySQL Mapper SQL 与 performance_schema 中验证，不能只测 Mock 返回值。
+
+## Product catalog implementation (V8)
+
+当前 [ProductManagementService](../src/main/java/com/limitactivitysystem/product/service/ProductManagementService.java) 使用 REQUIRES_NEW / READ_COMMITTED；ProductScopeService 加入同一事务。Mapper 的目录 SQL 要求已有事务，锁定读关闭缓存并清空本地缓存。
+
+| 当前入口 | 实际顺序 |
+|---|---|
+| 创建草稿 | 当前账号 S → Activity S → 可选资格 Session S → Product INSERT。 |
+| 创建/修改 SKU、上架/下架 | 当前账号 S → 普通发现 Product 关系 → Activity S → 可选 Session S → Product X → SKU 写入或 Product 条件状态写入。 |
+| 商品名单变更 | 当前发布者账号 S → Activity/Session S → Product X → 目标账号 S（添加时检查 ACTIVE）→ Member INSERT/DELETE。不更新目标账号。 |
+| 公开展示 | 普通发现关系 → Activity/Session S → Product S → SKU 普通查询；只返回可见商品和 ACTIVE SKU。 |
+| 当前资格 | 当前目标账号 S → Activity/Session S → Product S → 独立成员查询或真实 Ticket COUNT。 |
+
+名单查询在 Product S 持有期间读取，因此 Product X 同时协调存在成员和空成员两种情况。真实实验暂停资格读者、启动成员删除，performance_schema 观察到 product.PRIMARY 的 X 锁等待；读者结束后删除完成，再次查询资格拒绝，见 [Day 14 验证](day14-products.md)。
+
+当前 Ticket COUNT 是 READ_COMMITTED 的一次预览；没有资格 guard，不锁票单，也不保证返回后资格不变。内部 check 可独立建立事务或加入已有 RC 事务，明确拒绝加入 RR；未来商品支付必须先接入上述共同保护协议。目录查询或创建成功不得直接作为支付授权。
+
+SKU 配置写入只匹配从未上架的 DRAFT，Product X 与查询 Product S 协调，条件 SQL 再次校验状态。任何写入失败整笔回滚，没有资格计数、SKU 支付扣减或商品订单副作用。
+
+Day 14 第 19～24 项只补目录验收与决策，没有提前激活 guard、Product quota 或 SKU 交易写锁。跨发布者的拒绝在任何 SKU 写入前完成，并验证拒绝前后资源快照不变；同一 Publisher 的 Product 路径也不能用于修改其他 Product 或其他发布者的 SKU。上节 Order → guard → Product quota ASC → Product ASC → SKU ASC 仍是 Day 16 的真实事务验收门槛，当前不能计为已执行链路。

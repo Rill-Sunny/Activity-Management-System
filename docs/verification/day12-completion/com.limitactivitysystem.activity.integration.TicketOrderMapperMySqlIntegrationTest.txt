@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.limitactivitysystem.activity.integration.TicketOrderMapperMySqlIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.124 s -- in com.limitactivitysystem.activity.integration.TicketOrderMapperMySqlIntegrationTest

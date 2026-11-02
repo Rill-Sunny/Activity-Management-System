@@ -1,0 +1,114 @@
+{
+    "date":  "2026-11-02",
+    "scope":  "V8 catalog focused rerun after strengthening reservation and gift reconciliation",
+    "command":  "mvn -Dtest=ProductCatalogMySqlIntegrationTest test",
+    "finishedAt":  "2026-11-02T11:14:24+08:00",
+    "tests":  57,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "normalZeroDifferenceCases":  54,
+    "corruptFixturesDetected":  3,
+    "normalCasesAlsoCheck":  [
+                                 "refund_invariants.sql",
+                                 "reservation_invariants.sql",
+                                 "gift_invariants.sql"
+                             ],
+    "baseCommit":  "8535358bcd6142ab2678873faf5a955b3ddbce52",
+    "sourceState":  "Uncommitted working tree",
+    "sourceHashes":  [
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/controller/ProductController.java",
+                             "sha256":  "20B199AA1C67ED60C9FC4D72ACA2222903A46E111356D69C3D408BC50369E9F5"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/controller/ProductRequestExceptionHandler.java",
+                             "sha256":  "C15D874EF7358A0F578E204DD3A865585841F893A6A6EE8761B0745D15CB9220"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/controller/PublisherProductController.java",
+                             "sha256":  "72E17C6AF33AE71341A75EC559B893C6019B23BEE9BBEFAA7224435EB1A7FF9C"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/dto/CreateProductRequest.java",
+                             "sha256":  "7B84989BC01227D50BE2F31CEBFC2599F514296A7938C6C6D20EE27D7D4258E3"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/dto/ProductMemberRequest.java",
+                             "sha256":  "7B336B0746D00B64DC3AE3DDDECD56DA62E9516CDCC828793D6371057E329D87"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/dto/ProductRequestFormats.java",
+                             "sha256":  "A1AF6972E29935FBEAA90A6F8DE85B1547891399B5FD26266CB38DCFBB4BFA4A"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/dto/ProductResponse.java",
+                             "sha256":  "9BD0AAC6F769E1C4C1C34AD3C6AA919A8F9522F2FAC57624652D910DD2DAA6D9"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/dto/QualificationResult.java",
+                             "sha256":  "F4E0B36D02D7E9242C492985002C54F719BB40F3DAF2CA651F514F3933999314"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/dto/SaveSkuRequest.java",
+                             "sha256":  "3D588B5C52B75E9F515176966B736A24EDEA9E37267618AF62875BC0AD3854D3"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/exception/ProductErrorCode.java",
+                             "sha256":  "29C713803F36028356855882BD01E2BBE7BF5F2576E4574D1857232E632B1A6E"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/exception/ProductException.java",
+                             "sha256":  "5433FBC92AC38BF8DA9FF4C04437A02840C624B0A0738D24DE93DBE562EAFB85"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/mapper/ProductMapper.java",
+                             "sha256":  "85153851CBF7677FFF1CE0C3F921BB9655C7CA341896ADA697D21B2FDC92C12C"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/model/Product.java",
+                             "sha256":  "151D118C80B160E07866EED200F31FE51B0569D5EA279473D02CBC02851C50C5"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/model/Sku.java",
+                             "sha256":  "53D5425B0CADA355B846A56F621BE66E91B5635A5AC335E738EA4492FDE1F73C"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/service/ProductManagementService.java",
+                             "sha256":  "9B06E09BCDE4451E9D4934703711ED32E0A90E1C2C446002E22ABF53CE54FE5A"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/service/ProductQualificationService.java",
+                             "sha256":  "D3E7ECB9BE188746563A198F9AB3A686A7CEFCAAF819E73E0FE2DC86A08E2BF0"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/service/ProductQueryService.java",
+                             "sha256":  "21238FF27FD729EB3101F6978ECDCE2C411E991A8F90CCDD8D70D2B1228178B0"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/product/service/ProductScopeService.java",
+                             "sha256":  "385007881401C309AEECABED83265205D0A97B21CFC7F593EB0EA42ACABFB6C0"
+                         },
+                         {
+                             "path":  "src/main/resources/db/migration/V8__create_product_catalog.sql",
+                             "sha256":  "F4F62FEC685BB4AA80857A2FBE8D1F31508F9A5D56DBB2EEBB5018A9843C3DCE"
+                         },
+                         {
+                             "path":  "src/main/java/com/limitactivitysystem/security/SecurityConfig.java",
+                             "sha256":  "8623CA8CDB73D119F9782C64D8FE198CF6F7884C5C8CE5ECD7C44C71A69E111E"
+                         },
+                         {
+                             "path":  "src/test/java/com/limitactivitysystem/activity/integration/ProductCatalogMySqlIntegrationTest.java",
+                             "sha256":  "EED232D07A1B2BC5663D3D39A119ED7433F3FF3BF9206D44EFF57BA52C8B90D3"
+                         },
+                         {
+                             "path":  "tests/sql/product_invariants.sql",
+                             "sha256":  "9AB36AA61041E5822DE993065B8C0C0F9CDBB341422584D6E81CF0C8B08D4AE8"
+                         }
+                     ],
+    "notes":  [
+                  "Current catalog has no product orders, purchase counter or qualification guard table.",
+                  "Only business JSON and summary text are archived; no raw XML, environment credentials or login tokens.",
+                  "Three deliberately corrupt catalog fixtures must be detected; normal scenarios must have zero differences."
+              ]
+}

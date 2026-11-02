@@ -1,0 +1,7 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:09:52.849",
+  "observation" : {
+    "stateUnchangedAfterRollback" : true,
+    "retrySucceeded" : true
+  }
+}

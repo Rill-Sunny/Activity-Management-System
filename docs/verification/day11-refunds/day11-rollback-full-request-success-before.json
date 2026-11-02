@@ -1,0 +1,13 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T21:27:02.608",
+  "observation" : {
+    "seatStatus" : "SOLD",
+    "resourcesAndRefundRowsUnchanged" : true,
+    "refundStatus" : "PENDING",
+    "stage" : "request-success-before",
+    "ticketStatus" : "VALID",
+    "beforeWrite" : true,
+    "occurrence" : 1,
+    "orderStatus" : "PAID"
+  }
+}

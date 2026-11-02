@@ -1,0 +1,19 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:23:38.82",
+  "observation" : {
+    "finalOperations" : 0,
+    "reconciliationViolations" : 0,
+    "finalRemaining" : 6,
+    "observedBeforeThrow" : {
+      "sameTransactionConnection" : 401,
+      "items" : 0,
+      "remaining" : 6,
+      "operations" : 0,
+      "allocatedSeats" : 2
+    },
+    "finalSeatStatus" : "AVAILABLE",
+    "resourceAndHistorySnapshotUnchanged" : true,
+    "finalItems" : 0,
+    "requestedQuantity" : 5
+  }
+}

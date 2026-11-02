@@ -1,0 +1,63 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:08:08.058",
+  "observation" : {
+    "staleFailureDidNotOverwriteSuccess" : true,
+    "result" : {
+      "refundId" : 25,
+      "buyerId" : 66,
+      "orderId" : 22,
+      "requestId" : "27ba89b7-a644-495d-8831-c850ade01253",
+      "reason" : "USER_REQUEST",
+      "requestedAt" : "2026-11-01T15:08:08",
+      "status" : "SUCCEEDED",
+      "createdAt" : "2026-11-01T15:08:08.006",
+      "processedAt" : "2026-11-01T15:08:08.033",
+      "result" : "SIMULATED_REFUND_SUCCEEDED",
+      "items" : [ {
+        "refundItemId" : 80,
+        "refundId" : 25,
+        "ticketId" : 85,
+        "originalPrice" : 10.01,
+        "feeRate" : 0.1500,
+        "refundAmount" : 8.51,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:08.033",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      }, {
+        "refundItemId" : 81,
+        "refundId" : 25,
+        "ticketId" : 86,
+        "originalPrice" : 10.01,
+        "feeRate" : 0.1500,
+        "refundAmount" : 8.51,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:08.033",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      }, {
+        "refundItemId" : 82,
+        "refundId" : 25,
+        "ticketId" : 87,
+        "originalPrice" : 20.03,
+        "feeRate" : 0.1500,
+        "refundAmount" : 17.03,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:08.033",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      }, {
+        "refundItemId" : 83,
+        "refundId" : 25,
+        "ticketId" : 88,
+        "originalPrice" : 20.03,
+        "feeRate" : 0.1500,
+        "refundAmount" : 17.03,
+        "status" : "SUCCEEDED",
+        "failureReason" : null,
+        "processedAt" : "2026-11-01T15:08:08.033",
+        "result" : "SIMULATED_REFUND_SUCCEEDED"
+      } ]
+    }
+  }
+}

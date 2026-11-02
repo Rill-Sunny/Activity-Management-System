@@ -1,0 +1,12 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:08:12.44",
+  "observation" : {
+    "waitingConnectionId" : 528,
+    "blockingConnectionId" : 527,
+    "objectName" : "user_session_purchase",
+    "indexName" : "PRIMARY",
+    "lockType" : "RECORD",
+    "lockMode" : "X,REC_NOT_GAP",
+    "lockStatus" : "WAITING"
+  }
+}

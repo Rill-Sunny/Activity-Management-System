@@ -58,7 +58,7 @@ class TicketRefundApplicationMySqlIntegrationTest extends PaymentResourceTestSup
 
     @BeforeEach void createFourActuallyPaidTicketsWithTwoPrices() throws Exception {
         clock = (TestRefundClock) authoritativeClock;
-        clock.useSystemTime();
+        clock.useDatabaseTime(this::databaseNow);
         var now = databaseNow();
         activity = insertDraft(publisher, "PAID");
         jdbc.update("UPDATE activity SET open_time = ?, close_time = ? WHERE activity_id = ?",
@@ -389,6 +389,7 @@ class TicketRefundApplicationMySqlIntegrationTest extends PaymentResourceTestSup
         }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ticket_refund_request", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ticket_refund_item", Integer.class)).isEqualTo(1);
+        RefundInvariantAssertions.assertConsistent(jdbc);
     }
 
     @Test void concurrentDifferentOrdersCannotReuseOneBuyersRequestId() throws Exception {
@@ -405,18 +406,20 @@ class TicketRefundApplicationMySqlIntegrationTest extends PaymentResourceTestSup
         assertThat(objectMapper.readTree(rejected.getContentAsString()).path("code").asText()).isEqualTo("REFUND_IDEMPOTENCY_CONFLICT");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ticket_refund_request", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ticket_refund_item", Integer.class)).isEqualTo(1);
+        RefundInvariantAssertions.assertConsistent(jdbc);
     }
 
     @ParameterizedTest @ValueSource(strings = {"insertRequest", "insertItem"})
-    void failureAfterARealWriteRollsBackTheWholeApplication(String point) {
+    void failureAfterARealWriteRollsBackTheWholeApplication(String point) throws Exception {
         var before = allSnapshot();
         var probe = new FailureProbe(); probe.point = point; failures.current.set(probe);
         try {
-            assertThatThrownBy(() -> accept(body("failure", orderId, List.of(sold.get(0).getTicketId(), sold.get(2).getTicketId())), buyer))
-                    .hasRootCauseInstanceOf(InjectedRefundFailure.class);
+            postJson("/ticket-refunds", buyer, body("failure", orderId, List.of(sold.get(0).getTicketId(), sold.get(2).getTicketId())))
+                    .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.code").value("REFUND_TECHNICAL_FAILURE"));
         } finally { failures.current.remove(); }
         assertThat(probe.injected).isTrue();
         assertThat(allSnapshot()).isEqualTo(before); assertNoApplications();
+        RefundInvariantAssertions.assertConsistent(jdbc);
     }
 
     @ParameterizedTest @ValueSource(strings = {"PENDING", "PROCESSING", "SUCCEEDED"})
@@ -487,7 +490,10 @@ class TicketRefundApplicationMySqlIntegrationTest extends PaymentResourceTestSup
         private volatile Clock delegate = Clock.system(ZONE);
         final java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
         volatile Runnable onRead = () -> { };
-        void useSystemTime() { delegate = Clock.system(ZONE); onRead = () -> { }; resetReads(); }
+        void useDatabaseTime(java.util.function.Supplier<LocalDateTime> now) {
+            delegate = new com.limitactivitysystem.refund.config.DatabaseRefundClock(now::get, ZONE);
+            onRead = () -> { }; resetReads();
+        }
         void set(LocalDateTime value) { delegate = Clock.fixed(value.atZone(ZONE).toInstant(), ZONE); }
         void resetReads() { reads.set(0); }
         @Override public ZoneId getZone() { return ZONE; }
@@ -523,6 +529,7 @@ class TicketRefundApplicationMySqlIntegrationTest extends PaymentResourceTestSup
             try (var connection = source.getConnection()) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V4__create_free_reservation_tables.sql"));
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V5__create_ticket_refund_tables.sql"));
+                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V6__add_refund_processing_results.sql"));
                 return source;
             } catch (Exception failure) { source.close(); throw failure; }
         }

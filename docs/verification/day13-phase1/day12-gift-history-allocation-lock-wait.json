@@ -1,0 +1,12 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:06:07.232",
+  "observation" : {
+    "waitingConnectionId" : 370,
+    "blockingConnectionId" : 369,
+    "objectName" : "session_zone",
+    "indexName" : "PRIMARY",
+    "lockType" : "RECORD",
+    "lockMode" : "X,REC_NOT_GAP",
+    "lockStatus" : "WAITING"
+  }
+}

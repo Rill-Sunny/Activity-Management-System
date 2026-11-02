@@ -1,0 +1,11 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:07:52.976",
+  "observation" : {
+    "initialCount" : 2,
+    "finalCount" : 4,
+    "counterRows" : 1,
+    "quantityPerAttempt" : 2,
+    "connections" : [ 512, 511 ],
+    "limit" : 4
+  }
+}

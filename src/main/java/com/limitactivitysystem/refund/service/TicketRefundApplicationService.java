@@ -113,7 +113,7 @@ public class TicketRefundApplicationService {
     private TicketRefundResponse response(TicketRefundRequest saved) {
         return new TicketRefundResponse(saved.getRefundId(), saved.getBuyerId(), saved.getOrderId(),
                 saved.getRequestId(), saved.getReason(), saved.getRequestedAt(), saved.getStatus(),
-                saved.getCreatedAt(), refunds.findItems(saved.getRefundId()));
+                saved.getCreatedAt(), saved.getProcessedAt(), saved.getResult(), refunds.findItems(saved.getRefundId()));
     }
     private record QuotedTicket(Ticket ticket, TicketRefundDecision decision) { }
 }

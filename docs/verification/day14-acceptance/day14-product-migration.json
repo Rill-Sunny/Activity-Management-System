@@ -1,0 +1,12 @@
+{
+  "observedAtDatabaseTime" : "2026-11-02T11:32:00.497",
+  "observation" : {
+    "physicalForeignKeys" : 0,
+    "repeatedMigrations" : 0,
+    "afterVersion" : 8,
+    "beforeVersion" : 7,
+    "businessTables" : 20,
+    "existingTableDefinitionsUnchanged" : 17,
+    "newTables" : 3
+  }
+}

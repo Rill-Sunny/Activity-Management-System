@@ -1,0 +1,356 @@
+{
+  "script" : "tests/sql/refund_invariants.sql",
+  "testCases" : 70,
+  "checks" : {
+    "acceptedRefundSucceedsAfterSessionStartAndLifecycleChangesWithoutRepricing :: acceptedRefundSucceedsAfterSessionStartAndLifecycleChangesWithoutRepricing()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "at09RefundOnlyBAndDAtTheirFourActualPaidPrices :: at09RefundOnlyBAndDAtTheirFourActualPaidPrices()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce :: [1] sameRequestId=true" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce :: [2] sameRequestId=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "at10FailedRequestAndANewRequestForTheSameTicketCannotBothSucceed :: at10FailedRequestAndANewRequestForTheSameTicketCannotBothSucceed()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "concurrentProcessingOfSameOrDifferentRequestsRestoresEachTicketOnce :: [1] sameRequest=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "concurrentProcessingOfSameOrDifferentRequestsRestoresEachTicketOnce :: [2] sameRequest=true" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [10] corruption=PRICE, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 2,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "REFUND_ITEM_RELATION", "VALID_TICKET_RELATION" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [11] corruption=ITEM_STATE, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 1,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "REFUND_STATE" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [1] corruption=QUOTA, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 1,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "PURCHASE_COUNT" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [2] corruption=MISSING_QUOTA, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 1,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "MISSING_PURCHASE_COUNTER" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [3] corruption=ZONE_OVERFLOW, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 1,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "ZONE_INVENTORY" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [4] corruption=SEAT_AVAILABLE, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 2,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "VALID_TICKET_RELATION", "ZONE_INVENTORY" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [5] corruption=WRONG_SEAT_ZONE, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 3,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "VALID_TICKET_RELATION", "ZONE_INVENTORY" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [6] corruption=WRONG_ZONE_SESSION, code=REFUND_RESOURCE_CONFLICT" : {
+      "violationCount" : 2,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "VALID_TICKET_RELATION" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [7] corruption=MISSING_TICKET, code=REFUND_TICKET_NOT_FOUND" : {
+      "violationCount" : 3,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "PURCHASE_COUNT", "REFUND_ITEM_RELATION", "SOLD_SEAT_TICKET" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [8] corruption=REFUNDED, code=REFUND_TICKET_NOT_VALID" : {
+      "violationCount" : 4,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "ORDER_REFUND_SUMMARY", "PURCHASE_COUNT", "REFUNDED_TICKET_RESULT", "SOLD_SEAT_TICKET" ]
+    },
+    "corruptOrPreviouslyRefundedResourcesCannotBeRestored :: [9] corruption=OTHER_ORDER, code=REFUND_TICKET_NOT_IN_ORDER" : {
+      "violationCount" : 2,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "REFUND_ITEM_RELATION", "VALID_TICKET_RELATION" ]
+    },
+    "databaseFailuresRollBackThenRecordFailedInANewTransactionAndRetryTheOriginalQuote :: [1] type=CONNECTION" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "databaseFailuresRollBackThenRecordFailedInANewTransactionAndRetryTheOriginalQuote :: [2] type=LOCK_TIMEOUT" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "databaseFailuresRollBackThenRecordFailedInANewTransactionAndRetryTheOriginalQuote :: [3] type=UNEXPECTED_SQL" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "delayedFailureRecorderCannotOverwriteAnotherProcessorsCommittedSuccess :: delayedFailureRecorderCannotOverwriteAnotherProcessorsCommittedSuccess()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [1] point=markProcessing" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [2] point=markItemProcessing" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [3] point=tryDecrease" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [4] point=restoreStock" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [5] point=releaseSold" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [6] point=markRefunded" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [7] point=markItemSucceeded" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [8] point=updateRefundSummary" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "everyConditionalWriteRequiresExactlyOneAffectedRow :: [9] point=markSucceeded" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [1] point=markProcessing, occurrence=1" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [2] point=markItemProcessing, occurrence=2" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [3] point=tryDecrease, occurrence=1" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [4] point=restoreStock, occurrence=2" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [5] point=releaseSold, occurrence=2" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [6] point=markRefunded, occurrence=2" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [7] point=markItemSucceeded, occurrence=2" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [8] point=updateRefundSummary, occurrence=1" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureAfterRealWritesRollsBackEveryResourceAndCanRetryTheSameRefund :: [9] point=markSucceeded, occurrence=1" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "failureRecordingErrorsPreserveTheOriginalDatabaseFailureAndRollBackTheirOwnWrites :: failureRecordingErrorsPreserveTheOriginalDatabaseFailureAndRollBackTheirOwnWrites()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "nonPendingStatesRequireAnExplicitRecoveryWorkflow :: [1] state=PROCESSING" : {
+      "violationCount" : 1,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "REFUND_STATE" ]
+    },
+    "nonPendingStatesRequireAnExplicitRecoveryWorkflow :: [2] state=FAILED" : {
+      "violationCount" : 1,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "REFUND_STATE" ]
+    },
+    "partialRefundRestoresAggregatedZonesSeatsQuotaAndFrozenQuotes :: partialRefundRestoresAggregatedZonesSeatsQuotaAndFrozenQuotes()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "paymentAndRefundWaitOnQuotaInBothCommitOrders :: [1] refundHoldsFirst=true" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "paymentAndRefundWaitOnQuotaInBothCommitOrders :: [2] refundHoldsFirst=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "processRejectsMissingOrInvalidIdsAndAllClientSuppliedProcessingData :: processRejectsMissingOrInvalidIdsAndAllClientSuppliedProcessingData()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "processingRequiresAuthenticationAndBothRequestAndOrderOwnership :: processingRequiresAuthenticationAndBothRequestAndOrderOwnership()" : {
+      "violationCount" : 6,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "MISSING_PURCHASE_COUNTER", "PURCHASE_COUNT", "REFUND_ITEM_RELATION" ]
+    },
+    "processorWaitsOnTheOrderBeforeLockingTheRequest :: processorWaitsOnTheOrderBeforeLockingTheRequest()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "reconciliationDetectsBrokenRefundSummariesAndResults :: [1] damage=NO_ITEMS, expected=REFUND_REQUEST_AMOUNT" : {
+      "violationCount" : 6,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "REFUNDED_TICKET_RESULT", "REFUND_REQUEST_AMOUNT", "REFUND_STATE" ]
+    },
+    "reconciliationDetectsBrokenRefundSummariesAndResults :: [2] damage=RESULT_TIME, expected=SUCCEEDED_REFUND_RESULT" : {
+      "violationCount" : 4,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "SUCCEEDED_REFUND_RESULT" ]
+    },
+    "reconciliationDetectsBrokenRefundSummariesAndResults :: [3] damage=ORDER_STATUS, expected=ORDER_REFUND_SUMMARY" : {
+      "violationCount" : 1,
+      "deliberatelyCorrupt" : true,
+      "violationTypes" : [ "ORDER_REFUND_SUMMARY" ]
+    },
+    "refundAndPaymentOnDifferentOrdersShareQuotaThenZoneOrder :: refundAndPaymentOnDifferentOrdersShareQuotaThenZoneOrder()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "refundedSeatCanBeResoldAndReplayingTheOldRefundCannotReleaseItAgain :: refundedSeatCanBeResoldAndReplayingTheOldRefundCannotReleaseItAgain()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "repeatedProcessingAndApplicationReplayReturnTheOriginalResult :: repeatedProcessingAndApplicationReplayReturnTheOriginalResult()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [10] full=true, stage=first-seat-after, point=releaseSold, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [11] full=true, stage=first-ticket-after, point=markRefunded, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [12] full=true, stage=all-tickets-after, point=markRefunded, occurrence=4, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [13] full=true, stage=order-summary-before, point=updateRefundSummary, occurrence=1, beforeWrite=true" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [14] full=true, stage=request-success-before, point=markSucceeded, occurrence=1, beforeWrite=true" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [1] full=false, stage=quota-after, point=tryDecrease, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [2] full=false, stage=zone-after, point=restoreStock, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [3] full=false, stage=first-seat-after, point=releaseSold, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [4] full=false, stage=first-ticket-after, point=markRefunded, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [5] full=false, stage=all-tickets-after, point=markRefunded, occurrence=2, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [6] full=false, stage=order-summary-before, point=updateRefundSummary, occurrence=1, beforeWrite=true" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [7] full=false, stage=request-success-before, point=markSucceeded, occurrence=1, beforeWrite=true" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [8] full=true, stage=quota-after, point=tryDecrease, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "sevenFailurePointsRollBackPartialAndFullRefunds :: [9] full=true, stage=zone-after, point=restoreStock, occurrence=1, beforeWrite=false" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    },
+    "successiveOneOneTwoRefundsDeriveSummaryFromRemainingValidTickets :: successiveOneOneTwoRefundsDeriveSummaryFromRemainingValidTickets()" : {
+      "violationCount" : 0,
+      "deliberatelyCorrupt" : false,
+      "violationTypes" : [ ]
+    }
+  }
+}

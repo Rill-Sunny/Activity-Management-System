@@ -1,0 +1,20 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:09:54.032",
+  "observation" : {
+    "giftRemaining" : 3,
+    "paidSeatIds" : [ 201, 202 ],
+    "giftAllocation" : {
+      "operationId" : 19,
+      "requestId" : "parallel",
+      "publisherId" : 59,
+      "sessionId" : 21,
+      "zoneId" : 60,
+      "operationType" : "ALLOCATE",
+      "quantity" : 3,
+      "status" : "SUCCEEDED",
+      "createdAt" : "2026-10-31T22:09:53.992",
+      "seatIds" : [ 194, 196, 198 ]
+    },
+    "paidRemaining" : 0
+  }
+}

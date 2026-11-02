@@ -1,0 +1,14 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:05:57.102",
+  "observation" : {
+    "invariants" : "PASS",
+    "fixtureRestored" : true,
+    "detected" : [ {
+      "reservation_id" : 5,
+      "user_id" : 9223372036854775807,
+      "session_id" : 19,
+      "violation" : "INVALID_RESERVATION_SCOPE"
+    } ],
+    "corruption" : "USER"
+  }
+}

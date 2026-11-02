@@ -1,0 +1,14 @@
+{
+  "publishers": ["phase1_publisher_a", "phase1_publisher_b"],
+  "users": ["phase1_user_a", "phase1_user_b", "phase1_user_c"],
+  "password": "Phase1-test-only-2026",
+  "activityOpenDaysBefore": 10,
+  "activityCloseDaysAfter": 1,
+  "sessionStartDaysAfter": 20,
+  "paid": {
+    "name": "Phase 1 paid journey",
+    "selected": {"capacity": 6, "limit": 4, "prices": [200, 400, 800, 1200], "giftSeats": 2},
+    "automatic": {"capacity": 8, "limit": 4, "paidSeats": 6, "price": 100, "giftSeats": 2}
+  },
+  "free": {"name": "Phase 1 free journey", "sessionCapacities": [2, 2]}
+}

@@ -1,0 +1,12 @@
+{
+  "observedAtDatabaseTime" : "2026-11-02T11:32:05.915",
+  "observation" : {
+    "qualificationScope" : "SESSION",
+    "reason" : "ALLOWED",
+    "allowed" : true,
+    "catalogAndTicketSnapshotUnchanged" : true,
+    "http" : 200,
+    "qualificationType" : "TICKET_REQUIRED",
+    "scenario" : "SESSION_VALID"
+  }
+}

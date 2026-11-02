@@ -1,0 +1,8 @@
+{
+  "observedAtDatabaseTime" : "2026-11-02T11:31:59.889",
+  "observation" : {
+    "code" : "SKU_NOT_FOUND",
+    "http" : 404,
+    "catalogSnapshotUnchanged" : true
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:08:19.481",
+  "observation" : {
+    "change" : "CONFIG_REMOVED",
+    "freeRemaining" : 1,
+    "resourceSnapshotUnchanged" : true,
+    "finalStatus" : "ACTIVE",
+    "reservation" : {
+      "reservationId" : 6,
+      "userId" : 37,
+      "sessionId" : 24,
+      "status" : "ACTIVE",
+      "createdAt" : "2026-11-01T15:08:19.465",
+      "cancelledAt" : null
+    },
+    "scope" : "SESSION"
+  }
+}

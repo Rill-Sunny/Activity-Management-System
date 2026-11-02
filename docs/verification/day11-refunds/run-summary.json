@@ -1,0 +1,86 @@
+{
+    "verifiedAt":  "2026-10-31T21:28:11.3188977+08:00",
+    "tests":  398,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "reconciliation":  {
+                           "script":  "tests/sql/refund_invariants.sql",
+                           "testCases":  70,
+                           "cleanCases":  53,
+                           "deliberatelyCorruptCases":  17,
+                           "unexpectedViolations":  0
+                       },
+    "suites":  [
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketOrderClosingMySqlIntegrationTest",
+                       "tests":  21,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+                       "tests":  84,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketPaymentResourceMySqlIntegrationTest",
+                       "tests":  23,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketRefundApplicationMySqlIntegrationTest",
+                       "tests":  57,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+                       "tests":  70,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.observability.PaymentTelemetryTest",
+                       "tests":  17,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.observability.RefundTelemetryTest",
+                       "tests":  18,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+                       "tests":  30,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.security.SecurityAccessTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   },
+                   {
+                       "suite":  "com.limitactivitysystem.ticketorder.controller.TicketPaymentRequestContractTest",
+                       "tests":  34,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0
+                   }
+               ]
+}

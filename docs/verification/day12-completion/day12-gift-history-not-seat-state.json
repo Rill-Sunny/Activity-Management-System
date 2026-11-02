@@ -1,0 +1,32 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:43:26.788",
+  "observation" : {
+    "returnedHistory" : {
+      "operationId" : 38,
+      "requestId" : "historical-fact",
+      "publisherId" : 161,
+      "sessionId" : 55,
+      "zoneId" : 162,
+      "operationType" : "ALLOCATE",
+      "quantity" : 2,
+      "status" : "SUCCEEDED",
+      "createdAt" : "2026-10-31T22:43:26.763",
+      "seatIds" : [ 534, 536 ]
+    },
+    "seatFactDeliberatelyCorrupted" : true,
+    "historyUnchanged" : true,
+    "inconsistencyDetected" : true,
+    "originalOperation" : {
+      "operationId" : 38,
+      "requestId" : "historical-fact",
+      "publisherId" : 161,
+      "sessionId" : 55,
+      "zoneId" : 162,
+      "operationType" : "ALLOCATE",
+      "quantity" : 2,
+      "status" : "SUCCEEDED",
+      "createdAt" : "2026-10-31T22:43:26.763",
+      "seatIds" : [ 534, 536 ]
+    }
+  }
+}

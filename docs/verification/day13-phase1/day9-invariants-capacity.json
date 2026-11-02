@@ -1,0 +1,21 @@
+{
+  "observedAtDatabaseTime" : "2026-11-01T15:05:57.631",
+  "observation" : {
+    "invariants" : "PASS",
+    "fixtureRestored" : true,
+    "detected" : [ {
+      "session_id" : 29,
+      "capacity" : 10,
+      "remaining" : 9,
+      "violation" : "INVALID_QUOTA_SCOPE_OR_CAPACITY"
+    }, {
+      "session_id" : 29,
+      "session_capacity" : 11,
+      "quota_capacity" : 10,
+      "remaining" : 9,
+      "active_count" : 1,
+      "violation" : "QUOTA_RESERVATION_MISMATCH"
+    } ],
+    "corruption" : "CAPACITY"
+  }
+}

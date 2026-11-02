@@ -1,5 +1,7 @@
 # 当前架构与阶段验收
 
+Day 14 已实现 [Product/SKU 发布与资格切片](api/products.md)：V8 新增目录与独立商品名单，支持 ACTIVITY/SESSION 有效票查询。商品订单、支付和资格保护行仍未接入；商品订单跨活动、销售后核心规则版本的历史选择仍待确认。当前查询不构成商品支付与退票联动保证。
+
 本页记录已实现的身份、活动配置、白名单管理、资格查询、票单创建、本人详情、模拟支付，以及免费预约创建和取消。专用改期流程随对应阶段实现。
 
 Day 5 的 [票单 API](ticket-orders.md)已接通生产端点与业务事务，资格判断、创建窗口、资源归属、价格快照、只读预检查、按原明细比较的幂等重放及本人订单详情已实现。
@@ -8,7 +10,11 @@ Day 6 的[支付资源组件](payment-resources.md)已接入 Day 7 [模拟支付
 
 Day 9 的[免费预约 API](api/reservations.md)直接生成 ACTIVE 记录并占用一份独立名额。取消在场次开始前条件生效、只返还一次；重新预约新建记录并重新检查当前资格。
 
+Day 11 的[普通门票退款](ticket-refunds.md#day-11-原子退款处理)使用受理时的逐票报价，原子恢复资源并更新订单汇总。Day 12 的 [GIFT 分配](gift-inventory.md)使用 V7 保存发布者操作与实际座位历史，已接入权限、独立资源事务、幂等、PAID/GIFT 隔离、历史列表与详情；当前资源操作仅提供 ALLOCATE。三类容量巡检和最终矩阵见 [Day 12 完成验收](day12-completion.md)。
+
 ## 请求与可信身份
+
+Day 13 已完成固定 fixture 的跨模块阶段回归，修复退款申请时间与出票时间不同源导致的偶发误拒绝，并补全统一不变量和孤儿巡检。最终 1529 项测试全部通过，环境、AT-01～AT-10/AT-16 映射及缺陷记录见 [阶段测试报告](reports/test-report.md)。
 
 HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Controller 调用 Service。MyBatis Mapper 通过 DataSource 访问 MySQL。MockMvc 验收启用真实 Security 过滤链。
 
@@ -38,6 +44,9 @@ HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Con
 | `TicketPaymentResourceService` | 加入已有事务，安全初始化及原子占用限购额度，检查库存条件扣减影响行数 |
 | `SeatAllocator` | 在已有 READ_COMMITTED 事务中锁齐 Zone，选择候选，按全单 Seat ID 升序条件占用 |
 | `SelectedSeatAllocator`、`AutoSeatAllocator` | 校验指定座位或按已确认的连座偏好计算候选，实际写入由统一协调器完成 |
+| `GiftAllocationService`、`GiftAllocationTransactionService` | 事务外协调幂等冲突；独立事务条件占用 GIFT Seat、扣库存并保存完整操作历史 |
+| `GiftOwnershipService` | 在业务事务内锁定账号、Activity、Session 和 Zone，复查当前发布者权限与父子关系 |
+| `GiftAllocationQueryService`、`GiftOperationReader` | 共享 Zone 锁协调分配，以操作及逐座明细返回历史分页或详情，不从当前 Seat 状态重建历史 |
 
 数据库不声明物理外键。资源归属链为 `session_seat.zone_id` → `session_zone.session_id` → `activity_session.activity_id` → `activity.publisher_id`。配置接口只接收路径指定的父资源 ID，拒绝请求体中额外的父子 ID。Service 根据数据库关系确定祖先，不能仅以 ID 存在作为归属依据。
 
@@ -59,7 +68,7 @@ HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Con
 
 名单管理取得 Activity 排他锁，资格查询取得共享锁，并使用锁定读查询当前账号、作用域、配置及成员。锁保持到外层事务提交或回滚。配置不存在的状态也由 Activity 根记录协调，具体顺序见 [locking.md](locking.md)。
 
-名单维护只改变配置和成员，不撤销既有交易。未来业务在每次新增资格行为及待支付订单支付时复查当前名单。已成交记录保持有效的完整业务回归属于 D12。
+名单维护只改变配置和成员，不撤销既有交易。未来业务在每次新增资格行为及待支付订单支付时复查当前名单。D12 已完成活动与场次名单的 A–D 回归，见 [名单变化验收](day12-whitelist-regression.md)。
 
 创建请求重放仅返回既有订单，不是新增资格行为，不重跑销售窗口、名单与库存预检查，也不更新价格或有效期。调用者仍须为有效账号，未来支付继续复查当前资格。订单创建独立提交，不能作为外围事务的可回滚子步骤。幂等载荷及事务决策见 [ADR-003](decisions.md#adr-003创建票单按原明细实现请求幂等)。
 

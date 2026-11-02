@@ -1,0 +1,31 @@
+{
+    "date":  "2026-11-01",
+    "scope":  "Continuous Phase 1 Demo A PAID, B FREE, C GIFT",
+    "command":  "mvn -Dtest=Phase1JourneyMySqlIntegrationTest#demoABCRunsPaidFreeAndGiftContinuouslyAgainstCommittedDatabaseState test",
+    "startedAt":  "2026-11-01T17:39:05.1084414+08:00",
+    "finishedAt":  "2026-11-01T17:39:20+08:00",
+    "build":  "SUCCESS",
+    "tests":  1,
+    "failures":  0,
+    "errors":  0,
+    "skipped":  0,
+    "seconds":  7.231,
+    "auditStages":  9,
+    "scripts":  [
+                    "invariants.sql",
+                    "orphans.sql",
+                    "reservation_invariants.sql",
+                    "refund_invariants.sql",
+                    "gift_invariants.sql"
+                ],
+    "unexpectedDifferences":  0,
+    "sourceState":  "Uncommitted working tree; focused demo run, separate from the earlier 1529-test full regression",
+    "testSourceSha256":  "A117FC50F31EF52545D6C255F2B3113C0056494A7C40B9FA6FAB1310AA304DB8",
+    "fixtureSha256":  "F7AA17E7AB6AEBBC52A49EE703FA981285D51767375AA6F304DEE340C9AC9A3A",
+    "notes":  [
+                  "Real Security, Controller, Service, MyBatis and isolated MySQL; requests use in-process MockMvc.",
+                  "Demo fixtures are destroyed with the random database after the test; they are not installed in the application database.",
+                  "No new business components or endpoints.",
+                  "Only business JSON and summary text reports are archived; raw XML and login tokens are excluded."
+              ]
+}

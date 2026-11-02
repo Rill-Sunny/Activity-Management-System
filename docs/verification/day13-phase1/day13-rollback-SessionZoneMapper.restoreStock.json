@@ -1,0 +1,13 @@
+{
+  "audits" : [ {
+    "stage" : "published-fixture",
+    "violations" : 0,
+    "scripts" : [ "invariants.sql", "orphans.sql", "reservation_invariants.sql", "refund_invariants.sql", "gift_invariants.sql" ]
+  }, {
+    "stage" : "rollback-SessionZoneMapper.restoreStock",
+    "violations" : 0,
+    "scripts" : [ "invariants.sql", "orphans.sql", "reservation_invariants.sql", "refund_invariants.sql", "gift_invariants.sql" ]
+  } ],
+  "resourceSnapshotUnchanged" : true,
+  "injectedAfterSuccessfulSql" : "SessionZoneMapper.restoreStock"
+}

@@ -53,7 +53,8 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers(
-                                HttpMethod.GET, "/activities", "/activities/{id}"
+                                HttpMethod.GET, "/activities", "/activities/{id}",
+                                "/products/{productId}", "/products/{productId}/skus/{skuId}", "/activities/{activityId}/products"
                         ).permitAll()
 
                         // 管理端点除公开健康检查外均要求认证。

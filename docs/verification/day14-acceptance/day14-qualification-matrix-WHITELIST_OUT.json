@@ -1,0 +1,12 @@
+{
+  "observedAtDatabaseTime" : "2026-11-02T11:32:05.145",
+  "observation" : {
+    "qualificationScope" : "NONE",
+    "reason" : "PRODUCT_WHITELIST_REQUIRED",
+    "allowed" : false,
+    "catalogAndTicketSnapshotUnchanged" : true,
+    "http" : 200,
+    "qualificationType" : "PRODUCT_WHITELIST",
+    "scenario" : "WHITELIST_OUT"
+  }
+}

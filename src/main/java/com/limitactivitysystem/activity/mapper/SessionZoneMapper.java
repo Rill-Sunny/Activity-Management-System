@@ -17,6 +17,14 @@ import java.util.List;
 
 @Mapper
 public interface SessionZoneMapper {
+    @Update("""
+            UPDATE session_zone SET remains_amount = remains_amount + #{quantity}
+            WHERE zone_id = #{zoneId} AND session_id = #{sessionId} AND zone_type = 'PAID'
+              AND #{quantity} > 0 AND remains_amount <= total_amount - #{quantity}
+            """)
+    @Transactional(propagation = Propagation.MANDATORY)
+    int restoreStock(@Param("zoneId") Long zoneId, @Param("sessionId") Long sessionId, @Param("quantity") int quantity);
+
 
     @Insert("""
             INSERT INTO session_zone (session_id, name, zone_type, price, total_amount, remains_amount)
@@ -49,6 +57,15 @@ public interface SessionZoneMapper {
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     @Transactional(propagation = Propagation.MANDATORY)
     SessionZone findByIdForUpdate(@Param("zoneId") Long zoneId);
+
+    @Select("""
+            SELECT zone_id, session_id, name, zone_type, price, total_amount, remains_amount
+            FROM session_zone WHERE zone_id = #{zoneId} FOR SHARE
+            """)
+    @ResultMap("sessionZoneResultMap")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    @Transactional(propagation = Propagation.MANDATORY)
+    SessionZone findByIdForShare(@Param("zoneId") Long zoneId);
 
     @Update("""
             UPDATE session_zone SET remains_amount = remains_amount - #{quantity}

@@ -114,6 +114,17 @@ class TicketPaymentTimeValidationTest {
         denied("SESSION_NOT_AVAILABLE");
     }
 
+    @ParameterizedTest @ValueSource(strings = {"20:05:00", "20:12:59.999", "20:13:00"})
+    void at08The1958OrderRemainsPayableAfter2000ButNotAt2013(String attemptedTime) {
+        var date=java.time.LocalDate.of(2026,10,25);
+        order.setCreatedAt(date.atTime(19,58)); order.setExpiresAt(date.atTime(20,13));
+        activity.setOpenTime(date.atTime(18,0)); activity.setCloseTime(date.atTime(20,0)); session.setStartTime(date.atTime(21,0));
+        clock.set(date.atTime(java.time.LocalTime.parse(attemptedTime)));
+        if(clock.get().isBefore(order.getExpiresAt())){
+            ordinaryScope();protectedScope();resourceStage();assertThat(payment.pay(1L).status()).isEqualTo("PAID");
+        } else {denied("ORDER_EXPIRED");verifyNoInteractions(qualification,resources,seats);}
+    }
+
     private void ordinaryScope() {
         given(sessions.findById(3L)).willReturn(session); given(activities.findById(4L)).willReturn(activity);
     }

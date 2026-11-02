@@ -1,0 +1,459 @@
+{
+    "date":  "2026-11-02",
+    "scope":  "Day 14 catalog full regression",
+    "command":  "mvn test",
+    "offline":  true,
+    "startedAt":  "2026-11-02T11:09:25.6504783+08:00",
+    "finishedAt":  "2026-11-02T11:12:56+08:00",
+    "baseCommit":  "8535358bcd6142ab2678873faf5a955b3ddbce52",
+    "sourceState":  "Uncommitted working tree",
+    "total":  {
+                  "suites":  55,
+                  "tests":  1587,
+                  "failures":  0,
+                  "errors":  0,
+                  "skipped":  0
+              },
+    "suites":  [
+                   {
+                       "name":  "com.limitactivitysystem.activity.controller.ActivityQueryMySqlIntegrationTest",
+                       "tests":  5,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  6.058
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.controller.ActivityQueryTest",
+                       "tests":  16,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.846
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.controller.PublisherActivityCreationTest",
+                       "tests":  23,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.632
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.controller.PublisherActivityPublishTest",
+                       "tests":  57,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  1.958
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.controller.PublisherActivitySessionCreationTest",
+                       "tests":  39,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  1.24
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.controller.PublisherSessionZoneCreationTest",
+                       "tests":  38,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  1.016
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.controller.PublisherZoneSeatCreationTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.339
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.ActivityOwnershipMySqlIntegrationTest",
+                       "tests":  30,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  3.091
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.ActivityPublicationConcurrencyMySqlIntegrationTest",
+                       "tests":  4,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  1.551
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  4.802
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.ActivityResourceReferenceMySqlIntegrationTest",
+                       "tests":  40,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  4.796
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+                       "tests":  41,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  6.367
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.FreeReservationSchemaMySqlIntegrationTest",
+                       "tests":  30,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  3.582
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest",
+                       "tests":  98,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  16.564
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.GiftInventorySchemaMySqlIntegrationTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  4.831
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.PaymentRetryMySqlIntegrationTest",
+                       "tests":  3,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  6.534
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.Phase1JourneyMySqlIntegrationTest",
+                       "tests":  15,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  15.932
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+                       "tests":  57,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  9.721
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest",
+                       "tests":  29,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  3.707
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest",
+                       "tests":  17,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  2.594
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketOrderClosingMySqlIntegrationTest",
+                       "tests":  21,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  7.254
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketOrderCreationMySqlIntegrationTest",
+                       "tests":  92,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  10.161
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketOrderIdempotencyConcurrencyMySqlIntegrationTest",
+                       "tests":  8,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  1.648
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketOrderMapperMySqlIntegrationTest",
+                       "tests":  19,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  2.288
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketOrderSmallConcurrencyMySqlIntegrationTest",
+                       "tests":  6,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  4.794
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+                       "tests":  84,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  34.434
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketPaymentResourceMySqlIntegrationTest",
+                       "tests":  23,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  2.542
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketRefundApplicationMySqlIntegrationTest",
+                       "tests":  57,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  8.165
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+                       "tests":  70,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  11.978
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.WhitelistChangeMySqlIntegrationTest",
+                       "tests":  14,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  3.133
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.activity.integration.WhitelistQualificationConcurrencyMySqlIntegrationTest",
+                       "tests":  11,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  4.115
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.identity.controller.AuthLoginTest",
+                       "tests":  8,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  1.09
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.identity.controller.AuthRegistrationTest",
+                       "tests":  32,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.899
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.identity.controller.UsersMeMySqlIntegrationTest",
+                       "tests":  4,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.434
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.observability.ObservabilityTest",
+                       "tests":  7,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  1.347
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.observability.PaymentTelemetryTest",
+                       "tests":  17,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.333
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.observability.RefundTelemetryTest",
+                       "tests":  18,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.35
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.refund.config.TicketRefundTimeConfigurationTest",
+                       "tests":  3,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.001
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+                       "tests":  30,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.014
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.reservation.controller.ReservationRequestContractTest",
+                       "tests":  40,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.733
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.security.CurrentUserProviderTest",
+                       "tests":  18,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.033
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.security.JwtConfigTest",
+                       "tests":  5,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.034
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.security.SecurityAccessTest",
+                       "tests":  44,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.411
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.controller.TicketOrderCancellationRequestContractTest",
+                       "tests":  10,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.641
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.controller.TicketOrderRequestContractTest",
+                       "tests":  82,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.827
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.controller.TicketPaymentRequestContractTest",
+                       "tests":  34,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.688
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.schedule.TicketOrderExpirationConfigurationTest",
+                       "tests":  2,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.143
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.schedule.TicketOrderExpirationJobTest",
+                       "tests":  3,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.005
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.service.AutoSeatAllocatorTest",
+                       "tests":  13,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.01
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.service.PaymentRetryExecutorTest",
+                       "tests":  42,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.126
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.service.TicketOrderCreationTimeTest",
+                       "tests":  11,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.399
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.ticketorder.service.TicketPaymentTimeValidationTest",
+                       "tests":  11,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.26
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.whitelist.integration.WhitelistManagementMySqlIntegrationTest",
+                       "tests":  41,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  4.243
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.whitelist.integration.WhitelistSchemaMySqlIntegrationTest",
+                       "tests":  7,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.524
+                   },
+                   {
+                       "name":  "com.limitactivitysystem.whitelist.service.QualificationServiceTest",
+                       "tests":  26,
+                       "failures":  0,
+                       "errors":  0,
+                       "skipped":  0,
+                       "seconds":  0.212
+                   }
+               ]
+}

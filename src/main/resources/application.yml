@@ -24,7 +24,7 @@ security:
     secret-base64: ${JWT_SECRET_BASE64}
 
 ticket-refund:
-  # Match the datasource DATETIME time zone; snapshot the server clock once per application.
+  # Match the datasource DATETIME time zone; snapshot database time once before application row locks.
   time-zone: Asia/Shanghai
 
 ticket-order:

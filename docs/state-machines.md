@@ -2,6 +2,21 @@
 
 本页记录业务状态、操作限制与已冻结 Schema 的接入边界。资格通过表示通过账号、归属和名单校验，不代表已满足交易状态、时间、库存或限购条件。
 
+## 商品目录状态与后续订单设计
+
+2026-11-02 已实现 Product 的 DRAFT/ON_SALE/OFF_SALE 及 SKU DRAFT 配置。商品订单状态仍是后续设计，字段与待确认决定见 [商品域设计](product-domain.md)。
+
+| 对象 | 候选转换 | 语义 |
+|---|---|---|
+| Product | DRAFT → ON_SALE → OFF_SALE；OFF_SALE → ON_SALE | API 已实现，首次上架时间保留；上架要求父活动 PUBLISHED 且至少一项 ACTIVE SKU。 |
+| SKU | 创建为 ACTIVE；Schema 也允许 INACTIVE | 当前没有上下架 SKU 状态切换 API；只允许 DRAFT Product 下创建/修改价格和初始库存，已上架或下架 Product 都拒绝配置写入，零库存可展示。 |
+| ProductOrder | PENDING_PAYMENT → PAID；PENDING_PAYMENT → CLOSED | 创建不预占资源；全部 SKU 与 Product 额度成功才成交。 |
+| ProductOrder | PAID → PARTIALLY_REFUNDED → REFUNDED；PAID → REFUNDED | 按实际成功退款数量汇总，不改写原价或原购买数量。 |
+
+ProductOrder 的财务状态不代表已发货、已收货或可再售。履约和部分售后的完整状态、操作历史在 Day 17 设计，不能把 REFUNDED 直接解释为 SKU 已恢复库存。
+
+售后模板本身不是交易状态：STANDARD_7D、SPECIAL_NO_REASON_RETURN 都不能变成一个覆盖所有原因的“永不可退”状态。未来质量、资格丧失和取消等原因分别进入相应售后流程；本轮没有商品退款、发货或收货转换，也没有真正扣 SKU 或增加 Product 有效购买数量。
+
 ## Activity 生命周期
 
 当前应用实现的状态转换如下：
@@ -113,7 +128,7 @@ stateDiagram-v2
 
 缺货关闭事务重新锁单。如果另一个请求已经提交 PAID，则返回原支付结果，不写 CLOSED；关闭先提交时，等待的支付读取 CLOSED 并拒绝。技术异常不会触发缺货关闭。
 
-过期判断与关闭状态转换是不同事件。Day 8 已实现定时过期扫描、主动取消及事务外技术重试；三条路径围绕同一订单行协调。验证与当前范围见 [Day 8 并发说明](day8-concurrency.md)。退款在后续阶段实现。
+过期判断与关闭状态转换是不同事件。Day 8 已实现定时过期扫描、主动取消及事务外技术重试；三条路径围绕同一订单行协调。验证与当前范围见 [Day 8 并发说明](day8-concurrency.md)。退款状态转换见下文。
 
 ## 免费预约状态机
 
@@ -154,17 +169,44 @@ Day 10 只负责建立并接受合法申请。即使已计算 refundAmount，选
 
 ## 门票退款申请与逐票明细
 
-Day 10 申请接口创建 PENDING 主申请及 PENDING 逐票明细。下图定义后续处理路径，PROCESSING、SUCCEEDED、FAILED 的执行入口由 Day 11 实现：
+Day 10 申请接口创建 PENDING 主申请及 PENDING 逐票明细。Day 11 处理入口在同一事务内执行 PROCESSING 与 SUCCEEDED：
 
 ```mermaid
 stateDiagram-v2
 	[*] --> PENDING: 申请合法受理，保存申请时间与逐票金额
 	PENDING --> PROCESSING: 开始处理
 	PROCESSING --> SUCCEEDED: 退款与对应资源变更成功
-	PENDING --> FAILED: 处理失败
-	PROCESSING --> FAILED: 处理失败
+	PENDING --> FAILED: 资源事务回滚后，独立事务记录技术失败
+	FAILED --> PENDING: 原业务键重试，重新取得同票唯一占用
 ```
 
 受理成功不改变 Ticket 的 VALID 状态，也不恢复库存、座位或限购。后续处理使用持久化的 requested_at、original_price、fee_rate、refund_amount，不按执行时刻重新判断原申请政策。FAILED 明细须保存 failure_reason，并释放同票处理中唯一键；历史保留。
 
 一张申请对应多条逐票明细，每张 Ticket 独立记录成交价与退款结果。Schema、锁顺序、幂等规则见 [退款申请契约](ticket-refunds.md)，请求与响应见 [退款 API](api/ticket-refunds.md)。
+
+当前模拟处理的 `PROCESSING` 与 `SUCCEEDED` 在同一个事务内。业务拒绝使事务回滚，直接返回领域错误。数据库技术异常先完整回滚，再由独立短事务将主申请及明细从 `PENDING` 标为 `FAILED`，保存 `TECHNICAL_FAILURE` 与明细失败原因。记录前重新读取状态，不覆盖其他处理已提交的成功。
+
+处理已经在事务中进入 PROCESSING 后发生技术失败，语义上同样进入 FAILED。实际写入先回滚暂态 PROCESSING，使已提交状态恢复 PENDING，再由独立事务写 FAILED，因此图中不表示从失败事务直接提交 PROCESSING → FAILED。
+
+技术失败可用原 `refundId` 重试。原 `FAILED` 明细恢复 `PENDING` 时重新取得同票唯一占用，金额与申请时间不变；其他申请已占用时拒绝并保留失败状态。`PROCESSING` 和其他原因的 `FAILED` 返回 `REFUND_NOT_PENDING`。成功重放保持原处理时间与结果。
+
+订单在同一事务中按剩余 `VALID` Ticket 数汇总：
+
+```mermaid
+stateDiagram-v2
+	PAID --> PARTIALLY_REFUNDED: 退款后仍有有效票
+	PAID --> REFUNDED: 退款后没有有效票
+	PARTIALLY_REFUNDED --> PARTIALLY_REFUNDED: 再次退款后仍有有效票
+	PARTIALLY_REFUNDED --> REFUNDED: 最后有效票退款
+```
+
+## GIFT 座位与操作历史
+
+```mermaid
+stateDiagram-v2
+	AVAILABLE --> GIFT_ALLOCATED: 所属发布者成功分配 GIFT Seat
+```
+
+同一事务将选中的 Seat 转为 GIFT_ALLOCATED、Zone remains_amount 减少 N，并提交一条 SUCCEEDED 操作与 N 条 Seat 明细。total_amount 是规划容量，分配不会修改它。GIFT 不生成普通 Ticket，不修改账号场次购票额度。
+
+操作历史只有 ALLOCATE / SUCCEEDED，状态仅随完整事务提交后可见。中途异常全部回滚，不留下已成功但资源不完整的历史。相同请求重放读取原结果，不触发 Seat 状态转换。当前未实现 RELEASE，也没有 GIFT_ALLOCATED → AVAILABLE 的业务入口。

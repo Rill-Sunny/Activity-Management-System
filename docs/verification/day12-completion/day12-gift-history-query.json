@@ -1,0 +1,48 @@
+{
+  "observedAtDatabaseTime" : "2026-10-31T22:43:25.479",
+  "observation" : {
+    "resourceAndHistorySnapshotUnchanged" : true,
+    "lastPage" : {
+      "allocations" : [ {
+        "operationId" : 27,
+        "requestId" : "list-last",
+        "publisherId" : 131,
+        "sessionId" : 45,
+        "zoneId" : 132,
+        "operationType" : "ALLOCATE",
+        "quantity" : 2,
+        "status" : "SUCCEEDED",
+        "createdAt" : "2026-10-31T22:43:25.434",
+        "seatIds" : [ 436, 438 ]
+      } ],
+      "nextAfterOperationId" : null
+    },
+    "firstPage" : {
+      "allocations" : [ {
+        "operationId" : 25,
+        "requestId" : "list-first",
+        "publisherId" : 131,
+        "sessionId" : 45,
+        "zoneId" : 132,
+        "operationType" : "ALLOCATE",
+        "quantity" : 1,
+        "status" : "SUCCEEDED",
+        "createdAt" : "2026-10-31T22:43:25.413",
+        "seatIds" : [ 434 ]
+      } ],
+      "nextAfterOperationId" : 25
+    },
+    "detail" : {
+      "operationId" : 25,
+      "requestId" : "list-first",
+      "publisherId" : 131,
+      "sessionId" : 45,
+      "zoneId" : 132,
+      "operationType" : "ALLOCATE",
+      "quantity" : 1,
+      "status" : "SUCCEEDED",
+      "createdAt" : "2026-10-31T22:43:25.413",
+      "seatIds" : [ 434 ]
+    }
+  }
+}

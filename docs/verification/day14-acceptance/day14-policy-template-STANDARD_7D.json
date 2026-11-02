@@ -1,0 +1,11 @@
+{
+  "observedAtDatabaseTime" : "2026-11-02T11:32:01.744",
+  "observation" : {
+    "notice" : "常规七日无理由退货，按有效签收时间和商品状态判断；质量及特殊原因另行处理。",
+    "databaseMatchesApi" : true,
+    "universalReturnableFlag" : false,
+    "template" : "STANDARD_7D",
+    "requiresPolicyAcknowledgement" : false,
+    "publicPurchaseQualification" : true
+  }
+}
