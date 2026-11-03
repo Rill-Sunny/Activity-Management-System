@@ -63,3 +63,6 @@ build/
 ._*
 Thumbs.db
 Desktop.ini
+
+### docs ###
+docs/verification/

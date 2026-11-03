@@ -1,9 +1,0 @@
-{
-  "observedAtDatabaseTime" : "2026-10-31T22:43:20.914",
-  "observation" : {
-    "committedOperations" : 1,
-    "allocatedSeats" : 2,
-    "statuses" : [ 201, 409 ],
-    "rolledBackBeforeReplay" : true
-  }
-}

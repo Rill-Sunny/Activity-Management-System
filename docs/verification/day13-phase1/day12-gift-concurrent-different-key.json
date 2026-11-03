@@ -1,8 +1,0 @@
-{
-  "observedAtDatabaseTime" : "2026-11-01T15:06:11.242",
-  "observation" : {
-    "remaining" : 2,
-    "allocated" : 4,
-    "statuses" : [ 201, 409 ]
-  }
-}
