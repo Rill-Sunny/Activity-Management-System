@@ -81,4 +81,4 @@ MySQL 测试被跳过不算通过。测试使用随机隔离库与真实 Flyway�
 
 原始摘要与逐场景业务 JSON 在 [最终验收目录](verification/day14-acceptance)，[执行汇总](verification/day14-acceptance/run-summary.json) 同时记录测试源码与生产源码摘要，避免把新测试结果归给旧源码。
 
-七个资格场景文件名为 `day14-qualification-matrix-*`，八个归属操作为 `day14-owner-denied-*`，模板为 `day14-policy-template-*`。[Day 14 范围证据](verification/day14-acceptance/day14-catalog-scope.json) 单独记录未进入后续交易切片。跨 Publisher 商品订单在设计上拒绝，同 Publisher 能否跨 Activity 仍待确认；由于订单未实现，本轮不伪称该订单规则已经经过交易接口测试。
+七个资格场景文件名为 `day14-qualification-matrix-*`，八个归属操作为 `day14-owner-denied-*`，模板为 `day14-policy-template-*`。[Day 14 范围证据](verification/day14-acceptance/day14-catalog-scope.json) 单独记录当日未进入交易切片。Day 14 后续冻结同 Publisher 可跨 Activity、跨 Publisher 拒绝；Day 15 订单实现及实际验证转见 [商品订单 API](api/product-orders.md) 和商品订单 MySQL 集成验收。

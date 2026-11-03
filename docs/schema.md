@@ -1,10 +1,10 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.7（增加 Product、SKU 与独立商品白名单）**
+> **版本：V2.8（增加商品订单、订单明细与 Product 共享限购计数）**
 >
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：20 张现有业务表：原 17 张票务／预约／赠票表，加 Product、SKU、商品独立名单 3 张表；商品订单、共享限购计数与资格保护行仍是后续候选**
+> **当前状态：23 张业务表：原 20 张表加商品订单、订单明细与 Product 共享限购计数；商品资格保护行仍是后续候选**
 >
 > **核心决策：全部 20 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
@@ -832,9 +832,19 @@ AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architectur
 
 这些表没有领取人、实名、核销或 Ticket 字段。publisher_id 是操作者，不是赠票接收者。分配 Service 已校验权限、引用及 N 条明细对应 quantity，条件占用 Seat 和扣减 GIFT 库存与历史同事务提交。完整字段与接口见 [GIFT 操作模型](gift-inventory.md)。
 
-## 14. 版本记录
+## 14. 商品订单与 Product 限购（V2.8）
 
-2026-11-02 的 [商品域设计](product-domain.md) 中，Product、SKU、独立成员表已通过 V8 落库；四张商品订单、明细、共享限购、资格保护表仍未实施。两种持票范围明确支持，跨 Publisher 商品订单在设计上拒绝；同 Publisher 跨 Activity 及未来核心规则版本变更仍待确认，禁止把后续候选计入当前二十张表。
+[V9__create_product_orders.sql](../src/main/resources/db/migration/V9__create_product_orders.sql) 新增 `product_order`、`product_order_item`、`user_product_purchase`。全部关系仍为逻辑引用，不声明物理外键。订单唯一键为 `UNIQUE(buyer_id, request_id)`；明细唯一键为 `UNIQUE(order_id, sku_id)`；限购行主键为 `(user_id, product_id)`，同一 Product 下所有 SKU 共用 `valid_count`。
+
+商品订单由多个 Product、SKU 明细组成，但一个订单必须归属同一 Publisher；允许该 Publisher 的商品跨 Activity。`publisher_id` 从每个 SKU 的 Product 归属推导。请求重复出现同一 SKU 时拒绝，不自动合并。完全相同 requestId 与 skuId/quantity/特殊政策确认清单返回原订单，不同载荷返回幂等冲突。
+
+预校验及创建阶段读取当前资格、当前 Product 限购计数、SKU 状态和 remains_stock；这只是非锁定检查。创建订单保存服务端价格快照，状态为 `PENDING_PAYMENT`，过期时间由数据库生成为创建后 15 分钟。订单主表和全部明细在一个事务内写入。此阶段不扣 SKU 库存、不创建或更新 `user_product_purchase`；后者只由后续支付事务竞争更新。
+
+创建使用 READ_COMMITTED。外层协调器在创建事务回滚后读取并比较并发幂等赢家；不得在失败的创建事务快照中重放。明细保存 Product/SKU 名称、Activity 与资格范围、售后模板/版本快照，`unit_price` 是下单价格真相。客户端不提交 buyer、Publisher、价格、金额或资格结果。
+
+## 15. 版本记录
+
+2026-11-02 的 [商品域设计](product-domain.md) 中，Product、SKU、独立成员表已通过 V8 落库；V9 加入商品订单、明细和共享限购计数。资格保护表仍未实施。两种持票范围明确支持，跨 Publisher 商品订单拒绝，同 Publisher 跨 Activity 允许。
 
 - **V1**：四张基础表采用物理外键，训练基础关系模型与引用完整性。
 - **V2.0**：移除物理外键，保留逻辑关联与数据库基础约束；新增座位占用状态，明确 Service 校验、条件更新和巡检职责。
@@ -844,9 +854,10 @@ AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architectur
 - **V2.4**：新增 `free_reservation`、`free_session_quota`，采用生成有效键保留预约历史，通过独立名额条件更新保护剩余量。共 13 张已设计表，0 个物理 FOREIGN KEY。
 - **V2.5**：新增 `ticket_refund_request`、`ticket_refund_item`，保存服务器申请时间、政策与逐票金额快照，保护申请幂等及同票有效退款唯一性。共 15 张已设计表，0 个物理 FOREIGN KEY。
 - **V2.6**：新增 `gift_inventory_operation`、`gift_inventory_operation_item`，冻结 ALLOCATE 成功操作及逐座历史，保护发布者请求键和单次操作座位唯一性，不记录领取人。共 17 张业务表，0 个物理 FOREIGN KEY。
-- **V2.7（本版）**：V8 新增 product、sku、product_whitelist_member，支持两种持票范围、预设模板、独立 SKU 库存与独立名单。共 20 张业务表，0 个物理 FOREIGN KEY。原 17 张定义不变，完整约束以 V8 为准。
+- **V2.7**：V8 新增 product、sku、product_whitelist_member，支持两种持票范围、预设模板、独立 SKU 库存与独立名单。共 20 张业务表，0 个物理 FOREIGN KEY。
+- **V2.8（本版）**：V9 新增 product_order、product_order_item、user_product_purchase，冻结订单同 Publisher/可跨 Activity、重复 SKU 拒绝、快照价格、requestId 幂等与建单不占资源。共 23 张业务表，0 个物理 FOREIGN KEY。
 
-## 15. 商品目录与资格（V2.7）
+## 16. 商品目录与资格（V2.7）
 
 [V8__create_product_catalog.sql](../src/main/resources/db/migration/V8__create_product_catalog.sql) 定义 Product 的类型/范围完整组合、状态与首次上架时间、正数 Product 限购及两种预设售后模板。资格字段使用显式 IS NULL/IS NOT NULL，避免 CHECK 的 NULL 比较漏过非法组合。Service 根据 CurrentUserProvider 与 Activity 核对当前管理者和真实关联。
 
@@ -856,4 +867,4 @@ product_whitelist_member 唯一键为 (product_id,user_id)，不复用 Activity/
 
 库存及引用巡检见 [product_invariants.sql](../tests/sql/product_invariants.sql)，响应和权限见 [商品 API](api/products.md)，真实迁移及业务验证见 [Day 14 记录](day14-products.md)。
 
-Day 14 最终验收复查后继续保持 V8 三表：资格配置内嵌 Product，独立名单保存成员，因此不再创建重复配置表。未冻结的商品订单、明细、user_product_purchase 和资格 guard 不预建占位版本；这些仍是后续模型。两种售后模板用受约束的枚举与版本保存，不引入全局 returnable 位。当前没有真实商品库存扣减或共享额度增加。
+V8 保持三张目录表：资格配置内嵌 Product，独立名单保存成员，因此不创建重复配置表。V9 的订单主表、明细与共享限购计数见第 14 节；资格 guard 仍属于后续支付设计。两种售后模板用受约束的枚举与版本保存，不引入全局 returnable 位。当前没有真实商品库存扣减或共享额度增加。

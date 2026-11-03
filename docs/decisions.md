@@ -188,7 +188,7 @@ publisher_id 是操作者，不能解释为赠票领取人。模型不增加领�
 
 ## ADR-011：商品域资格、限购与订单边界
 
-日期：2026-11-02。状态：Product、SKU、商品独立名单和资格查询已通过 V8 实现；订单/支付等后续实体仍是设计。最新编码任务明确要求同时支持 ACTIVITY/SESSION，D14-Q1 已据该指令确定；D14-Q2、核心规则版本选择仍待确认。
+日期：2026-11-02；Day 15 补充：2026-11-03。状态：Day 14 目录、资格与商品订单创建设计已冻结；V8 目录已实现，Day 15 订单创建由 V9 落库。支付、资格 guard 与售后仍属后续阶段。
 
 依照 PRD、ITEM、RET、LINK 已明确的约束：
 
@@ -198,17 +198,20 @@ publisher_id 是操作者，不能解释为赠票领取人。模型不增加领�
 4. 商品建单不扣 SKU、不占 Product 限购。订单保存原始单价、资格范围、模板及必要确认快照；模拟支付与售后留到后续阶段。
 5. 商品订单包含多 Product、多 SKU，商品支付整单成功或整单失败；不得静默删项、换规格。缺货旧单资源回滚后安全关闭，用户确认新清单后新建订单。
 6. SPECIAL_NO_REASON_RETURN 只约束普通无理由退货，不能用它一概拒绝质量问题、失去持票资格或活动取消等特殊处理。
-7. 商品订单设计固定拒绝跨 Publisher：主单发布者由全部 SKU → Product 的真实归属推导，不能相信客户端 publisherId。只有同一 Publisher 下是否允许跨 Activity 尚待确认；这不影响多 Product、多 SKU 的既定能力。商品订单尚未实现，本条不是已运行的订单接口验收结果。
+7. 商品订单固定拒绝跨 Publisher，允许同一 Publisher 下跨 Activity 合单；主单 publisher_id 从 SKU → Product 推导。购买清单重复 SKU 直接拒绝，不合并，以便幂等比较保持请求清晰。
+8. 预校验和建单均以当前 ACTIVE 用户为准，逐项重查商品、SKU、资格、共享 Product 限购与库存。库存/限购仅作非锁定预检查；待支付订单不承诺库存，不扣 SKU、不创建或更新 user_product_purchase。
+9. 同 buyer/requestId 唯一。重试载荷按 skuId → quantity 与特殊政策确认比较；完全相同返回原订单，不同返回 IDEMPOTENCY_CONFLICT。价格、总额、Publisher 和资格仅由服务端查询。
+10. 新单状态为 PENDING_PAYMENT，expires_at 是 created_at + 15 分钟；订单及全部明细在同一 READ_COMMITTED 事务提交。明细 unit_price 保存创建时价格快照。
 
-以下记录最新指令已经明确的范围，以及仍待确认的推荐方案：
+Day 14 的关键决策已冻结如下：
 
-| 待确认项 | 推荐 | 需要确认的原因 |
+| 决策 | 已冻结规则 | 实现约束 |
 |---|---|---|
-| D14-Q1：持票范围（已由后续任务明确） | 每个 Product 选择 ACTIVITY 或指定 SESSION，已实现。 | 最新第 15、16 项要求两种范围，已补真实有效票和部分退款验证。 |
-| D14-Q2：同发布者订单的活动边界 | 跨 Publisher 固定拒绝；推荐同 Publisher 可跨 Activity，但跨 Activity 选择仍待确认。 | 仅剩活动组合边界影响主单形态和多活动 guard，不将“跨 Publisher”继续列为未决。 |
-| D14-Q3：规则编辑（后续全局选择待答） | 当前只提供 DRAFT SKU 创建/完整修改，ON_SALE/OFF_SALE 禁止修改 SKU 价格与库存；不提供 Product 核心规则编辑。 | 本轮按编码任务明确最小编辑范围，不将未收到的对话框回答当成全局冻结授权。后续若开放修改须另定版本/快照协议。 |
+| 持票范围 | 每个 Product 选择 ACTIVITY 或指定 SESSION，已实现。 | 两种范围按真实有效 Ticket 判定。 |
+| D14-Q2：同发布者订单的活动边界 | 已冻结：同 Publisher 可跨 Activity 合单；跨 Publisher 拒绝。 | 多活动持票资格按各 Product 的活动范围分别校验；Day 16 再按 activity_id 升序接入共同資格 guard。 |
+| D14-Q3：规则编辑 | 已冻结：Product 首次上架后核心规则不可修改；SKU 价格与库存仅 DRAFT 可设。 | 未来如需改规则，新增版本及订单快照协议，不覆盖旧单依赖的资格与售后事实。 |
 
-字段、单行约束、逻辑引用和后续设计见 [商品域设计](product-domain.md)。当前运行 Schema 为 V2.7、20 张业务表、V8；订单、限购计数和 guard 不计入现有表。已实测的目录切片见 [Day 14 验证](day14-products.md)。
+字段、单行约束、逻辑引用和后续设计见 [商品域设计](product-domain.md)。Day 14 的订单范围和重复 SKU 决策已冻结；V9 实现订单、订单明细和商品共享限购计数，资格 guard 仍留给后续支付阶段。目录切片及订单验证分别记录在 [Day 14 验证](day14-products.md) 与 [商品订单 API](api/product-orders.md)。
 
 ## ADR-012：持票资格使用账号活动保护行协调
 

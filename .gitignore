@@ -4,11 +4,34 @@ target/
 !**/src/test/**/target/
 .kotlin
 
+### Java / Gradle ###
+.gradle/
+out/
+bin/
+*.class
+*.log
+logs/
+
+### Local environment ###
+.env
+.env.*
+!.env.example
+!.env.*.example
+
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
 .idea/compiler.xml
 .idea/libraries/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/shelf/
+.idea/dictionaries/
+.idea/httpRequests/
+.idea/dataSources.xml
+.idea/dataSources/
+.idea/sqldialects.xml
 *.iws
 *.iml
 *.ipr
@@ -37,3 +60,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+._*
+Thumbs.db
+Desktop.ini

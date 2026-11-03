@@ -46,6 +46,39 @@ public interface ProductMapper {
     @Select("SELECT "+SKU_COLUMNS+" FROM sku WHERE product_id=#{productId} AND sku_id=#{skuId}")
     @Options(useCache=false,flushCache=Options.FlushCachePolicy.TRUE)
     Sku sku(@Param("productId") Long productId,@Param("skuId") Long skuId);
+
+    @Select("""
+            SELECT p.product_id AS productId, p.publisher_id AS publisherId, p.activity_id AS activityId,
+                   p.name AS productName, p.status AS productStatus,
+                   p.qualification_type AS qualificationType, p.qualification_scope AS qualificationScope,
+                   p.qualification_session_id AS qualificationSessionId,
+                   p.refund_policy_template AS refundPolicyTemplate,
+                   p.refund_policy_version AS refundPolicyVersion, p.purchase_limit AS purchaseLimit,
+                   s.sku_id AS skuId, s.sku_name AS skuName, s.price AS unitPrice,
+                   s.remains_stock AS remainsStock, s.status AS skuStatus
+            FROM sku s JOIN product p ON p.product_id=s.product_id
+            WHERE s.sku_id=#{skuId}
+            """)
+    @org.apache.ibatis.annotations.ConstructorArgs({
+            @org.apache.ibatis.annotations.Arg(column="productId", javaType=Long.class),
+            @org.apache.ibatis.annotations.Arg(column="publisherId", javaType=Long.class),
+            @org.apache.ibatis.annotations.Arg(column="activityId", javaType=Long.class),
+            @org.apache.ibatis.annotations.Arg(column="productName", javaType=String.class),
+            @org.apache.ibatis.annotations.Arg(column="productStatus", javaType=String.class),
+            @org.apache.ibatis.annotations.Arg(column="qualificationType", javaType=String.class),
+            @org.apache.ibatis.annotations.Arg(column="qualificationScope", javaType=String.class),
+            @org.apache.ibatis.annotations.Arg(column="qualificationSessionId", javaType=Long.class),
+            @org.apache.ibatis.annotations.Arg(column="refundPolicyTemplate", javaType=String.class),
+            @org.apache.ibatis.annotations.Arg(column="refundPolicyVersion", javaType=Integer.class),
+            @org.apache.ibatis.annotations.Arg(column="purchaseLimit", javaType=Integer.class),
+            @org.apache.ibatis.annotations.Arg(column="skuId", javaType=Long.class),
+            @org.apache.ibatis.annotations.Arg(column="skuName", javaType=String.class),
+            @org.apache.ibatis.annotations.Arg(column="unitPrice", javaType=java.math.BigDecimal.class),
+            @org.apache.ibatis.annotations.Arg(column="remainsStock", javaType=Integer.class),
+            @org.apache.ibatis.annotations.Arg(column="skuStatus", javaType=String.class)
+    })
+    @Options(useCache=false,flushCache=Options.FlushCachePolicy.TRUE)
+    com.limitactivitysystem.product.model.ProductOrderCandidate orderCandidate(@Param("skuId") Long skuId);
     @Insert("""
             INSERT INTO sku(product_id,sku_name,price,total_stock,remains_stock)
             SELECT product_id,#{name},#{price},#{stock},#{stock} FROM product

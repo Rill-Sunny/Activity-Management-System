@@ -1,18 +1,18 @@
 # 商品域设计与冻结清单
 
-日期：2026-11-02。依据 requirements 的 PRD-01～04、ITEM-01～05、RET-01～06、LINK-01～03，以及 schedule 的 F8、Day 14～17、Day 20。
+日期：2026-11-02；Day 15 补充：2026-11-03。依据 requirements 的 PRD-01～04、ITEM-01～05、RET-01～06、LINK-01～03，以及 schedule 的 F8、Day 14～17、Day 20。
 
-状态：目录切片已实现，后续交易模型仍为设计。最新编码任务明确 ACTIVITY/SESSION 两种持票范围，Product、SKU、独立名单及资格/公开查询已通过 V8 落地，现有模型为 V2.7、20 张业务表、零物理外键。商品订单、支付、售后及资格保护行尚未实现。API 与真实验证见 [商品接口](api/products.md)、[Day 14 验证](day14-products.md)。
+状态：目录与商品订单创建切片已实现。V8 落地 Product、SKU、独立名单及资格/公开查询；V9 落地预览、确认建单、订单快照及 Product 共享限购表。当前模型为 V2.8、23 张业务表、零物理外键。支付、售后及资格保护行尚未实现。接口见 [商品接口](api/products.md) 与 [商品订单接口](api/product-orders.md)。
 
-## 已明确范围与后续待确认决定
+## Day 14 冻结决定
 
-| 决定 | 对话框推荐项 | 另一选择的影响 |
+| 决定 | 已冻结规则 | 后续实现约束 |
 |---|---|---|
 | 持票资格范围（后续任务已明确） | 每个 Product 明确选择 ACTIVITY 或指定 SESSION，已实现。 | 最新第 15、16 项明确要求两类范围，不再按原对话框未答处理。 |
-| 同发布者订单的活动边界 | 跨 Publisher 固定拒绝；同 Publisher 跨 Activity、多 Product、多 SKU 仍是活动组合推荐方案。 | 同 Publisher 是否同时要求同 Activity 仍待确认；两种活动方案都拒绝跨发布者。 |
-| 首次上架后的规则 | 冻结所属活动、资格类型/范围、Product 限购、售后模板；名称描述可编辑。 | 若下架后可修改，需要规则版本、历史快照及待支付订单遇到版本变化的处理，不能直接覆盖旧资格。 |
+| 同发布者订单的活动边界 | 已冻结：跨 Publisher 拒绝；同 Publisher 可跨 Activity、多 Product、多 SKU。 | 各 Product 单独重验资格，未来支付按 Activity 升序获取资格保护行。 |
+| 首次上架后的规则 | Product 核心规则不可修改；SKU 价格与库存仅 DRAFT 可设。 | 未来若开放编辑，须新增版本和历史订单快照协议。 |
 
-持票范围按最新任务实施。订单活动边界与未来 Product 核心规则的版本编辑仍待确认，本轮没有实现依赖这些决定的商品订单。SKU 的当前编辑边界已明确：仅从未上架的 DRAFT 商品可创建或完整修改，ON_SALE/OFF_SALE 均拒绝价格及库存配置写入；未提供 Product 核心规则修改入口。记录见 [decisions.md](decisions.md)。
+持票范围、同 Publisher 跨 Activity、跨 Publisher 拒绝、重复 SKU 拒绝及 Product 核心规则冻结均已记录在 [decisions.md](decisions.md)。SKU 仅能在从未上架的 DRAFT 商品创建或完整修改；ON_SALE/OFF_SALE 均拒绝价格及库存写入。
 
 ## 领域职责与逻辑关系
 
@@ -37,7 +37,7 @@ erDiagram
 
 图中都是逻辑引用，不创建物理 FOREIGN KEY。跨表存在性、发布者归属、作用域一致性由 Service 在业务事务内检查，并由孤儿及资源巡检复核。已被订单或历史引用的 Product、SKU、Activity、用户不通过物理删除破坏历史。
 
-本域共设计七张表：product、sku、product_whitelist_member 已迁移；product_order、product_order_item、user_product_purchase、user_activity_qualification_guard 仍为后续候选。资格配置直接保存在 Product，模板仅使用预设类型；没有为同一配置再建立重复的策略真值表。商品白名单独立于现有活动/场次名单表。
+本域现有六张表：product、sku、product_whitelist_member、product_order、product_order_item、user_product_purchase。user_activity_qualification_guard 留给支付接入。资格配置直接保存在 Product，模板仅使用预设类型；商品白名单独立于现有活动/场次名单表。
 
 ## product 候选字段
 
@@ -55,7 +55,7 @@ erDiagram
 | refund_policy_template | VARCHAR(32)，NOT NULL | 仅 STANDARD_7D、SPECIAL_NO_REASON_RETURN。 |
 | refund_policy_version | SMALLINT，NOT NULL，初始 1 | 服务端预设说明及规则的版本，不允许任意规则组合。 |
 | purchase_limit | INT，NOT NULL、正数 | 当前账号在整个 Product 的有效数量上限。 |
-| first_on_sale_at | DATETIME(3)，可空 | 首次上架的数据库时间；OFF_SALE 不清空。当前 SKU 配置只允许此字段为空的 DRAFT，未来核心规则编辑方式仍待确认。 |
+| first_on_sale_at | DATETIME(3)，可空 | 首次上架的数据库时间；OFF_SALE 不清空。SKU 配置仅允许该字段为空的 DRAFT；核心规则无编辑入口。 |
 | created_at / updated_at | DATETIME(3)，NOT NULL，数据库生成 | 创建及最后修改时间。 |
 
 必要索引：PK(product_id)、(publisher_id, status, product_id)、(activity_id, status, product_id)、(qualification_session_id, product_id)。主键及逻辑 ID 正数、状态/模板枚举、名称非空白和 purchase_limit > 0 由单行约束保护。
@@ -100,7 +100,7 @@ Product 的 qualification_type 已明确表示是否启用商品名单，因此�
 
 名单管理锁 Product FOR UPDATE；资格与支付在 Product FOR SHARE 下读取成员当前状态，保持到业务事务结束。空名单的配置事实来自已锁 Product，不尝试锁一条不存在的成员行代替协调。
 
-## 商品订单设计，Day 15 再实现
+## 商品订单与建单
 
 product_order 主表候选字段：
 
@@ -115,7 +115,7 @@ product_order 主表候选字段：
 | expires_at | DATETIME(3)，数据库生成 | created_at 后十五分钟，支付截止采用 now < expires_at。 |
 | paid_at / closed_reason | 条件可空 | 待支付均空；PAID/退款汇总态有 paid_at、无关闭原因；CLOSED 有原因且无 paid_at。 |
 
-必要索引：(buyer_id, created_at, order_id)、(publisher_id, status, order_id)、(status, expires_at, order_id)。跨 Activity 是否允许待对话框确认；无论选择哪种，同单 Product 的 publisher_id 必须完全相同。不允许跨发布者合单，不与 TicketOrder 合并。
+必要索引：(buyer_id, created_at, order_id)、(publisher_id, status, order_id)、(status, expires_at, order_id)。同单 Product 的 publisher_id 必须完全相同；允许同 Publisher 跨 Activity 合单。不允许跨发布者合单，不与 TicketOrder 合并。
 
 product_order_item 候选字段：
 
@@ -135,7 +135,7 @@ product_order_item 候选字段：
 | shipped_quantity / received_quantity / returned_quantity / restocked_quantity | INT，NOT NULL，默认 0 | Day 17 履约和回库的数量事实，创建/支付阶段均为零。 |
 | created_at | DATETIME(3)，NOT NULL | 数据库生成。 |
 
-UNIQUE(order_id, sku_id)，索引 (product_id, order_id)、(sku_id, order_id)、(activity_id_snapshot, qualification_type_snapshot, qualification_session_id_snapshot, order_id)。同一请求中的重复 SKU 先按 sku_id 合并数量并检查溢出；同 SKU 的确认内容矛盾则拒绝。幂等比较规范化后的 SKU、数量及必要确认，不以总额相同代替载荷相同。
+UNIQUE(order_id, sku_id)，索引 (product_id, order_id)、(sku_id, order_id)、(activity_id_snapshot, qualification_type_snapshot, qualification_session_id_snapshot, order_id)。请求重复出现同一 SKU 时直接拒绝。幂等按 sku_id、quantity 和必要的特殊政策确认比较，不以总额相同代替载荷相同。
 
 数量约束：0 ≤ refunded_quantity ≤ quantity；0 ≤ refund_pending_quantity ≤ quantity − refunded_quantity；0 ≤ received_quantity ≤ shipped_quantity ≤ quantity；0 ≤ returned_quantity ≤ shipped_quantity；0 ≤ restocked_quantity ≤ refunded_quantity。具体售后申请、明细、退回验收历史在 Day 17 冻结，不以这些累计字段代替操作历史。
 
@@ -219,9 +219,9 @@ Day 19/20 的完整可靠路径必须是：退票及 guard version 更新 + 同�
 
 | 阶段 | 需要实现/验证 | 本轮状态 |
 |---|---|---|
-| 本轮 Day 14 设计 | 实体、约束、状态、资格/订单决定、并发协议与后续测试。 | 两种持票范围由最新任务明确；未来订单及核心规则编辑选择仍待确认。 |
+| Day 14 设计冻结 | 实体、约束、状态、资格/订单决定、并发协议与后续测试。 | 持票范围、订单 Publisher/Activity 边界、重复 SKU 和核心规则编辑边界均已冻结。 |
 | Day 14 商品切片 | 发布者管理 Product/SKU、上架和独立资格查询；保护行 Schema 与票务写路径接入须另行实现。 | V8 三表及实际接口已实现并验证；guard 未接入。 |
-| Day 15 | 多商品建单、报价/规则快照、15 分钟有效期、同键内容比较、不占资源。 | 未实现。 |
+| Day 15 | 多商品预览/建单、报价/规则快照、15 分钟有效期、同键内容比较、不占资源。 | 已由 V9 实现；支付阶段再竞争库存与限购。 |
 | Day 16 | 商品支付整单事务、Product 额度、SKU 库存、共同锁顺序及整事务 retry。 | 计划真实 MySQL 验证。 |
 | Day 17 | 分数量履约/售后、签收时间、申请中占用、验收、退款/回库条件。 | 仅冻结本页基础契约，完整售后模型待 F9。 |
 | Day 19/20 | 同事务 Outbox、当前资格重检、独立联动任务和恢复。 | 设计接缝，未引入组件。 |

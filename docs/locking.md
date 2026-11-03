@@ -107,6 +107,16 @@ Service 的锁保持到订单与明细一起提交或回滚。[创建 MySQL 测�
 
 该测试还在主表写入后、第一条明细写入后、全部明细写入后三处注入运行时异常。测试通过真实 Service 代理调用，在业务事务内观察到主表一行，以及各故障位置对应的零条、一条、两条明细。回滚后主表和明细均为零。库存、座位、既有购票计数及 Ticket 的快照在故障前后均不变。故障拦截器仅由测试配置注册，详细验证范围见 [订单事务原子性](ticket-orders.md#主表与全部明细的原子性)。
 
+## Product order preview and creation
+
+预览和建单都使用 READ_COMMITTED，并从 CurrentUserProvider 取得买家。每项读取 SKU → Product 的当前关系并检查上架、SKU 状态、当前 ProductQualificationService 资格；资格实现继续校验 Activity、Session、Product 及名单/真实 Ticket。整单 Product 必须属于同一 Publisher，允许跨 Activity；重复 SKU 直接拒绝。
+
+按 product_id 汇总数量后，普通读取 user_product_purchase.valid_count 检查共享限购；逐 SKU 普通读取 remains_stock 与当前价格。限购与库存都是非锁定预检查。缺货预览返回该 SKU 的 requestedQuantity、availableStock 和 INSUFFICIENT_STOCK，不替换规格。预览无任何写操作；建单不扣库存、不创建或更新限购计数。
+
+确认时从服务端重取资格、限购、库存和价格。UNIQUE(buyer_id, request_id) 保护重试；事务代理完整回滚后再查幂等结果，skuId/quantity/政策确认相同则返回原单，否则返回冲突。订单按 `product_order → product_order_item` 写入；任一明细失败均回滚主表和所有已写明细。`unit_price`、Product/SKU 展示名、Activity/资格范围和售后模板/版本都保存为下单快照。特别售后模板的确认字段由买家显式确认，时间由数据库生成。
+
+状态为 PENDING_PAYMENT，expires_at 由数据库生成，等于 created_at + 15 分钟。建单前后不改变 `sku.remains_stock` 或 `user_product_purchase.valid_count`。Day 16 支付的排他锁顺序另行实施，不能把本阶段的库存读取当作支付承诺。
+
 ## Ticket payment resources
 
 支付与退款处理共享以下资源顺序。退款处理的完整规则见本文末尾的 Ticket refund processing：
@@ -376,7 +386,7 @@ InnoDB 锁保持到事务提交或回滚；统一顺序降低死锁概率，无�
 
 ## Product qualification and payment design
 
-2026-11-02 的未来交易接入协议，**不是当前 Mapper/Service 已实现路径**。两种持票范围已由后续编码任务明确；商品订单跨活动和未来核心规则版本选择仍待确认，详见 [ADR-011/012](decisions.md#adr-011商品域资格限购与订单边界)。V8 只实现下节的目录路径，不能声称票务已参与商品资格协调。
+资格 guard 的商品支付协议仍是后续交易接入设计，**不是当前 Mapper/Service 已实现路径**。Day 14 已冻结同 Publisher 可跨 Activity、跨 Publisher 拒绝；V9 实现商品预览与建单，但商品支付、共同资格 guard 和票务资格协调仍未接入。详见 [ADR-011/012](decisions.md#adr-011商品域资格限购与订单边界)。
 
 ### 共同锁层级
 

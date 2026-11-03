@@ -57,7 +57,7 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
     private static final Map<String,Object> AUDIT=new ConcurrentSkipListMap<>();
     @BeforeAll static void reset(){AUDIT.clear();}
     @AfterAll static void save() throws Exception {
-        var path=Path.of("target","verification","day14-product-reconciliation.json");Files.createDirectories(path.getParent());
+        var path=Path.of("target","verification","day15-product-order-reconciliation.json");Files.createDirectories(path.getParent());
         new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(path.toFile(),Map.of("script","tests/sql/product_invariants.sql","cases",AUDIT.size(),"checks",AUDIT));
     }
     @BeforeEach void createPublishedActivityScopes() throws Exception {
@@ -76,6 +76,8 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
                 assertThat(scriptViolations("gift_invariants.sql")).isEmpty();
             }
         } finally {
+            jdbc.update("DELETE FROM product_order_item");jdbc.update("DELETE FROM product_order");
+            jdbc.update("DELETE FROM user_product_purchase");
             jdbc.update("DELETE FROM product_whitelist_member");jdbc.update("DELETE FROM sku");jdbc.update("DELETE FROM product");
             jdbc.update("DELETE FROM ticket_refund_item");jdbc.update("DELETE FROM ticket_refund_request");
             jdbc.update("DELETE FROM whitelist_member");jdbc.update("DELETE FROM whitelist_config");
@@ -83,11 +85,11 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
             jdbc.update("DELETE FROM free_reservation");jdbc.update("DELETE FROM free_session_quota");
         }
     }
-    @Test void v8MigrationPreservesExistingTablesAndUsesNoPhysicalForeignKeys() throws Exception {
-        assertThat(schema.before).isEqualTo(schema.after);assertThat(schema.executed).isEqualTo(1);assertThat(schema.repeated).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND table_name<>'flyway_schema_history'",Integer.class)).isEqualTo(20);
+    @Test void v9MigrationPreservesExistingTablesAndUsesNoPhysicalForeignKeys() throws Exception {
+        assertThat(schema.before).isEqualTo(schema.after);assertThat(schema.executed).isEqualTo(2);assertThat(schema.repeated).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND table_name<>'flyway_schema_history'",Integer.class)).isEqualTo(23);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()",Integer.class)).isZero();
-        evidence("day14-product-migration",Map.of("beforeVersion",7,"afterVersion",8,"newTables",3,"businessTables",20,"existingTableDefinitionsUnchanged",17,"physicalForeignKeys",0,"repeatedMigrations",0));
+        evidence("day15-product-order-migration",Map.of("beforeVersion",7,"afterVersion",9,"newTables",6,"businessTables",23,"existingTableDefinitionsUnchanged",17,"physicalForeignKeys",0,"repeatedMigrations",0));
     }
     @Test void publishAndReadBlackMZeroStockWithoutSubstitutingWhiteL() throws Exception {
         long id=product(body("PUBLIC",null,null));
@@ -300,15 +302,108 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         evidence("day14-policy-template-"+template,Map.of("template",template,"databaseMatchesApi",true,"requiresPolicyAcknowledgement",special,
                 "notice",notice,"universalReturnableFlag",false,"publicPurchaseQualification",true));
     }
-    @Test void day14CatalogDoesNotImplementProductTransactionsOrConsumeSkuStock() throws Exception {
-        long id=live("PUBLIC",null,null);var before=snapshot();allowed(id,true,"ALLOWED");
-        for(String path:List.of("/product-orders","/product-orders/"+id+"/pay","/publisher/products/"+id+"/ship")){
-            postJson(path,path.startsWith("/publisher/")?publisher:buyer,Map.of()).andExpect(status().isNotFound());
+    @Test void previewReportsExactOutOfStockSkuAndDoesNotWriteResources() throws Exception {
+        var request=body("PUBLIC",null,null);request.put("purchaseLimit",10);long id=product(request);
+        long black=sku(id,"BLACK-M",0).path("skuId").asLong();
+        long white=sku(id,"WHITE-L",20).path("skuId").asLong();publishProduct(id);
+        var before=snapshot();
+        postJson("/product-orders/preview",buyer,Map.of("items",List.of(
+                Map.of("skuId",black,"quantity",1),Map.of("skuId",white,"quantity",2))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
+                .andExpect(jsonPath("$.items[0].skuId").value(black))
+                .andExpect(jsonPath("$.items[0].requestedQuantity").value(1))
+                .andExpect(jsonPath("$.items[0].availableStock").value(0))
+                .andExpect(jsonPath("$.items[0].status").value("INSUFFICIENT_STOCK"))
+                .andExpect(jsonPath("$.items[1].skuId").value(white))
+                .andExpect(jsonPath("$.items[1].availableStock").value(20))
+                .andExpect(jsonPath("$.items[1].status").value("AVAILABLE"));
+        assertThat(snapshot()).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_product_purchase",Integer.class)).isZero();
+        evidence("day15-product-preview-no-reservation",Map.of("outOfStockSku",black,"availableSku",white,"inventoryAndQuotaUnchanged",true));
+    }
+
+    @Test void confirmationCreatesSamePublisherCrossActivityOrderWithSnapshotsAndIdempotency() throws Exception {
+        long firstProduct=product(body("PUBLIC",null,null));
+        long firstSku=sku(firstProduct,"FIRST",5).path("skuId").asLong();publishProduct(firstProduct);
+        Activity anotherActivity=activity(publisher,"PAID");ActivitySession anotherSession=session(anotherActivity);
+        insertZone(anotherSession,"PAID",2,2);publish(anotherActivity,publisher).andExpect(status().isNoContent());
+        var secondBody=body("PUBLIC",null,null);secondBody.put("activityId",anotherActivity.getActivityId());
+        long secondProduct=product(secondBody);long secondSku=sku(secondProduct,"SECOND",5).path("skuId").asLong();publishProduct(secondProduct);
+        jdbc.update("INSERT INTO user_product_purchase(user_id,product_id,valid_count) VALUES(?,?,1)",buyer.getId(),firstProduct);
+        Map<String,Object> request=Map.of("requestId","product-cross-activity","items",List.of(
+                Map.of("skuId",firstSku,"quantity",1),Map.of("skuId",secondSku,"quantity",1)));
+        var beforeStock=jdbc.queryForList("SELECT sku_id,remains_stock FROM sku ORDER BY sku_id");
+        var created=postJson("/product-orders/confirm",buyer,request).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$.publisherId").value(publisher.getId()))
+                .andExpect(jsonPath("$.totalAmount").value(198.0))
+                .andExpect(jsonPath("$.items.length()").value(2)).andReturn().getResponse();
+        var order=objectMapper.readTree(created.getContentAsString());long orderId=order.path("orderId").asLong();
+        assertThat(jdbc.queryForList("SELECT sku_id,remains_stock FROM sku ORDER BY sku_id")).isEqualTo(beforeStock);
+        assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),firstProduct)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT TIMESTAMPDIFF(SECOND,created_at,expires_at) FROM product_order WHERE order_id=?",Integer.class,orderId)).isEqualTo(900);
+        assertThat(jdbc.queryForObject("SELECT unit_price FROM product_order_item WHERE order_id=? AND sku_id=?",BigDecimal.class,orderId,firstSku)).isEqualByComparingTo("99.00");
+        jdbc.update("UPDATE sku SET price=109.00 WHERE sku_id=?",firstSku);
+        assertThat(jdbc.queryForObject("SELECT unit_price FROM product_order_item WHERE order_id=? AND sku_id=?",BigDecimal.class,orderId,firstSku)).isEqualByComparingTo("99.00");
+        postJson("/product-orders/confirm",buyer,request).andExpect(status().isOk()).andExpect(jsonPath("$.orderId").value(orderId))
+                .andExpect(jsonPath("$.totalAmount").value(198.0));
+        postJson("/product-orders/confirm",buyer,Map.of("requestId","product-cross-activity","items",List.of(
+                Map.of("skuId",firstSku,"quantity",2),Map.of("skuId",secondSku,"quantity",1))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
+        evidence("day15-product-order-idempotency",Map.of("orderId",orderId,"publisherId",publisher.getId(),"crossActivity",true,
+                "expiresInSeconds",900,"stockUnchanged",true,"existingProductQuotaPreserved",true,"repeatReturnsOriginal",true));
+    }
+
+    @Test void confirmationRejectsDuplicateSkuCrossPublisherAndInsufficientStock() throws Exception {
+        long ownProduct=live("PUBLIC",null,null);long ownSku=jdbc.queryForObject("SELECT sku_id FROM sku WHERE product_id=?",Long.class,ownProduct);
+        var foreignBody=body("PUBLIC",null,null);foreignBody.put("activityId",other.getActivityId());
+        var foreignCreated=postJson("/publisher/products",otherPublisher,foreignBody).andExpect(status().isCreated()).andReturn().getResponse();
+        long foreignProduct=objectMapper.readTree(foreignCreated.getContentAsString()).path("productId").asLong();
+        long foreignSku=objectMapper.readTree(postJson("/publisher/products/"+foreignProduct+"/skus",otherPublisher,
+                Map.of("name","FOREIGN","price",99,"stock",4)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).path("skuId").asLong();
+        postJson("/publisher/products/"+foreignProduct+"/publish",otherPublisher,Map.of()).andExpect(status().isOk());
+        postJson("/product-orders/confirm",buyer,Map.of("requestId","duplicate-sku","items",List.of(
+                Map.of("skuId",ownSku,"quantity",1),Map.of("skuId",ownSku,"quantity",1))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("DUPLICATE_ORDER_SKU"));
+        postJson("/product-orders/preview",buyer,Map.of("items",List.of(
+                Map.of("skuId",ownSku,"quantity",1),Map.of("skuId",foreignSku,"quantity",1))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PRODUCT_PUBLISHER_MISMATCH"));
+        long noStockProduct=product(body("PUBLIC",null,null));long noStockSku=sku(noStockProduct,"ZERO",0).path("skuId").asLong();publishProduct(noStockProduct);
+        postJson("/product-orders/confirm",buyer,Map.of("requestId","no-stock","items",List.of(Map.of("skuId",noStockSku,"quantity",1))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("INSUFFICIENT_SKU_STOCK"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_order",Integer.class)).isZero();
+    }
+
+    @Test void specialReturnPolicyRequiresAndPersistsBuyerAcknowledgement() throws Exception {
+        var specialBody=body("PUBLIC",null,null);specialBody.put("refundPolicy","SPECIAL_NO_REASON_RETURN");
+        long id=product(specialBody);long specialSku=sku(id,"SPECIAL",2).path("skuId").asLong();publishProduct(id);
+        postJson("/product-orders/preview",buyer,Map.of("items",List.of(Map.of("skuId",specialSku,"quantity",1))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].requiresPolicyAcknowledgement").value(true));
+        postJson("/product-orders/confirm",buyer,Map.of("requestId","special-no-ack","items",List.of(Map.of("skuId",specialSku,"quantity",1))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PRODUCT_POLICY_ACK_REQUIRED"));
+        var response=postJson("/product-orders/confirm",buyer,Map.of("requestId","special-ack","items",List.of(
+                Map.of("skuId",specialSku,"quantity",1,"acknowledgeSpecialPolicy",true))))
+                .andExpect(status().isCreated()).andReturn().getResponse();
+        long orderId=objectMapper.readTree(response.getContentAsString()).path("orderId").asLong();
+        assertThat(jdbc.queryForObject("SELECT special_policy_acknowledged FROM product_order_item WHERE order_id=?",Boolean.class,orderId)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT policy_acknowledged_at IS NOT NULL FROM product_order_item WHERE order_id=?",Boolean.class,orderId)).isTrue();
+    }
+
+    @Test void failureAfterOrderItemsSqlRollsBackHeaderAndAllItems() throws Exception {
+        long id=product(body("PUBLIC",null,null));long sku=sku(id,"ROLLBACK",3).path("skuId").asLong();publishProduct(id);
+        var beforeStock=jdbc.queryForList("SELECT sku_id,remains_stock FROM sku ORDER BY sku_id");
+        failures.point.set("ProductOrderMapper.insertItems");
+        try {
+            postJson("/product-orders/confirm",buyer,Map.of("requestId","product-rollback","items",List.of(
+                    Map.of("skuId",sku,"quantity",1))))
+                    .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.code").value("PRODUCT_TECHNICAL_FAILURE"));
+        } finally {
+            failures.point.remove();
         }
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('product_order','product_order_item','user_product_purchase','user_sku_purchase','user_activity_qualification_guard')",Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sku WHERE remains_stock<>total_stock",Integer.class)).isZero();assertThat(snapshot()).isEqualTo(before);
-        evidence("day14-catalog-scope",Map.of("productOrderRoutes",false,"productPayment",false,"productShipping",false,"productPurchaseCounterTables",0,
-                "qualificationGuardTables",0,"skuStockConsumed",0,"catalogSnapshotUnchanged",true));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_order",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM product_order_item",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_product_purchase",Integer.class)).isZero();
+        assertThat(jdbc.queryForList("SELECT sku_id,remains_stock FROM sku ORDER BY sku_id")).isEqualTo(beforeStock);
     }
     @ParameterizedTest @ValueSource(strings={"USER","DISABLED"})
     void serviceRechecksRoleAndAccountAfterAuthentication(String change) throws Exception {
@@ -405,7 +500,7 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         var response=postJson("/ticket-refunds",buyer,Map.of("requestId",key,"orderId",order,"ticketIds",List.of(ticket),"reason","USER_REQUEST")).andExpect(status().isCreated()).andReturn().getResponse();
         long refund=objectMapper.readTree(response.getContentAsString()).path("refundId").asLong();mvc.perform(post("/ticket-refunds/{id}/process",refund).header(HttpHeaders.AUTHORIZATION,bearer(buyer))).andExpect(status().isOk());
     }
-    private Map<String,Object> snapshot(){var result=new LinkedHashMap<String,Object>();for(String table:List.of("product","sku","product_whitelist_member","ticket","ticket_order","ticket_order_item","user_session_purchase")){result.put(table,jdbc.queryForList("SELECT * FROM "+table+" ORDER BY 1"));}return result;}
+    private Map<String,Object> snapshot(){var result=new LinkedHashMap<String,Object>();for(String table:List.of("product","sku","product_whitelist_member","ticket","ticket_order","ticket_order_item","user_session_purchase","product_order","product_order_item","user_product_purchase")){result.put(table,jdbc.queryForList("SELECT * FROM "+table+" ORDER BY 1"));}return result;}
     private List<Map<String,Object>> violations() throws Exception {return scriptViolations("product_invariants.sql");}
     private List<Map<String,Object>> scriptViolations(String name) throws Exception {var sql=Files.readString(Path.of("tests","sql",name)).lines().filter(line->!line.startsWith("--")).collect(Collectors.joining("\n"));var rows=new ArrayList<Map<String,Object>>();for(String statement:sql.split(";")){if(!statement.isBlank()){rows.addAll(jdbc.queryForList(statement));}}return rows;}
 
@@ -419,7 +514,10 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
             if(id.endsWith("ProductMapper.lock") && beforeLock.get()!=null){beforeLock.get().run();}
             var result=invocation.proceed();
             if(id.endsWith("ProductMapper.share") && afterShare.get()!=null){afterShare.get().run();}
-            if(point.get()!=null && id.endsWith("ProductMapper."+point.get())){point.remove();assertThat(result).isEqualTo(1);throw new UncategorizedSQLException("Product test fault","after successful SQL",new SQLException("Injected"));}return result;
+            if(point.get()!=null && (id.endsWith("."+point.get()) || (!point.get().contains(".") && id.endsWith("ProductMapper."+point.get())))){
+                point.remove();assertThat(result).isInstanceOf(Number.class);assertThat(((Number)result).intValue()).isPositive();
+                throw new UncategorizedSQLException("Product test fault","after successful SQL",new SQLException("Injected"));
+            }return result;
         }
     }
     @TestConfiguration(proxyBeanMethods=false) static class DatabaseConfiguration {
@@ -429,7 +527,7 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
             var source=new IsolatedQualificationMySqlDataSource(properties,6,List.of());
             try {
                 var directory=Files.createDirectories(Path.of("target","product-migrations",UUID.randomUUID().toString()));
-                for(String name:List.of("V1__create_schema.sql","V3__create_whitelist_tables.sql","V4__create_free_reservation_tables.sql","V5__create_ticket_refund_tables.sql","V6__add_refund_processing_results.sql","V7__add_gift_inventory_operations.sql","V8__create_product_catalog.sql")){
+                for(String name:List.of("V1__create_schema.sql","V3__create_whitelist_tables.sql","V4__create_free_reservation_tables.sql","V5__create_ticket_refund_tables.sql","V6__add_refund_processing_results.sql","V7__add_gift_inventory_operations.sql","V8__create_product_catalog.sql","V9__create_product_orders.sql")){
                     try(var input=new ClassPathResource("db/migration/"+name).getInputStream()){Files.copy(input,directory.resolve(name));}
                 }
                 String location="filesystem:"+directory.toAbsolutePath().toString().replace('\\','/');
