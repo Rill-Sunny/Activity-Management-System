@@ -115,7 +115,7 @@ ALLOWED 表示本次资格通过；名单不足为 PRODUCT_WHITELIST_REQUIRED，
 
 内部 `ProductQualificationService.check(userId, productId)` 的 userId 必须来自可信调用者；独立调用建立 READ_COMMITTED 事务，加入业务事务时也要求 READ_COMMITTED，避免重用旧 RR 快照。对外始终调用 previewCurrent，从 CurrentUserProvider 决定账号。
 
-当前是只读资格查询，不是未来商品支付授权令牌。商品订单、Product 限购计数、资格保护行及 Outbox 尚未接入；Day 16/20 必须在共同保护协议内重新检查资格，不能仅凭本次 allowed=true 成交。
+当前是只读资格查询，不是商品支付授权令牌。Day 16 商品支付会在持有账号 × Activity Guard 后重新检查资格；出票和实际退款也会取得同一 Guard。Day 20 售后 Outbox 和限定商品联动仍未接入，不能仅凭本次 `allowed=true` 结果成交。
 
 ## 错误、锁与验证
 

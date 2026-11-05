@@ -5,6 +5,7 @@ import com.limitactivitysystem.activity.mapper.ActivitySessionMapper;
 import com.limitactivitysystem.activity.model.Activity;
 import com.limitactivitysystem.activity.model.ActivitySession;
 import com.limitactivitysystem.identity.mapper.AppUserMapper;
+import com.limitactivitysystem.qualification.service.QualificationGuardService;
 import com.limitactivitysystem.security.CurrentUserProvider;
 import com.limitactivitysystem.ticketorder.dto.TicketPaymentResponse;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderErrorCode;
@@ -42,15 +43,18 @@ public class TicketPaymentTransactionService {
     private final TicketPaymentResourceService resources;
     private final SeatAllocator seats;
     private final TicketIssuanceService issuance;
+    private final QualificationGuardService qualificationGuards;
 
     public TicketPaymentTransactionService(TicketOrderMapper orders, TicketOrderItemMapper items, CurrentUserProvider currentUser,
                                 AppUserMapper users, ActivityMapper activities, ActivitySessionMapper sessions,
                                 QualificationService qualification, DatabaseTimeMapper databaseTime,
-                                TicketPaymentResourceService resources, SeatAllocator seats, TicketIssuanceService issuance) {
+                                TicketPaymentResourceService resources, SeatAllocator seats, TicketIssuanceService issuance,
+                                QualificationGuardService qualificationGuards) {
         this.orders = orders; this.items = items; this.currentUser = currentUser; this.users = users;
         this.activities = activities; this.sessions = sessions; this.qualification = qualification;
         this.databaseTime = databaseTime; this.resources = resources; this.seats = seats;
         this.issuance = issuance;
+        this.qualificationGuards = qualificationGuards;
     }
 
     /** Conflict recovery runs only after this transaction proxy has finished rollback. */
@@ -75,6 +79,7 @@ public class TicketPaymentTransactionService {
         validateTradableScope(scope.activity(), scope.session(), now);
 
         issuance.createTickets(order, savedItems, allocated);
+        qualificationGuards.advanceVersion(userId, scope.activity().getActivityId());
         markOrderPaid(order, scope);
         return issuance.response(orders.findById(orderId));
     }
@@ -124,15 +129,16 @@ public class TicketPaymentTransactionService {
         Activity activity = activities.findById(session.getActivityId());
         if (activity == null) { throw failure(ACTIVITY_NOT_FOUND, "Order activity not found"); }
         validateTradableScope(activity, session, databaseTime.currentTime());
-        if (!userId.equals(qualification.checkAgain(activity.getActivityId(), session.getActivitySessionId()))) {
-            throw failure(ORDER_ACCESS_DENIED, "Qualification identity does not match the order buyer");
-        }
         activity = activities.findByIdForShare(activity.getActivityId());
         session = sessions.findByIdForShare(order.getSessionId());
         if (activity == null || session == null || !activity.getActivityId().equals(session.getActivityId())) {
             throw failure(SESSION_NOT_AVAILABLE, "Order scope is unavailable");
         }
         validateTradableScope(activity, session, databaseTime.currentTime());
+        if (!userId.equals(qualification.checkAgain(activity.getActivityId(), session.getActivitySessionId()))) {
+            throw failure(ORDER_ACCESS_DENIED, "Qualification identity does not match the order buyer");
+        }
+        qualificationGuards.lockActivities(userId, List.of(activity.getActivityId()));
         return new Scope(activity, session);
     }
 

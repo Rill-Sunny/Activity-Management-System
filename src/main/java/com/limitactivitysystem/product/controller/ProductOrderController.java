@@ -6,6 +6,7 @@ import com.limitactivitysystem.product.dto.ProductOrderPreviewResponse;
 import com.limitactivitysystem.product.dto.ProductOrderResponse;
 import com.limitactivitysystem.product.service.ProductOrderPreviewService;
 import com.limitactivitysystem.product.service.ProductOrderService;
+import com.limitactivitysystem.product.service.ProductPaymentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +20,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductOrderController {
     private final ProductOrderPreviewService previews;
     private final ProductOrderService orders;
+    private final ProductPaymentService payments;
 
-    public ProductOrderController(ProductOrderPreviewService previews, ProductOrderService orders) {
+    public ProductOrderController(ProductOrderPreviewService previews, ProductOrderService orders, ProductPaymentService payments) {
         this.previews = previews;
         this.orders = orders;
+        this.payments = payments;
     }
 
     @PostMapping("/preview")
@@ -34,5 +37,10 @@ public class ProductOrderController {
     public ResponseEntity<ProductOrderResponse> confirm(@Valid @RequestBody ConfirmProductOrderRequest request) {
         var result = orders.confirm(request);
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.order());
+    }
+
+    @PostMapping("/{orderId}/pay")
+    public ProductOrderResponse pay(@org.springframework.web.bind.annotation.PathVariable Long orderId) {
+        return payments.pay(orderId);
     }
 }

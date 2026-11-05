@@ -109,13 +109,37 @@ Service 的锁保持到订单与明细一起提交或回滚。[创建 MySQL 测�
 
 ## Product order preview and creation
 
-预览和建单都使用 READ_COMMITTED，并从 CurrentUserProvider 取得买家。每项读取 SKU → Product 的当前关系并检查上架、SKU 状态、当前 ProductQualificationService 资格；资格实现继续校验 Activity、Session、Product 及名单/真实 Ticket。整单 Product 必须属于同一 Publisher，允许跨 Activity；重复 SKU 直接拒绝。
+Day 15 的预览与建单使用 READ_COMMITTED。`ProductOrderService.confirm` 在无外层事务下先由独立事务按认证买家和 requestId 查询幂等结果；新单经 `ProductOrderCreationService.create` 的 REQUIRES_NEW 事务重新读取商品与 SKU、资格、库存、限购和当前价格。请求体不接受 buyerId、Publisher、单价、总额或资格结果。
 
-按 product_id 汇总数量后，普通读取 user_product_purchase.valid_count 检查共享限购；逐 SKU 普通读取 remains_stock 与当前价格。限购与库存都是非锁定预检查。缺货预览返回该 SKU 的 requestedQuantity、availableStock 和 INSUFFICIENT_STOCK，不替换规格。预览无任何写操作；建单不扣库存、不创建或更新限购计数。
+### Day 15 实际 SQL 与锁
 
-确认时从服务端重取资格、限购、库存和价格。UNIQUE(buyer_id, request_id) 保护重试；事务代理完整回滚后再查幂等结果，skuId/quantity/政策确认相同则返回原单，否则返回冲突。订单按 `product_order → product_order_item` 写入；任一明细失败均回滚主表和所有已写明细。`unit_price`、Product/SKU 展示名、Activity/资格范围和售后模板/版本都保存为下单快照。特别售后模板的确认字段由买家显式确认，时间由数据库生成。
+| 步骤 | 实际调用 / SQL | 锁与写入事实 |
+|---|---|---|
+| 幂等预查 | `ProductOrderMapper.findByBuyerAndRequestId`：`SELECT ... WHERE buyer_id=? AND request_id=?` | 普通一致性读，不锁既有订单；`UNIQUE(buyer_id, request_id)` 是并发创建的最终保护。唯一冲突后，创建事务先回滚，再由新事务读取并比较明细。 |
+| 商品/SKU 候选 | `ProductMapper.orderCandidate`：`sku JOIN product WHERE sku_id=?` | 普通查询，无 `FOR UPDATE`/`FOR SHARE`；读取当前售价、余量和状态用于预检查，不承诺库存。 |
+| 当前资格 | `ProductQualificationService.check` → `AppUserMapper.findByIdForShare` → `ProductScopeService.resolve` 中 Activity/Session 的 `findByIdForShare` 及 `ProductMapper.share`；`isMember`、`validTickets` 为普通查询 | 建单会持有账号、Activity、可选 Session 和 Product 的共享锁，以复核当前状态与配置。它不获取资格 Guard，也不承诺支付时资格仍成立。 |
+| Product 限购 | `ProductOrderMapper.findValidCount`：`SELECT COALESCE((SELECT valid_count ...),0)` | 普通读取；不锁、不初始化、不插入、不更新 `user_product_purchase`。 |
+| 库存 | 使用 `orderCandidate` 读取的 `remains_stock` 与请求数量比较 | 不锁、不扣减 `sku.remains_stock`。缺货拒绝/预览仅反馈该 SKU，不替换规格。 |
+| 持久化 | `ProductOrderMapper.insert` 插入主表，再 `insertItems` 批量插入明细 | 仅在校验完毕后写新主表和明细。任一明细失败，`rollbackFor=Exception.class` 回滚主表与所有明细。数据库默认生成 `created_at` 和 `expires_at`；`paid_at` 留空。 |
 
-状态为 PENDING_PAYMENT，expires_at 由数据库生成，等于 created_at + 15 分钟。建单前后不改变 `sku.remains_stock` 或 `user_product_purchase.valid_count`。Day 16 支付的排他锁顺序另行实施，不能把本阶段的库存读取当作支付承诺。
+预览只执行上述读取，不写订单或资源。订单创建不扣 SKU 库存、不占 Product 限购；创建前后的 `remains_stock` 与 `valid_count` 应在 MySQL 集成测试中逐行相等。订单快照保存服务端当前 `unit_price`、Product/SKU 名称、Activity/资格范围及售后模板/版本；主单 `total_amount` 是服务端逐项求和。
+
+### Day 16 商品支付实际顺序
+
+```text
+ProductOrder（先锁原待支付订单）
+→ buyer / publisher Account（user_id ASC）
+→ Activity（activity_id ASC）→ SESSION 资格所需 Session（session_id ASC）
+→ Product 资格与归属配置（product_id ASC）
+→ 仅 TICKET_REQUIRED 明细对应的 user_activity_qualification_guard（activity_id ASC）
+→ user_product_purchase（product_id ASC）
+→ SKU（sku_id ASC）
+→ 原 ProductOrder 条件更新为 PAID（复用最初订单锁）
+```
+
+`ProductOrder` 锁住重复支付；Activity、Session 和 Product 共享锁稳定商品归属与资格配置。只对持票资格取得 Guard，公开商品和商品白名单商品不锁 Guard。全部当前资格通过后，按 Product 汇总并条件增加共享限购计数，再按 SKU 汇总、升序锁定并条件扣库存。任何库存失败都回滚之前的限购与 SKU 更新。最终 PAID 更新再次使用数据库时间检查订单期限；失败事务不保留资源写入。
+
+商品支付使用当前 `ProductQualificationService.check` 重查 PUBLIC、商品名单和持票资格；SESSION 持票查询带指定 sessionId。历史订单明细保存的价格快照用于金额真相，不按当前 SKU 价格重算。SKU 缺货信息在支付事务回滚后返回，并用新事务重锁订单，仅当仍为 PENDING_PAYMENT 时标记 `CLOSED/OUT_OF_STOCK`。过期扫描使用独立有界查询和每单 REQUIRES_NEW 关闭；死锁与明确的锁等待超时最多启动三次完整新事务，业务拒绝和缺货不重试。
 
 ## Ticket payment resources
 
@@ -386,51 +410,50 @@ InnoDB 锁保持到事务提交或回滚；统一顺序降低死锁概率，无�
 
 ## Product qualification and payment design
 
-资格 guard 的商品支付协议仍是后续交易接入设计，**不是当前 Mapper/Service 已实现路径**。Day 14 已冻结同 Publisher 可跨 Activity、跨 Publisher 拒绝；V9 实现商品预览与建单，但商品支付、共同资格 guard 和票务资格协调仍未接入。详见 [ADR-011/012](decisions.md#adr-011商品域资格限购与订单边界)。
+V10、商品支付、票务支付和票务退款现已共同使用账号 × 活动资格 Guard。Guard 只负责把有效 Ticket 的读取与写入串行化；它不缓存资格真值，也不替代商品支付中的当前 Ticket 查询。退款后自动处理限定商品售后仍属于 Day 20，不在本次范围内。详见 [ADR-011/012](decisions.md#adr-011商品域资格限购与订单边界)。
 
 ### 共同锁层级
 
-1. 当前业务的 Order。票单、商品单是不同表，禁止持有一类订单锁后反向等待另一类订单。
-2. Refund Request/Item（仅已有退款处理路径需要），复用原有顺序。
-3. 当前账号共享锁；需要协调的 Activity/Session 共享锁在 guard 之前获取，同层按 ID 升序。只检查归属及必要状态，不重新运行已经受理退款的政策、时间或白名单。
-4. user_activity_qualification_guard 排他锁，按 (user_id, activity_id) ASC。同用户多活动时等价于 activity_id ASC。
-5. 当前域的限购计数：票务 user_session_purchase；商品 user_product_purchase 按 product_id ASC。两个计数域不在同一事务相互嵌套。
-6. 商品 Product 行按 product_id ASC 取得共享锁、当前资格/名单锁；随后 SKU 按 sku_id ASC 取得写锁。票务仍是全部 Zone ASC → 全部 Seat ASC → Ticket。
-7. 更新最初已锁的 Order；退款更新已持锁的 Request/Item，不反向发现并获取另一业务域订单。
+1. 当前业务的 Order。票单、商品单是不同表；不得持有一类订单锁后再反向等待另一类订单。
+2. 退款处理继续按既有顺序取得 Refund Request/Item。
+3. 账号共享锁；Activity、相关 Session 和 Product 资格/归属配置共享锁在 Guard 前获取，同类资源按 ID 升序。
+4. 仅资格依赖有效 Ticket 的业务锁 `user_activity_qualification_guard`，按 `(user_id, activity_id)` 升序。公开或商品白名单限定商品不需要 Guard。
+5. 当前域计数：票务 `user_session_purchase`；商品 `user_product_purchase` 按 `product_id ASC`。两个计数域不在同一事务嵌套。
+6. 商品 SKU 按 `sku_id ASC` 锁定并扣减；票务按 Zone ASC → Seat ASC → Ticket。退款同样在 Guard 后依次锁 Quota、Zone、Seat、Ticket。
+7. 更新起始已锁订单；退款更新已持有的 Request/Item，不反向取得另一业务域订单。
 
 guard 惰性初始化使用 PK no-op，不能覆盖 qualification_version，也不能在已持 Quota、Product、SKU、Zone、Seat、Ticket 写锁后才插入或获取它。首次使用历史账号时 version=0 不表示无票，资格必须查真实 Ticket。
 
-### 商品支付候选路径
+### 商品支付 Mapper 路径
 
 ```text
 ProductOrder
-→ Account / Activity / Session coordination
-→ all qualification guards, activityId ASC
-→ all Product quotas, productId ASC
-→ all Products, productId ASC
+→ buyer/publisher Account → Activity → optional Session → Product（各 ID 升序）
+→ TICKET_REQUIRED 对应的 qualification guards（activityId ASC）
+→ Product quota（productId ASC）
 → all SKUs, skuId ASC
 → original ProductOrder PAID
 ```
 
-持票明细先从持久化的订单和配置发现所需保护范围；发现查询不取得子资源锁，取得相应锁后重新核对引用。所有 guard 和全部限购行在任何 SKU 写锁之前取得。Product 资格配置若获准修改，必须另外采用已确认的版本协议，不能用未锁定的旧配置发现遗漏 guard。
+商品订单行和 Product 关系先从持久化订单发现；随后锁定并核对 Product、Activity、Session 与 Publisher 关联。V8 的首次上架冻结商品核心资格配置，因此该关系不会在支付中被合法修改。所有 Guard 和 Product 额度在 SKU 锁前获取；SKU 全部按 ID 升序锁定。Product 额度用 `valid_count <= purchase_limit - quantity` 条件更新并要求影响一行，库存用 `remains_stock >= quantity` 条件更新并要求影响一行。
 
-持票资格在 guard 内用 READ_COMMITTED 当前查询，并禁用 MyBatis 旧缓存结果；不再 FOR UPDATE 全部票或取得票单锁。所有有效 Ticket 写事务已经遵守同一 guard 后，当前查询与该事务后续商品写入构成一个串行阶段。只读资格预览在返回后不持有锁，不能把它传给未来支付当作授权。
+持票资格在 guard 内用 READ_COMMITTED 当前查询，并禁用旧缓存结果；不 FOR UPDATE 全部 Ticket，也不锁 TicketOrder。商品支付明细保存 Guard 版本快照以供后续识别资格变化，但资格判断仍读取真实有效 Ticket。Ticket 出票与退款各在真实写事务中增加版本；失败回滚不增加版本。只读资格预览不持有 Guard，不能作为后续支付授权。
 
 Product 名单管理按 Account/Activity → Product 排他锁 → Member；不再获取 guard、额度或订单。商品支付持有 Product 共享锁再查询成员，名单为空也由 Product 行协调。Product/SKU 管理按父 Product 后子 SKU，禁止先 SKU 后 Product。
 
-### 票务接入位置
+### 票务接入实际顺序
 
-计划接入后的支付路径是 Order → 现有账号/资格父行共享锁 → guard → 票务 Quota → 全部 Zone ASC → 全部 Seat ASC → 新 Ticket → Order。退款处理在发现 Order/Session/Activity 关系后，沿 Order → Refund/Item → 账号及父行协调 → guard → Quota → Zone → Seat → Ticket → 原汇总更新。
+票务支付路径为 Order → Account → Activity → Session → 当前资格配置检查 → Guard → 票务 Quota → Zone ASC → Seat ASC → 新 Ticket → Order PAID。退款处理沿 Order → Refund/Item → Account → Activity → Session → Guard → Quota → Zone ASC → Seat ASC → Ticket ASC → 原汇总更新。退款只锁对应的父 Activity/Session 行作为资格范围门禁，不排他锁整个 Activity，也不按每次商品支付扫锁所有 Activity。
 
 父行协调用于稳定关系，不让已受理退款因为场次开始、名单删除或活动终态再次失效。Ticket 实际变动与 guard version 增加同事务完成；重放不增加版本，故障完整回滚。
 
-**接入是一个整体变更门槛**：保护行迁移、票务支付、退款处理、商品支付及其他有效票写入口必须一起纳入审计。当前这些 Service 尚未接入；未来在任一共享路径上遗漏保护行，不能通过设计验收。
+V10 的 Guard 迁移与以上出票、退款、商品支付路径同步接入。待新增有效 Ticket 的事务也遵守 Guard；普通退款申请只记录请求，不改变资格事实，因此不提前锁 Guard。
 
 ### 最后有效票的可靠交接
 
-退款持 guard 后确定作用域、更新 Ticket 与版本；未来资格变化 Outbox 也必须同事务保存。不得在门票退款事务中查询后再排他锁 product_order，否则会引入跨域订单的反向锁环和大事务。消费者在自己的事务重查当前资格，独立锁商品订单并处理相应明细。
+退款先取得 Guard，再更新 Ticket 和版本。商品先提交时，退款随后提交仍保留商品订单、明细和 Guard 版本快照，便于 Day 20 售后消费者识别；本轮不生成售后事件，也不自动关闭或退款商品订单。未来资格变化 Outbox 必须与 Ticket/Guard 同事务保存。不得在门票退款事务中反向锁 `product_order`；消费者应在独立事务中重查资格并锁商品订单。
 
-guard 先后次序的四种情况及 Day 16/20 测试见 [商品并发设计](product-domain.md#最后一张票退款与商品支付)。还要实测多活动反序输入、同 Product 跨 SKU、支付失败、退款失败、提交后宕机、重复和乱序事件。固定顺序只降低死锁风险；Day 16 仍应使用整事务 retry，并在真实 MySQL Mapper SQL 与 performance_schema 中验证，不能只测 Mock 返回值。
+商品支付与退款先后次序的真实 MySQL 并发用例位于 [ProductCatalogMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/ProductCatalogMySqlIntegrationTest.java)。固定锁顺序可降低死锁概率，但不能消除死锁；商品支付在事务完全回滚后，对明确的 InnoDB 死锁/锁等待超时最多重试三次。MySQL 8.4 指引：[减少与处理死锁](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks.html)、[InnoDB 错误处理](https://dev.mysql.com/doc/refman/8.4/en/innodb-error-handling.html)。Spring 默认代理模式下自调用不会触发事务代理，因此每次尝试由独立 `ProductPaymentTransactionService` Bean 执行：[Spring 声明式事务代理模式](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)。
 
 ## Product catalog implementation (V8)
 
@@ -446,7 +469,7 @@ guard 先后次序的四种情况及 Day 16/20 测试见 [商品并发设计](pr
 
 名单查询在 Product S 持有期间读取，因此 Product X 同时协调存在成员和空成员两种情况。真实实验暂停资格读者、启动成员删除，performance_schema 观察到 product.PRIMARY 的 X 锁等待；读者结束后删除完成，再次查询资格拒绝，见 [Day 14 验证](day14-products.md)。
 
-当前 Ticket COUNT 是 READ_COMMITTED 的一次预览；没有资格 guard，不锁票单，也不保证返回后资格不变。内部 check 可独立建立事务或加入已有 RC 事务，明确拒绝加入 RR；未来商品支付必须先接入上述共同保护协议。目录查询或创建成功不得直接作为支付授权。
+只读资格 preview 中的 Ticket COUNT 是 READ_COMMITTED 的一次读取；preview 不锁票单或 Guard，也不保证返回后资格不变。内部 check 可独立建立事务或加入已有 RC 事务，明确拒绝加入 RR；商品支付在独立付款事务中取得 Guard 后重新查询。目录查询、订单创建或资格预览都不能直接作为支付授权。
 
 SKU 配置写入只匹配从未上架的 DRAFT，Product X 与查询 Product S 协调，条件 SQL 再次校验状态。任何写入失败整笔回滚，没有资格计数、SKU 支付扣减或商品订单副作用。
 

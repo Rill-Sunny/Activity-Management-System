@@ -1,12 +1,12 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.8（增加商品订单、订单明细与 Product 共享限购计数）**
+> **版本：V2.9（增加账号 × Activity 资格 Guard 与商品支付）**
 >
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：23 张业务表：原 20 张表加商品订单、订单明细与 Product 共享限购计数；商品资格保护行仍是后续候选**
+> **当前状态：24 张业务表：包含商品订单、Product 共享限购计数与账号 × Activity 资格保护行**
 >
-> **核心决策：全部 20 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
+> **核心决策：全部 24 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
 ## 0. 架构决策：为什么改为逻辑关联
 
@@ -832,19 +832,32 @@ AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architectur
 
 这些表没有领取人、实名、核销或 Ticket 字段。publisher_id 是操作者，不是赠票接收者。分配 Service 已校验权限、引用及 N 条明细对应 quantity，条件占用 Seat 和扣减 GIFT 库存与历史同事务提交。完整字段与接口见 [GIFT 操作模型](gift-inventory.md)。
 
-## 14. 商品订单与 Product 限购（V2.8）
+## 14. 商品订单、共享限购与资格 Guard（V2.9）
 
-[V9__create_product_orders.sql](../src/main/resources/db/migration/V9__create_product_orders.sql) 新增 `product_order`、`product_order_item`、`user_product_purchase`。全部关系仍为逻辑引用，不声明物理外键。订单唯一键为 `UNIQUE(buyer_id, request_id)`；明细唯一键为 `UNIQUE(order_id, sku_id)`；限购行主键为 `(user_id, product_id)`，同一 Product 下所有 SKU 共用 `valid_count`。
+[V9__create_product_orders.sql](../src/main/resources/db/migration/V9__create_product_orders.sql) 新增 `product_order`、`product_order_item`、`user_product_purchase`；[V10__add_qualification_guard_and_order_version.sql](../src/main/resources/db/migration/V10__add_qualification_guard_and_order_version.sql) 新增共享资格保护表并扩展订单明细。全部关系仍为逻辑引用，不声明物理外键。订单唯一键为 `UNIQUE(buyer_id, request_id)`；明细唯一键为 `UNIQUE(order_id, sku_id)`；限购行主键为 `(user_id, product_id)`，同一 Product 下所有 SKU 共用 `valid_count`。
+
+| 表 | 订单事实与关键约束 |
+|---|---|
+| `product_order` | `order_id` 主键；`buyer_id` 来自当前认证用户；`publisher_id` 由 SKU → Product 关系推导；`request_id` 与买家组成唯一幂等键；`total_amount DECIMAL(12,2)` 由服务端按明细单价与数量计算。数据库生成 `created_at`，`expires_at` 是 STORED 生成列 `created_at + 15 MINUTE`。新单 `status=PENDING_PAYMENT`、`paid_at=NULL`。 |
+| `product_order_item` | 每行保存 `product_id`、`sku_id`、正数 `quantity`、下单时的 `unit_price DECIMAL(10,2)`，以及 Product/SKU 名称、Activity/资格范围和售后模板版本快照。`UNIQUE(order_id, sku_id)` 禁止一个订单重复出现同一 SKU。`subtotal` 不另存，按快照 `unit_price × quantity` 得出；主单总额为全部明细 subtotal 之和。 |
+| `user_product_purchase` | 复合主键 `(user_id, product_id)`；同一 Product 的所有 SKU 共用 `valid_count`。建单不创建或修改此行，预检查只读取现有计数。 |
+| `user_activity_qualification_guard` | 复合主键 `(user_id, activity_id)`；`qualification_version` 是资格相关 Ticket 变动版本，不缓存有效票或资格结果。商品支付、出票和退款在 READ_COMMITTED 事务内以 `FOR UPDATE` 取得同一行；多 Activity 按 `activity_id ASC`。 |
+
+客户端只提交 `requestId` 与购买明细；未知的 `buyerId`、`publisherId`、`unitPrice`、`totalAmount` 或资格字段会被拒绝。订单响应和数据库金额均由服务端当前价格重新计算。即使之后 SKU 改价，订单明细 `unit_price` 与历史总额也不变。
 
 商品订单由多个 Product、SKU 明细组成，但一个订单必须归属同一 Publisher；允许该 Publisher 的商品跨 Activity。`publisher_id` 从每个 SKU 的 Product 归属推导。请求重复出现同一 SKU 时拒绝，不自动合并。完全相同 requestId 与 skuId/quantity/特殊政策确认清单返回原订单，不同载荷返回幂等冲突。
 
-预校验及创建阶段读取当前资格、当前 Product 限购计数、SKU 状态和 remains_stock；这只是非锁定检查。创建订单保存服务端价格快照，状态为 `PENDING_PAYMENT`，过期时间由数据库生成为创建后 15 分钟。订单主表和全部明细在一个事务内写入。此阶段不扣 SKU 库存、不创建或更新 `user_product_purchase`；后者只由后续支付事务竞争更新。
+预校验及创建阶段读取当前资格、当前 Product 限购计数、SKU 状态和 remains_stock；这只是非锁定检查。创建订单保存服务端价格快照，状态为 `PENDING_PAYMENT`，过期时间由数据库生成为创建后 15 分钟。订单主表和全部明细在一个事务内写入。此阶段不扣 SKU 库存、不创建或更新 `user_product_purchase`；后者只由支付事务竞争更新。
+
+V10 为 `product_order_item.qualification_guard_version_snapshot` 增加可空版本快照：仅 `TICKET_REQUIRED` 商品允许写入；商品支付在持有 Guard 并确认当前资格后保存该值。该版本帮助后续售后识别购买与 Ticket 资格变动的先后关系，不能替代真实 Ticket 查询。公开和商品白名单订单不获取 Guard。
+
+支付将订单明细按 Product、SKU 分别汇总。限购行按 `product_id ASC` 初始化并条件增加，SKU 按 `sku_id ASC` 锁定并以 `remains_stock >= quantity` 条件扣减。任一 SKU 缺货会回滚本次限购及全部库存更新；回滚后新事务重新锁单并关闭仍待支付订单，记录 `closed_reason=OUT_OF_STOCK`。订单明细保持原样，修改清单须使用新 `request_id` 创建新单。过期扫描使用数据库时间，将逾期待支付单关闭为 `EXPIRED`。支付使用明细单价快照，不重算当前 SKU 价格。
 
 创建使用 READ_COMMITTED。外层协调器在创建事务回滚后读取并比较并发幂等赢家；不得在失败的创建事务快照中重放。明细保存 Product/SKU 名称、Activity 与资格范围、售后模板/版本快照，`unit_price` 是下单价格真相。客户端不提交 buyer、Publisher、价格、金额或资格结果。
 
 ## 15. 版本记录
 
-2026-11-02 的 [商品域设计](product-domain.md) 中，Product、SKU、独立成员表已通过 V8 落库；V9 加入商品订单、明细和共享限购计数。资格保护表仍未实施。两种持票范围明确支持，跨 Publisher 商品订单拒绝，同 Publisher 跨 Activity 允许。
+2026-11-04 的 Day 16 实现中，V10 加入账号 × Activity 资格 Guard 和订单明细 Guard 版本快照；商品支付、票务出票、票务退款共享该保护行。两种持票范围均按当前有效 Ticket 校验；Day 20 限定商品售后联动仍未实现。
 
 - **V1**：四张基础表采用物理外键，训练基础关系模型与引用完整性。
 - **V2.0**：移除物理外键，保留逻辑关联与数据库基础约束；新增座位占用状态，明确 Service 校验、条件更新和巡检职责。
@@ -855,7 +868,8 @@ AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architectur
 - **V2.5**：新增 `ticket_refund_request`、`ticket_refund_item`，保存服务器申请时间、政策与逐票金额快照，保护申请幂等及同票有效退款唯一性。共 15 张已设计表，0 个物理 FOREIGN KEY。
 - **V2.6**：新增 `gift_inventory_operation`、`gift_inventory_operation_item`，冻结 ALLOCATE 成功操作及逐座历史，保护发布者请求键和单次操作座位唯一性，不记录领取人。共 17 张业务表，0 个物理 FOREIGN KEY。
 - **V2.7**：V8 新增 product、sku、product_whitelist_member，支持两种持票范围、预设模板、独立 SKU 库存与独立名单。共 20 张业务表，0 个物理 FOREIGN KEY。
-- **V2.8（本版）**：V9 新增 product_order、product_order_item、user_product_purchase，冻结订单同 Publisher/可跨 Activity、重复 SKU 拒绝、快照价格、requestId 幂等与建单不占资源。共 23 张业务表，0 个物理 FOREIGN KEY。
+- **V2.8**：V9 新增 product_order、product_order_item、user_product_purchase，冻结订单同 Publisher/可跨 Activity、重复 SKU 拒绝、快照价格、requestId 幂等与建单不占资源。共 23 张业务表，0 个物理 FOREIGN KEY。
+- **V2.9（本版）**：V10 新增 user_activity_qualification_guard，并在商品订单明细保存持票资格 Guard 版本快照；商品支付、票务支付和退款共同串行化有效 Ticket 变化。共 24 张业务表，0 个物理 FOREIGN KEY。
 
 ## 16. 商品目录与资格（V2.7）
 
@@ -867,4 +881,4 @@ product_whitelist_member 唯一键为 (product_id,user_id)，不复用 Activity/
 
 库存及引用巡检见 [product_invariants.sql](../tests/sql/product_invariants.sql)，响应和权限见 [商品 API](api/products.md)，真实迁移及业务验证见 [Day 14 记录](day14-products.md)。
 
-V8 保持三张目录表：资格配置内嵌 Product，独立名单保存成员，因此不创建重复配置表。V9 的订单主表、明细与共享限购计数见第 14 节；资格 guard 仍属于后续支付设计。两种售后模板用受约束的枚举与版本保存，不引入全局 returnable 位。当前没有真实商品库存扣减或共享额度增加。
+V8 保持三张目录表：资格配置内嵌 Product，独立名单保存成员，因此不创建重复配置表。V9 订单主表、明细与共享限购计数以及 V10 资格 Guard 见第 14 节。两种售后模板用受约束的枚举与版本保存，不引入全局 returnable 位。Day 16 商品支付会扣减 SKU 库存并增加 Product 共享计数；退款联动仍待 Day 20。

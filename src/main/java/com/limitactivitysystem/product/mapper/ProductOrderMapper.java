@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -44,7 +45,7 @@ public interface ProductOrderMapper {
     int insertItems(@Param("items") List<ProductOrderItem> items);
 
     @Select("""
-            SELECT order_id,buyer_id,publisher_id,request_id,total_amount,status,created_at,expires_at
+            SELECT order_id,buyer_id,publisher_id,request_id,total_amount,status,created_at,expires_at,paid_at,closed_reason
             FROM product_order WHERE order_id=#{orderId}
             """)
     @Results(id = "productOrderResult", value = {
@@ -55,13 +56,23 @@ public interface ProductOrderMapper {
             @Result(column = "total_amount", property = "totalAmount"),
             @Result(column = "status", property = "status"),
             @Result(column = "created_at", property = "createdAt"),
-            @Result(column = "expires_at", property = "expiresAt")
+            @Result(column = "expires_at", property = "expiresAt"),
+            @Result(column = "paid_at", property = "paidAt"),
+            @Result(column = "closed_reason", property = "closedReason")
     })
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     ProductOrder findById(@Param("orderId") Long orderId);
 
     @Select("""
-            SELECT order_id,buyer_id,publisher_id,request_id,total_amount,status,created_at,expires_at
+            SELECT order_id,buyer_id,publisher_id,request_id,total_amount,status,created_at,expires_at,paid_at,closed_reason
+            FROM product_order WHERE order_id=#{orderId} FOR UPDATE
+            """)
+    @org.apache.ibatis.annotations.ResultMap("productOrderResult")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    ProductOrder findByIdForUpdate(@Param("orderId") Long orderId);
+
+    @Select("""
+            SELECT order_id,buyer_id,publisher_id,request_id,total_amount,status,created_at,expires_at,paid_at,closed_reason
             FROM product_order WHERE buyer_id=#{buyerId} AND request_id=#{requestId}
             """)
     @org.apache.ibatis.annotations.ResultMap("productOrderResult")
@@ -72,6 +83,7 @@ public interface ProductOrderMapper {
             SELECT order_item_id,order_id,product_id,sku_id,quantity,unit_price,
                    product_name_snapshot,sku_name_snapshot,activity_id_snapshot,
                    qualification_type_snapshot,qualification_scope_snapshot,qualification_session_id_snapshot,
+                   qualification_guard_version_snapshot,
                    refund_policy_template_snapshot,refund_policy_version_snapshot,
                    special_policy_acknowledged,policy_acknowledged_at
             FROM product_order_item WHERE order_id=#{orderId} ORDER BY sku_id
@@ -89,6 +101,7 @@ public interface ProductOrderMapper {
             @Result(column = "qualification_type_snapshot", property = "qualificationTypeSnapshot"),
             @Result(column = "qualification_scope_snapshot", property = "qualificationScopeSnapshot"),
             @Result(column = "qualification_session_id_snapshot", property = "qualificationSessionIdSnapshot"),
+            @Result(column = "qualification_guard_version_snapshot", property = "qualificationGuardVersionSnapshot"),
             @Result(column = "refund_policy_template_snapshot", property = "refundPolicyTemplateSnapshot"),
             @Result(column = "refund_policy_version_snapshot", property = "refundPolicyVersionSnapshot"),
             @Result(column = "special_policy_acknowledged", property = "specialPolicyAcknowledged"),
@@ -96,6 +109,40 @@ public interface ProductOrderMapper {
     })
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     List<ProductOrderItem> findItems(@Param("orderId") Long orderId);
+
+    @Update("""
+            UPDATE product_order_item
+            SET qualification_guard_version_snapshot=#{version}
+            WHERE order_id=#{orderId} AND order_item_id=#{orderItemId}
+              AND qualification_type_snapshot='TICKET_REQUIRED'
+              AND qualification_guard_version_snapshot IS NULL
+            """)
+    int saveQualificationGuardVersion(@Param("orderId") Long orderId,
+                                      @Param("orderItemId") Long orderItemId,
+                                      @Param("version") Long version);
+
+    @Update("""
+            UPDATE product_order
+            SET status='PAID', paid_at=CURRENT_TIMESTAMP(3)
+            WHERE order_id=#{orderId} AND status='PENDING_PAYMENT'
+              AND created_at <= CURRENT_TIMESTAMP(3) AND expires_at > CURRENT_TIMESTAMP(3)
+            """)
+    int markPaidIfPendingAndUnexpired(@Param("orderId") Long orderId);
+
+    @Update("""
+            UPDATE product_order
+            SET status='CLOSED', closed_reason='OUT_OF_STOCK'
+            WHERE order_id=#{orderId} AND status='PENDING_PAYMENT'
+            """)
+    int closePendingForOutOfStock(@Param("orderId") Long orderId);
+
+    @Update("""
+            UPDATE product_order
+            SET status='CLOSED', closed_reason='EXPIRED'
+            WHERE order_id=#{orderId} AND status='PENDING_PAYMENT'
+              AND expires_at <= CURRENT_TIMESTAMP(3)
+            """)
+    int closePendingIfExpired(@Param("orderId") Long orderId);
 
     @Select("""
             SELECT COALESCE((SELECT valid_count FROM user_product_purchase

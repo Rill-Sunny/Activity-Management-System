@@ -6,6 +6,7 @@ import com.limitactivitysystem.activity.model.Activity;
 import com.limitactivitysystem.activity.model.ActivitySession;
 import com.limitactivitysystem.identity.mapper.AppUserMapper;
 import com.limitactivitysystem.identity.model.AppUser;
+import com.limitactivitysystem.qualification.service.QualificationGuardService;
 import com.limitactivitysystem.security.CurrentUserProvider;
 import com.limitactivitysystem.ticketorder.dto.TicketPaymentResponse;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
@@ -50,6 +51,7 @@ class TicketPaymentTimeValidationTest {
     @Mock private TicketPaymentResourceService resources;
     @Mock private SeatAllocator seats;
     @Mock private TicketIssuanceService issuance;
+    @Mock private QualificationGuardService qualificationGuards;
     @InjectMocks private TicketPaymentTransactionService payment;
     private TicketOrder order;
     private Activity activity;

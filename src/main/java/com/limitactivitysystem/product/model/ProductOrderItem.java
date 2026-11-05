@@ -16,6 +16,7 @@ public class ProductOrderItem {
     private String qualificationTypeSnapshot;
     private String qualificationScopeSnapshot;
     private Long qualificationSessionIdSnapshot;
+    private Long qualificationGuardVersionSnapshot;
     private String refundPolicyTemplateSnapshot;
     private Integer refundPolicyVersionSnapshot;
     private boolean specialPolicyAcknowledged;
@@ -45,6 +46,8 @@ public class ProductOrderItem {
     public void setQualificationScopeSnapshot(String qualificationScopeSnapshot) { this.qualificationScopeSnapshot = qualificationScopeSnapshot; }
     public Long getQualificationSessionIdSnapshot() { return qualificationSessionIdSnapshot; }
     public void setQualificationSessionIdSnapshot(Long qualificationSessionIdSnapshot) { this.qualificationSessionIdSnapshot = qualificationSessionIdSnapshot; }
+    public Long getQualificationGuardVersionSnapshot() { return qualificationGuardVersionSnapshot; }
+    public void setQualificationGuardVersionSnapshot(Long qualificationGuardVersionSnapshot) { this.qualificationGuardVersionSnapshot = qualificationGuardVersionSnapshot; }
     public String getRefundPolicyTemplateSnapshot() { return refundPolicyTemplateSnapshot; }
     public void setRefundPolicyTemplateSnapshot(String refundPolicyTemplateSnapshot) { this.refundPolicyTemplateSnapshot = refundPolicyTemplateSnapshot; }
     public Integer getRefundPolicyVersionSnapshot() { return refundPolicyVersionSnapshot; }

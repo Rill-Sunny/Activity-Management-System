@@ -2,6 +2,8 @@ package com.limitactivitysystem.refund.service;
 
 import com.limitactivitysystem.activity.mapper.SessionSeatMapper;
 import com.limitactivitysystem.activity.mapper.SessionZoneMapper;
+import com.limitactivitysystem.activity.mapper.ActivityMapper;
+import com.limitactivitysystem.activity.mapper.ActivitySessionMapper;
 import com.limitactivitysystem.identity.mapper.AppUserMapper;
 import com.limitactivitysystem.refund.dto.TicketRefundItemResponse;
 import com.limitactivitysystem.refund.dto.TicketRefundResponse;
@@ -11,6 +13,7 @@ import com.limitactivitysystem.refund.mapper.TicketRefundMapper;
 import com.limitactivitysystem.refund.model.RefundTicketResource;
 import com.limitactivitysystem.refund.model.TicketRefundRequest;
 import com.limitactivitysystem.security.CurrentUserProvider;
+import com.limitactivitysystem.qualification.service.QualificationGuardService;
 import com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper;
 import com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper;
 import com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper;
@@ -41,14 +44,19 @@ public class TicketRefundProcessingService {
     private final SessionZoneMapper zones;
     private final SessionSeatMapper seats;
     private final DatabaseTimeMapper databaseTime;
+    private final ActivityMapper activities;
+    private final ActivitySessionMapper sessions;
+    private final QualificationGuardService qualificationGuards;
 
     public TicketRefundProcessingService(CurrentUserProvider currentUser, AppUserMapper users,
             TicketOrderMapper orders, TicketRefundMapper refunds, RefundTicketMapper tickets,
             UserSessionPurchaseMapper purchases, SessionZoneMapper zones, SessionSeatMapper seats,
-            DatabaseTimeMapper databaseTime) {
+            DatabaseTimeMapper databaseTime, ActivityMapper activities, ActivitySessionMapper sessions,
+            QualificationGuardService qualificationGuards) {
         this.currentUser = currentUser; this.users = users; this.orders = orders; this.refunds = refunds;
         this.tickets = tickets; this.purchases = purchases; this.zones = zones; this.seats = seats;
         this.databaseTime = databaseTime;
+        this.activities = activities; this.sessions = sessions; this.qualificationGuards = qualificationGuards;
     }
 
     /** Executes an accepted quote atomically. No policy, qualification, or session-time reevaluation. */
@@ -87,6 +95,15 @@ public class TicketRefundProcessingService {
             items = refunds.findItemsForUpdate(refundId);
         }
         var selected = discoverResources(order, items);
+        var discoveredSession = sessions.findById(order.getSessionId());
+        if (discoveredSession == null) { throw new TicketRefundException(REFUND_RESOURCE_CONFLICT, "Refund session is missing"); }
+        var activity = activities.findByIdForShare(discoveredSession.getActivityId());
+        var session = sessions.findByIdForShare(order.getSessionId());
+        if (activity == null || session == null || !activity.getActivityId().equals(discoveredSession.getActivityId())
+                || !activity.getActivityId().equals(session.getActivityId())) {
+            throw new TicketRefundException(REFUND_RESOURCE_CONFLICT, "Refund activity or session is inconsistent");
+        }
+        qualificationGuards.lockActivities(buyerId, List.of(activity.getActivityId()));
         lockAndValidateResources(order, items, selected);
 
         // All resources are locked and validated before resource restoration starts.
@@ -104,6 +121,7 @@ public class TicketRefundProcessingService {
             changed(tickets.markRefunded(item.ticketId(), processedAt), "Ticket could not be refunded");
             changed(refunds.markItemSucceeded(item.refundItemId(), processedAt), "Refund item could not succeed");
         }
+        qualificationGuards.advanceVersion(buyerId, activity.getActivityId());
         long remaining = tickets.countValidByOrder(order.getOrderId());
         changed(orders.updateRefundSummary(order.getOrderId(), remaining == 0 ? "REFUNDED" : "PARTIALLY_REFUNDED"), "Order summary could not be updated");
         changed(refunds.markSucceeded(refundId, processedAt), "Refund request could not succeed");

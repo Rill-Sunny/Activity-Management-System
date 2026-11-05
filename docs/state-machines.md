@@ -2,20 +2,34 @@
 
 本页记录业务状态、操作限制与已冻结 Schema 的接入边界。资格通过表示通过账号、归属和名单校验，不代表已满足交易状态、时间、库存或限购条件。
 
-## 商品目录状态与后续订单设计
+## 商品目录与商品订单状态
 
-2026-11-02 已实现 Product 的 DRAFT/ON_SALE/OFF_SALE 及 SKU DRAFT 配置。商品订单状态仍是后续设计，字段与待确认决定见 [商品域设计](product-domain.md)。
+Day 15/16 已实现待支付商品订单、模拟支付、缺货关闭和过期扫描。商品售后转换仍未实现。Product 的 DRAFT/ON_SALE/OFF_SALE 与 SKU 配置由目录 API 管理。
 
 | 对象 | 候选转换 | 语义 |
 |---|---|---|
 | Product | DRAFT → ON_SALE → OFF_SALE；OFF_SALE → ON_SALE | API 已实现，首次上架时间保留；上架要求父活动 PUBLISHED 且至少一项 ACTIVE SKU。 |
 | SKU | 创建为 ACTIVE；Schema 也允许 INACTIVE | 当前没有上下架 SKU 状态切换 API；只允许 DRAFT Product 下创建/修改价格和初始库存，已上架或下架 Product 都拒绝配置写入，零库存可展示。 |
-| ProductOrder | PENDING_PAYMENT → PAID；PENDING_PAYMENT → CLOSED | 创建不预占资源；全部 SKU 与 Product 额度成功才成交。 |
-| ProductOrder | PAID → PARTIALLY_REFUNDED → REFUNDED；PAID → REFUNDED | 按实际成功退款数量汇总，不改写原价或原购买数量。 |
+| ProductOrder | 创建 → PENDING_PAYMENT | Day 15 只创建此状态。`created_at` 由数据库生成，`expires_at = created_at + 15 分钟`，`paid_at = NULL`；服务端计算 `total_amount` 并从 SKU → Product 推导 `publisher_id`。 |
+| ProductOrder | PENDING_PAYMENT → PAID | 商品资格、Product 共享限购、所有 SKU 库存和最终数据库期限检查成功后，同一事务扣减库存、增加限购并更新 `paid_at`。价格取订单明细快照。 |
+| ProductOrder | PENDING_PAYMENT → CLOSED | 任一 SKU 缺货时，支付事务先全部回滚，再由新事务重锁并关闭，原因 `OUT_OF_STOCK`。过期扫描按数据库时间条件关闭，原因 `EXPIRED`。 |
+| ProductOrder | PAID → PARTIALLY_REFUNDED → REFUNDED；PAID → REFUNDED | Day 20 及以后按售后结果转换，不改写原价或购买数量；本轮未实现。 |
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING_PAYMENT: 创建，期限 15 分钟
+    PENDING_PAYMENT --> PAID: 重新验资格、原子占 Product 限购并扣完全部 SKU
+    PENDING_PAYMENT --> CLOSED: 缺货回滚后关闭 / DB 过期扫描
+    PAID --> PARTIALLY_REFUNDED: 部分售后（后续阶段）
+    PARTIALLY_REFUNDED --> REFUNDED: 全部售后（后续阶段）
+    PAID --> REFUNDED: 全额售后（后续阶段）
+```
+
+模拟支付只接受认证买家和订单 ID。Ticket 限定商品在账号 × Activity Guard 内重新查询有效 Ticket；SESSION 范围限定到指定场次。同一 Product 的所有 SKU 共用一条有效购买计数，多个 Product 按 ID 升序更新，多个 SKU 按 ID 升序扣减。订单已 PAID 时重复请求返回原结果，不再产生资源变化。达到 `expires_at` 本身不会自动改变状态，必须由支付拒绝或独立过期扫描事务关闭。
 
 ProductOrder 的财务状态不代表已发货、已收货或可再售。履约和部分售后的完整状态、操作历史在 Day 17 设计，不能把 REFUNDED 直接解释为 SKU 已恢复库存。
 
-售后模板本身不是交易状态：STANDARD_7D、SPECIAL_NO_REASON_RETURN 都不能变成一个覆盖所有原因的“永不可退”状态。未来质量、资格丧失和取消等原因分别进入相应售后流程；本轮没有商品退款、发货或收货转换，也没有真正扣 SKU 或增加 Product 有效购买数量。
+售后模板本身不是交易状态：STANDARD_7D、SPECIAL_NO_REASON_RETURN 都不能变成一个覆盖所有原因的“永不可退”状态。商品成功支付会扣减 SKU 余量、增加 Product 购买计数。订单明细保留购买时资格范围和 Guard 版本；退款最后有效票时订单事实仍保留，Day 20 再实现限定商品售后联动。本轮没有商品退款、发货或收货转换。
 
 ## Activity 生命周期
 
@@ -116,6 +130,8 @@ stateDiagram-v2
 内部资源组件已支持限购原子增加、PAID Zone 余量条件减少，以及 Seat 从 `AVAILABLE` 条件变为 `SOLD`。这些操作必须加入调用方事务，任一失败时整体回滚；失败的条件 UPDATE 不触发资源变化。连座不满足且未接受非连座时，也不保留之前的额度或库存变化。
 
 资源组件返回明细与实际 Seat 的对应关系，由 `TicketIssuanceService` 按原明细单价签发 VALID Ticket。`TicketPaymentTransactionService` 在同一事务中完成限购、库存、Seat、Ticket 与最终 PAID 更新，全部成功后提交。
+
+出票事务在 Activity/Session 与当前资格配置检查后，取得 `(buyer_id, activity_id)` Guard，再进入票务限购及资源锁；新 Ticket 与 Guard 版本增加同事务提交。退款处理也在恢复限购、Zone、Seat 和 Ticket 前取得同一 Guard，并在 Ticket 成功退款后增加版本。商品支付在 Guard 内读取真实有效票；版本字段只用于追踪购买与资格变化的先后，不代替资格查询。
 
 ```mermaid
 stateDiagram-v2

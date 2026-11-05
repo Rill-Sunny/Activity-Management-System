@@ -53,4 +53,14 @@ Success returns `201 Created`; a matching retry returns the original order with 
 
 Confirmation checks current stock but does not reserve it. It does not change `remains_stock` or create/update the Product quota row. Payment must recheck and atomically consume both resources in its own transaction.
 
+## Pay
+
+`POST /product-orders/{orderId}/pay` requires the authenticated buyer and has no request body. The server locks the order, reloads its persisted items, rechecks current Product/SKU sale state and qualification, atomically increases Product-level purchase counts and deducts each SKU stock, then marks the order `PAID`. It does not accept buyer, Publisher, amount, timestamp, status, SKU quantities, or quota from the client. Repeating payment for an already paid order returns its stored result without applying resource changes again.
+
+If any SKU is short, all quota and stock changes in the payment attempt roll back. A separate transaction then closes the still-pending order with `closedReason=OUT_OF_STOCK`. The response is `409 PRODUCT_ORDER_OUT_OF_STOCK` with the observed `skuId`, `requestedQuantity`, `availableStock`, and `status=INSUFFICIENT_STOCK`. This is a point-in-time inventory observation; the order’s original items remain unchanged. To try another selection, preview and confirm it under a new `requestId`.
+
+Ticket-qualified purchases use the shared account × Activity qualification Guard. `SESSION` qualification checks a valid ticket for the exact configured session. A later ticket refund does not automatically refund or close a paid product order in this phase; Day 20 handles that after-sales workflow.
+
+Expired pending product orders are closed by the product-order expiration scan using database time. Payment retries only classified deadlocks or lock wait timeouts, up to three complete transaction attempts; stock and business errors are not retried.
+
 Common business errors include `SKU_NOT_FOUND`, `PRODUCT_NOT_PURCHASABLE`, `SKU_NOT_PURCHASABLE`, `PRODUCT_QUALIFICATION_DENIED`, `PRODUCT_PUBLISHER_MISMATCH`, `PRODUCT_PURCHASE_LIMIT_EXCEEDED`, `INSUFFICIENT_SKU_STOCK`, `PRODUCT_POLICY_ACK_REQUIRED`, and `IDEMPOTENCY_CONFLICT`.

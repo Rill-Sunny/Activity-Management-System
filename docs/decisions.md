@@ -201,29 +201,30 @@ publisher_id 是操作者，不能解释为赠票领取人。模型不增加领�
 7. 商品订单固定拒绝跨 Publisher，允许同一 Publisher 下跨 Activity 合单；主单 publisher_id 从 SKU → Product 推导。购买清单重复 SKU 直接拒绝，不合并，以便幂等比较保持请求清晰。
 8. 预校验和建单均以当前 ACTIVE 用户为准，逐项重查商品、SKU、资格、共享 Product 限购与库存。库存/限购仅作非锁定预检查；待支付订单不承诺库存，不扣 SKU、不创建或更新 user_product_purchase。
 9. 同 buyer/requestId 唯一。重试载荷按 skuId → quantity 与特殊政策确认比较；完全相同返回原订单，不同返回 IDEMPOTENCY_CONFLICT。价格、总额、Publisher 和资格仅由服务端查询。
-10. 新单状态为 PENDING_PAYMENT，expires_at 是 created_at + 15 分钟；订单及全部明细在同一 READ_COMMITTED 事务提交。明细 unit_price 保存创建时价格快照。
+10. 新单状态为 PENDING_PAYMENT，created_at 由数据库生成，expires_at 是 created_at + 15 分钟，paid_at 为 NULL；buyer_id 来自 CurrentUserProvider，publisher_id 从 SKU → Product 推导，total_amount 由服务端按单价快照计算。订单及全部明细在同一 READ_COMMITTED 事务提交。
+11. 客户端只可提交 requestId 与明细；buyerId、publisherId、unitPrice、totalAmount 和资格结果属于服务端事实，确认 DTO 拒绝未知字段。订单基础状态、价格快照、幂等、跨 Publisher/资格拒绝、库存和 Product 限购不变、事务回滚均需通过真实 MySQL 最终状态断言验收，覆盖 P01–P14；P05、P06、P10、P11、P12 为重点。
 
 Day 14 的关键决策已冻结如下：
 
 | 决策 | 已冻结规则 | 实现约束 |
 |---|---|---|
 | 持票范围 | 每个 Product 选择 ACTIVITY 或指定 SESSION，已实现。 | 两种范围按真实有效 Ticket 判定。 |
-| D14-Q2：同发布者订单的活动边界 | 已冻结：同 Publisher 可跨 Activity 合单；跨 Publisher 拒绝。 | 多活动持票资格按各 Product 的活动范围分别校验；Day 16 再按 activity_id 升序接入共同資格 guard。 |
+| D14-Q2：同发布者订单的活动边界 | 已冻结：同 Publisher 可跨 Activity 合单；跨 Publisher 拒绝。 | 多活动持票资格按各 Product 的活动范围分别校验；Day 16 按 activity_id 升序取得共同资格 Guard。 |
 | D14-Q3：规则编辑 | 已冻结：Product 首次上架后核心规则不可修改；SKU 价格与库存仅 DRAFT 可设。 | 未来如需改规则，新增版本及订单快照协议，不覆盖旧单依赖的资格与售后事实。 |
 
-字段、单行约束、逻辑引用和后续设计见 [商品域设计](product-domain.md)。Day 14 的订单范围和重复 SKU 决策已冻结；V9 实现订单、订单明细和商品共享限购计数，资格 guard 仍留给后续支付阶段。目录切片及订单验证分别记录在 [Day 14 验证](day14-products.md) 与 [商品订单 API](api/product-orders.md)。
+字段、单行约束、逻辑引用和后续设计见 [商品域设计](product-domain.md)。Day 14 的订单范围和重复 SKU 决策已冻结；V9 实现订单、订单明细和商品共享限购计数，V10 与 Day 16 接入共同资格 Guard、支付与过期处理。Day 20 限定商品售后联动仍未实现。目录和支付接口见 [商品订单 API](api/product-orders.md)。
 
 ## ADR-012：持票资格使用账号活动保护行协调
 
-日期：2026-11-02。状态：技术设计，尚未接入当前票务 Service；Day 16/20 必须用真实事务验证。
+日期：2026-11-02；Day 16 更新：2026-11-04。状态：V10 与 Day 16 商品支付、票务支付、票务退款已接入共同 Guard；Day 20 售后联动仍未实现。
 
 选用 (user_id, activity_id) 唯一的 user_activity_qualification_guard 作为共同锁对象。它不保存最终资格真相，不以缓存有效票数、资格布尔值或版本号代替 Ticket 当前查询。同一个用户多个活动按 activity_id 升序获取保护行。
 
-商品支付在保护行内重查适用范围的有效票并完成成交。票务支付和退款处理的有效票变动也必须取得同一保护行，位置在限购、Zone、Seat、Ticket 写锁之前。只有商品支付使用保护行、票务仍绕过它的方案无效。普通退款受理不改变有效票集合，不提前接入资源锁。
+商品支付先稳定账号、Activity、Session 和 Product 配置，再取得保护行并重查适用范围的有效票。公开和商品白名单商品不需要 Guard。票务支付和退款处理的有效票变动也取得同一保护行，位置在票务限购、Zone、Seat、Ticket 写锁之前。普通退款受理不改变有效票集合，不提前接入资源锁。`qualification_version` 与成交明细快照用于追踪资格先后，不代替有效 Ticket 查询。
 
-退票先提交时，商品支付重查无票并拒绝；商品先提交时，随后退最后有效票必须触发 LINK 售后。保护行保证串行判定，不能替代可靠联动事件。Day 19/20 要求退票、版本变化与资格变化 Outbox 同事务提交；消费者再按明细范围快照和当前有效票独立处理售后，不在退票事务反向锁商品订单。
+退票先提交时，商品支付重查无票并拒绝；商品先提交时，随后退最后有效票不会抹除已支付商品订单或其明细版本快照。保护行保证串行判定，不能替代可靠联动事件。本轮不自动触发售后；Day 19/20 再要求退票、版本变化与资格变化 Outbox 同事务提交，消费者按明细范围快照和当前有效票独立处理售后，不在退票事务反向锁商品订单。
 
-完整先后顺序、失败回滚、跨场次范围和提交后中断场景见 [商品域并发设计](product-domain.md#最后一张票退款与商品支付) 与 [计划锁顺序](locking.md#product-qualification-and-payment-design)。这些是后续验收要求，尚未运行，不计为 PASS。
+锁顺序及两种退款/商品支付并发顺序的 MySQL 集成用例见 [商品域并发设计](product-domain.md#最后一张票退款与商品支付)、[锁顺序](locking.md#product-qualification-and-payment-design) 和 [ProductCatalogMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/ProductCatalogMySqlIntegrationTest.java)。
 
 ## ADR-013：两种预设模板只表达普通退货政策
 
