@@ -188,7 +188,7 @@ publisher_id 是操作者，不能解释为赠票领取人。模型不增加领�
 
 ## ADR-011：商品域资格、限购与订单边界
 
-日期：2026-11-02；Day 15 补充：2026-11-03。状态：Day 14 目录、资格与商品订单创建设计已冻结；V8 目录已实现，Day 15 订单创建由 V9 落库。支付、资格 guard 与售后仍属后续阶段。
+日期：2026-11-02；Day 15 补充：2026-11-03；Day 17 Schema 更新：2026-11-05。状态：Day 14 目录、资格与商品订单创建设计已冻结；V8 目录、V9 订单、V10 支付资格 Guard 已落库。V11 和售后 API/Service 已实现。
 
 依照 PRD、ITEM、RET、LINK 已明确的约束：
 
@@ -228,8 +228,50 @@ Day 14 的关键决策已冻结如下：
 
 ## ADR-013：两种预设模板只表达普通退货政策
 
-状态：Day 14 的数据库枚举、版本与 API 展示已验证；售后处理尚未实现。
+状态：Day 14 的数据库枚举、版本与 API 展示已验证；V11 售后 Schema、状态机和模拟处理 API 已实现。
 
 STANDARD_7D 表达项目的常规七日无理由模板；SPECIAL_NO_REASON_RETURN 表达不支持普通无理由退货，并要求后续购买时明确确认。两种模板都不用于一概排除质量问题、限定资格丧失、活动取消等特殊原因。API 展示 refundPolicy、refundPolicyVersion、requiresPolicyAcknowledgement 和服务端说明，不增加一个把所有场景统一关闭的 returnable=false 字段。
 
-未来售后必须先区分业务原因，再应用对应流程；不能把 `template == SPECIAL_NO_REASON_RETURN` 直接映射为所有售后拒绝。本轮只冻结并验证模板存储与展示，没有宣称普通退货、质量处理、联动退款或模拟物流已经能运行。两种模板逐项数据库/API 一致性及公开商品资格均在 [Day 14 最终验收](day14-products.md#day-14-acceptance) 留证。
+售后先区分业务原因，再应用对应流程；不能把 `template == SPECIAL_NO_REASON_RETURN` 直接映射为所有售后拒绝。`NO_REASON` 仅允许 `STANDARD_7D`，质量问题、持票资格丧失和活动取消使用独立原因码。Day 20 的持票资格自动联动仍未接入。两种模板逐项数据库/API 一致性及公开商品资格均在 [Day 14 最终验收](day14-products.md#day-14-acceptance) 留证。
+
+## ADR-014：商品售后按订单明细原子预留退款数量
+
+日期：2026-11-05。状态：V11/V12 与售后状态机已实现，模拟发货/收货和售后 API 已接入。
+
+履约与 `product_order_item` 是一对一关系。履约状态、发货/收货数量及服务器时间直接保存在订单明细，避免再建一张等价的一对一表。申请历史使用 `product_after_sale_request` 和 `product_after_sale_item`。主申请按 `(buyer_id, request_id)` 幂等；每个申请内，同一 `order_item_id` 最多出现一次。SKU、买家、订单和明细之间的逻辑引用由 Service 校验，不增加物理外键。
+
+订单明细保存 `refund_pending_quantity` 与 `refunded_quantity`。前者包含事务内尚未完成的数量，后者只统计已提交成功的退款数量。数据库约束固定为：
+
+```text
+0 <= refunded_quantity + refund_pending_quantity <= quantity
+```
+
+申请、明细、数量预留、模拟退回/验收/退款及资源恢复在一个 `READ_COMMITTED` 事务中完成。申请必须至少有一条明细，所有明细属于同一订单。每条明细按 `order_item_id ASC` 执行 `UPDATE ... SET refund_pending_quantity = refund_pending_quantity + :quantity WHERE quantity - refunded_quantity - refund_pending_quantity >= :quantity`，并检查影响行数为 1。任一明细预留或后续恢复失败时回滚整笔申请。MySQL `CHECK` 约束作为第二道保护，防止超过购买数量。相同买家和 `request_id` 重放时，载荷相同返回原申请；订单、原因、数量或模拟验收输入不同则返回幂等冲突。
+
+成功事务减少待处理数量并增加成功退款数量。处理阶段技术异常先完整回滚，再由独立事务持久化 `FAILED` 申请、明细和 `failure_reason`；失败记录不占用数量或资源。同一买家、`request_id` 和相同载荷可以安全重试并重开失败记录，变化载荷返回冲突。拒绝于处理前的业务校验不会创建售后记录。
+
+订单明细履约状态为 `UNSHIPPED`、`SHIPPED`、`RECEIVED`。每个明细一次模拟发出其全部未退款数量，一次确认全部已发货数量，以确保明细上的服务器时间对应明确事件；售后仍可申请部分数量。发货、收货及售后都锁同一商品订单和明细。退款成功总是按数量恢复 Product 限购；只有未发货退款，或退回后验收通过且可再售的商品，才恢复 SKU 可售库存。验收失败或不可再售不恢复 SKU 库存。
+
+`NO_REASON` 仅允许 `STANDARD_7D`；需要已收货、模拟验收通过且可再售，并采用 `[received_at, received_at + 7 days)` 的半开窗口，边界等于到期时刻即拒绝。验收通过与是否可再售是独立事实。`SPECIAL_NO_REASON_RETURN` 仅拒绝普通无理由退货。质量问题、持票资格丧失和活动取消可按单独原因表达；持票联动不在本阶段自动触发。
+
+## ADR-015：商品售后时间与明细履约边界
+
+日期：2026-11-05。状态：V11/V12 已实现。
+
+每个订单明细只确认一次完整剩余数量的模拟发货和一次完整已发货数量的模拟收货。V11 的 `shipped_at` 和 `received_at` 因此各表示一个明确的订单明细事件；售后申请仍可部分退款。发货、收货和售后事务共同锁 ProductOrder 与该订单的明细行。
+
+`STANDARD_7D` 的无理由窗口固定为数据库收货时间起 168 小时的半开区间 `[received_at, received_at + 7 days)`。开始时刻接受，精确等于 7 天终点时拒绝，终点之后拒绝。无理由退货还要求已收货并在模拟验收输入中可再售。`SPECIAL_NO_REASON_RETURN` 只拒绝 `NO_REASON`；质量问题、持票资格丧失及活动取消使用独立原因码。Day 20 自动资格联动不由本次实现触发。
+
+## ADR-016：公开缓存使用 generation 和持久化失效任务
+
+日期：2026-11-06。
+
+状态：Cache-Aside、数据库失效任务、提交后立即删除和定时补偿已实现。MySQL/Redis 联合集成用例需要 Redis、测试数据库和 Maven 环境。
+
+活动详情、场次座位布局和商品公开详情使用 Redis Cache-Aside。条目带有 generation；回源前后读取 MySQL generation，Redis Lua 脚本原子比较版本后才写入。正缓存 TTL 为 30–35 秒，空结果 TTL 为 3–5 秒。座位是否可购买、商品真实库存和用户资格不属于缓存授权事实。
+
+领域事务同时递增 `cache_generation` 并插入 `cache_invalidation_task`。`AFTER_COMMIT` 监听器立即删除 Redis 条目，扫描器重试失败任务。Redis 删除成功后、数据库确认任务前若进程退出，重复删除仍安全。MySQL 和 Redis 不能原子提交，因此缓存最多在 Redis 修复前继续服务，正缓存到期上界为 35 秒。支付、退款、库存和资格继续以受事务保护的 MySQL 数据为准。
+
+缓存指标只使用固定缓存类型标签。去重拒绝指标不带标签。Redis 支付去重采用十秒所有者令牌，Lua 只允许令牌所有者释放 Key。Redis 故障时请求继续经过数据库幂等和状态检查。
+
+验证用例与运行结果见 [Redis 测试记录](reports/redis-test.md)。

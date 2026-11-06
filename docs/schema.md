@@ -1,12 +1,12 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.9（增加账号 × Activity 资格 Guard 与商品支付）**
+> **版本：V2.11（独立记录售后验收与可再售结果）**
 >
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：24 张业务表：包含商品订单、Product 共享限购计数与账号 × Activity 资格保护行**
+> **当前状态：26 张业务表：包含商品订单、Product 共享限购计数、账号 × Activity 资格保护行与售后记录**
 >
-> **核心决策：全部 24 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
+> **核心决策：全部 26 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
 ## 0. 架构决策：为什么改为逻辑关联
 
@@ -832,16 +832,18 @@ AT-04、AT-16 的当前测试范围及复跑命令见 [阶段验收](architectur
 
 这些表没有领取人、实名、核销或 Ticket 字段。publisher_id 是操作者，不是赠票接收者。分配 Service 已校验权限、引用及 N 条明细对应 quantity，条件占用 Seat 和扣减 GIFT 库存与历史同事务提交。完整字段与接口见 [GIFT 操作模型](gift-inventory.md)。
 
-## 14. 商品订单、共享限购与资格 Guard（V2.9）
+## 14. 商品订单、共享限购、资格 Guard 与售后（V2.10）
 
-[V9__create_product_orders.sql](../src/main/resources/db/migration/V9__create_product_orders.sql) 新增 `product_order`、`product_order_item`、`user_product_purchase`；[V10__add_qualification_guard_and_order_version.sql](../src/main/resources/db/migration/V10__add_qualification_guard_and_order_version.sql) 新增共享资格保护表并扩展订单明细。全部关系仍为逻辑引用，不声明物理外键。订单唯一键为 `UNIQUE(buyer_id, request_id)`；明细唯一键为 `UNIQUE(order_id, sku_id)`；限购行主键为 `(user_id, product_id)`，同一 Product 下所有 SKU 共用 `valid_count`。
+[V9__create_product_orders.sql](../src/main/resources/db/migration/V9__create_product_orders.sql) 新增 `product_order`、`product_order_item`、`user_product_purchase`；[V10__add_qualification_guard_and_order_version.sql](../src/main/resources/db/migration/V10__add_qualification_guard_and_order_version.sql) 新增共享资格保护表并扩展订单明细；[V11__freeze_product_after_sales.sql](../src/main/resources/db/migration/V11__freeze_product_after_sales.sql) 冻结履约与售后数量模型。全部关系仍为逻辑引用，不声明物理外键。V11 新增两张表，业务表总数为 26。
 
 | 表 | 订单事实与关键约束 |
 |---|---|
 | `product_order` | `order_id` 主键；`buyer_id` 来自当前认证用户；`publisher_id` 由 SKU → Product 关系推导；`request_id` 与买家组成唯一幂等键；`total_amount DECIMAL(12,2)` 由服务端按明细单价与数量计算。数据库生成 `created_at`，`expires_at` 是 STORED 生成列 `created_at + 15 MINUTE`。新单 `status=PENDING_PAYMENT`、`paid_at=NULL`。 |
-| `product_order_item` | 每行保存 `product_id`、`sku_id`、正数 `quantity`、下单时的 `unit_price DECIMAL(10,2)`，以及 Product/SKU 名称、Activity/资格范围和售后模板版本快照。`UNIQUE(order_id, sku_id)` 禁止一个订单重复出现同一 SKU。`subtotal` 不另存，按快照 `unit_price × quantity` 得出；主单总额为全部明细 subtotal 之和。 |
+| `product_order_item` | 每行保存 `product_id`、`sku_id`、正数 `quantity`、下单时的 `unit_price DECIMAL(10,2)`，以及 Product/SKU 名称、Activity/资格范围和售后模板版本快照。`UNIQUE(order_id, sku_id)` 禁止一个订单重复出现同一 SKU。V11 在此行保存履约状态、发货/收货时间、履约数量及售后累计数量。`subtotal` 不另存，按快照 `unit_price × quantity` 得出；主单总额为全部明细 subtotal 之和。 |
 | `user_product_purchase` | 复合主键 `(user_id, product_id)`；同一 Product 的所有 SKU 共用 `valid_count`。建单不创建或修改此行，预检查只读取现有计数。 |
 | `user_activity_qualification_guard` | 复合主键 `(user_id, activity_id)`；`qualification_version` 是资格相关 Ticket 变动版本，不缓存有效票或资格结果。商品支付、出票和退款在 READ_COMMITTED 事务内以 `FOR UPDATE` 取得同一行；多 Activity 按 `activity_id ASC`。 |
+| `product_after_sale_request` | 保存买家、订单、买家范围内唯一的 `request_id`、原因、数据库申请时间、处理状态与失败原因。唯一键为 `(buyer_id, request_id)`。 |
+| `product_after_sale_item` | 每行对应一个请求和一个商品订单明细，保存 `sku_id`、申请数量、已退回数量、已成功退款数量、退回时间、验收结果和可再售标记。唯一键为 `(after_sale_request_id, order_item_id)`。 |
 
 客户端只提交 `requestId` 与购买明细；未知的 `buyerId`、`publisherId`、`unitPrice`、`totalAmount` 或资格字段会被拒绝。订单响应和数据库金额均由服务端当前价格重新计算。即使之后 SKU 改价，订单明细 `unit_price` 与历史总额也不变。
 
@@ -855,9 +857,86 @@ V10 为 `product_order_item.qualification_guard_version_snapshot` 增加可空�
 
 创建使用 READ_COMMITTED。外层协调器在创建事务回滚后读取并比较并发幂等赢家；不得在失败的创建事务快照中重放。明细保存 Product/SKU 名称、Activity 与资格范围、售后模板/版本快照，`unit_price` 是下单价格真相。客户端不提交 buyer、Publisher、价格、金额或资格结果。
 
+### 14.1 履约与售后数量
+
+履约与商品订单明细是一对一事实，V11 直接扩展既有 `product_order_item`，不创建等价的 `product_fulfillment` 表。字段包括 `fulfillment_status`、`shipped_quantity`、`received_quantity`、`shipped_at` 和 `received_at`。状态取 `UNSHIPPED`、`SHIPPED` 或 `RECEIVED`。每个订单明细一次确认全部未退款数量的模拟发货，一次确认全部已发货数量的模拟收货；这样单个服务器时间准确描述该明细的履约事件。退款申请仍支持部分数量。发货和收货时间由数据库记录，客户端不能提交时间。
+
+V11 为 `product_order_item` 增加以下字段：
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| `fulfillment_status` | `VARCHAR(24)`，非空，默认 `UNSHIPPED` | `UNSHIPPED`、`SHIPPED` 或 `RECEIVED`。 |
+| `shipped_quantity`、`received_quantity` | `INT`，非空，默认 0 | 累计已发货和已收货数量。 |
+| `shipped_at`、`received_at` | `DATETIME(3)`，可空 | 数据库记录本明细模拟发货、模拟收货的时间。 |
+| `refund_pending_quantity` | `INT`，非空，默认 0 | `PENDING` 或 `PROCESSING` 售后请求占用、尚未退款的数量。 |
+| `refunded_quantity` | `INT`，非空，默认 0 | 累计成功退款数量。 |
+| `returned_quantity` | `INT`，非空，默认 0 | 累计已退回数量。 |
+| `restocked_quantity` | `INT`，非空，默认 0 | 累计已恢复到 SKU 可售库存的数量。 |
+
+数据库约束为：
+
+- `0 <= received_quantity <= shipped_quantity <= quantity`。
+- `0 <= returned_quantity <= shipped_quantity` 且 `returned_quantity <= refunded_quantity`。
+- `0 <= restocked_quantity <= refunded_quantity`。
+- `0 <= refunded_quantity + refund_pending_quantity <= quantity`。
+
+`fulfillment_status`、数量及时间也受同一行的 `CHECK` 约束。`UNSHIPPED` 要求发货、收货数量为 0 且两个时间为空；`SHIPPED` 要求发货数量大于 0、收货数量为 0 且只有发货时间非空；`RECEIVED` 要求收货数量等于发货数量且两个时间非空。发货数量可能小于购买数量，因为发货前可能已退款一部分。
+
+`product_after_sale_request` 字段如下：
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| `after_sale_request_id` | `BIGINT`，主键，自增 | 售后申请 ID。 |
+| `order_id`、`buyer_id` | `BIGINT`，非空、正数 | 商品订单和申请买家。买家必须是该订单的买家。 |
+| `request_id` | `VARCHAR(64)`，二进制比较，非空白 | 买家范围内的幂等键。 |
+| `reason` | `VARCHAR(500)`，非空白 | 本申请逐项原因码去重、排序后的摘要；逐项原因保存在 `product_after_sale_item.reason_code`。 |
+| `requested_at` | `DATETIME(3)`，非空，数据库生成 | 申请时间。 |
+| `status` | `VARCHAR(20)`，非空，默认 `PENDING` | `PENDING`、`PROCESSING`、`SUCCEEDED` 或 `FAILED`。 |
+| `failure_reason` | `VARCHAR(500)`，可空 | 仅 `FAILED` 状态填写，其他状态必须为空。 |
+
+`UNIQUE(buyer_id, request_id)` 保护请求幂等。索引 `(order_id, requested_at, after_sale_request_id)` 支持按订单查询；索引 `(status, requested_at, after_sale_request_id)` 支持处理队列查询。
+
+`product_after_sale_item` 字段如下：
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| `after_sale_item_id` | `BIGINT`，主键，自增 | 售后明细 ID。 |
+| `after_sale_request_id`、`order_item_id`、`sku_id` | `BIGINT`，非空、正数 | 逻辑引用售后申请、商品订单明细和 SKU。Service 校验这三者的归属。 |
+| `reason_code` | `VARCHAR(32)`，非空 | `NO_REASON`、`QUALITY_PROBLEM`、`TICKET_QUALIFICATION_LOST` 或 `ACTIVITY_CANCELLED`。每条明细单独保存原因。 |
+| `requested_quantity` | `INT`，非空、正数 | 本次申请数量。 |
+| `simulate_inspection_passed` | `BOOLEAN`，非空，默认 TRUE，V12 增加 | 本地模拟验收是否通过，作为本次幂等载荷的一部分。 |
+| `simulate_resalable` | `BOOLEAN`，非空，默认 TRUE，V11 增加 | 本地模拟验收输入；不代表真实仓库事实。无理由退货要求为 TRUE。 |
+| `returned_quantity`、`refunded_quantity` | `INT`，非空，默认 0，范围为 `[0, requested_quantity]` | 本申请已退回数量和已成功退款数量。 |
+| `returned_at` | `DATETIME(3)`，可空 | 首次记录退回数量的数据库时间；数量为 0 时为空。 |
+| `inspection_result` | `VARCHAR(24)`，非空 | `NOT_REQUIRED`、`PENDING`、`PASSED` 或 `FAILED`。 |
+| `is_resalable` | `BOOLEAN`，可空 | 模拟验收结果：可再售为 TRUE、不可再售为 FALSE；未验收或无需退回时为空。 |
+| `created_at` | `DATETIME(3)`，非空，数据库生成 | 明细创建时间。 |
+
+`UNIQUE(after_sale_request_id, order_item_id)` 禁止同一申请重复提交同一订单明细。索引 `(order_item_id, after_sale_item_id)` 支持按订单明细查询售后历史；索引 `(sku_id, after_sale_item_id)` 支持按 SKU 对账。申请主表、订单、买家、订单明细及 SKU 之间均为逻辑引用，不增加物理外键。
+
+MySQL 8.4 不允许 `CHECK` 引用 `AUTO_INCREMENT` 列，因此主键自增 ID 不列入正数检查；相关业务 ID（订单、买家、申请、订单明细和 SKU）仍由 `CHECK` 验证。
+
+验收字段组合受数据库约束：`NOT_REQUIRED` 只能用于未退回的明细；`PENDING` 尚未给出可再售结论；`PASSED` 必须给出 `is_resalable`；`FAILED` 必须给出 `is_resalable = FALSE`。V12 另以 `CHECK (simulate_inspection_passed = TRUE OR simulate_resalable = FALSE)` 禁止“验收失败但可再售”。两个模拟输入彼此独立，因此可以表达验收通过但不可再售；该情况下退款数量仍可成功结算，SKU 库存不增加。
+
+售后申请和模拟退款在一个 `READ_COMMITTED` 事务内完成。事务内部经过 `PENDING`、`PROCESSING`，只有申请、退款、资源恢复和订单汇总全部完成后才以 `SUCCEEDED` 提交。多条明细按 `order_item_id ASC` 更新。每条明细必须执行以下条件更新，且影响一行：
+
+```sql
+UPDATE product_order_item
+SET refund_pending_quantity = refund_pending_quantity + :apply_quantity
+WHERE order_item_id = :order_item_id
+  AND :apply_quantity > 0
+  AND quantity - refunded_quantity - refund_pending_quantity >= :apply_quantity;
+```
+
+任一明细更新 0 行时，整个申请事务回滚。数据库 `CHECK` 约束同时保护累计数量上限。Java 不能先读取剩余数量，再无条件写入。
+
+退款成功时，同一事务将数量从 `refund_pending_quantity` 移到 `refunded_quantity`，并更新售后明细、Product 限购和适用的 SKU 库存。进入处理阶段后的异常会回滚主事务，再由独立事务保存 `FAILED` 申请、明细和可查询的 `failure_reason`；该记录不保留数量占用或资源变更。同一买家、`requestId` 和完全相同载荷重试时会安全重开该记录，载荷不同仍返回幂等冲突。验收前的业务拒绝不会创建售后申请。
+
+`NO_REASON` 只可使用 `STANDARD_7D`，要求明细已收货并且模拟验收的可再售输入为真。七日窗口取服务器 `received_at` 为起点，使用半开区间 `[received_at, received_at + 7 days)`：起点可申请，精确到期时拒绝。该口径为经过 168 小时，不按自然日截止。`SPECIAL_NO_REASON_RETURN` 只拒绝 `NO_REASON`，不屏蔽质量问题、持票资格丧失或活动取消原因。
+
 ## 15. 版本记录
 
-2026-11-04 的 Day 16 实现中，V10 加入账号 × Activity 资格 Guard 和订单明细 Guard 版本快照；商品支付、票务出票、票务退款共享该保护行。两种持票范围均按当前有效 Ticket 校验；Day 20 限定商品售后联动仍未实现。
+2026-11-05 的 Day 17 实现中，V11 冻结并启用商品履约和售后 Schema；V12 增量拆分验收是否通过与商品是否可再售。模拟发货/收货、售后申请及资源恢复已接入事务 Service。
 
 - **V1**：四张基础表采用物理外键，训练基础关系模型与引用完整性。
 - **V2.0**：移除物理外键，保留逻辑关联与数据库基础约束；新增座位占用状态，明确 Service 校验、条件更新和巡检职责。
@@ -870,6 +949,8 @@ V10 为 `product_order_item.qualification_guard_version_snapshot` 增加可空�
 - **V2.7**：V8 新增 product、sku、product_whitelist_member，支持两种持票范围、预设模板、独立 SKU 库存与独立名单。共 20 张业务表，0 个物理 FOREIGN KEY。
 - **V2.8**：V9 新增 product_order、product_order_item、user_product_purchase，冻结订单同 Publisher/可跨 Activity、重复 SKU 拒绝、快照价格、requestId 幂等与建单不占资源。共 23 张业务表，0 个物理 FOREIGN KEY。
 - **V2.9（本版）**：V10 新增 user_activity_qualification_guard，并在商品订单明细保存持票资格 Guard 版本快照；商品支付、票务支付和退款共同串行化有效 Ticket 变化。共 24 张业务表，0 个物理 FOREIGN KEY。
+- **V2.10（本版）**：V11 扩展商品订单明细的履约与售后累计数量，新增 product_after_sale_request、product_after_sale_item；以条件更新和 CHECK 约束共同保护申请中数量与成功退款数量。共 26 张业务表，0 个物理 FOREIGN KEY。
+- **V2.11（本版）**：V12 为商品售后明细增加验收通过模拟值，并以 CHECK 禁止验收失败却标记可再售；保留已应用的 V11 迁移定义。共 26 张业务表，0 个物理 FOREIGN KEY。
 
 ## 16. 商品目录与资格（V2.7）
 

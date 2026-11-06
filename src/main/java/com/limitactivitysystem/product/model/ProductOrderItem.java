@@ -21,6 +21,15 @@ public class ProductOrderItem {
     private Integer refundPolicyVersionSnapshot;
     private boolean specialPolicyAcknowledged;
     private LocalDateTime policyAcknowledgedAt;
+    private String fulfillmentStatus;
+    private Integer shippedQuantity;
+    private Integer receivedQuantity;
+    private LocalDateTime shippedAt;
+    private LocalDateTime receivedAt;
+    private Integer refundPendingQuantity;
+    private Integer refundedQuantity;
+    private Integer returnedQuantity;
+    private Integer restockedQuantity;
 
     public Long getOrderItemId() { return orderItemId; }
     public void setOrderItemId(Long orderItemId) { this.orderItemId = orderItemId; }
@@ -56,4 +65,22 @@ public class ProductOrderItem {
     public void setSpecialPolicyAcknowledged(boolean specialPolicyAcknowledged) { this.specialPolicyAcknowledged = specialPolicyAcknowledged; }
     public LocalDateTime getPolicyAcknowledgedAt() { return policyAcknowledgedAt; }
     public void setPolicyAcknowledgedAt(LocalDateTime policyAcknowledgedAt) { this.policyAcknowledgedAt = policyAcknowledgedAt; }
+    public String getFulfillmentStatus() { return fulfillmentStatus; }
+    public void setFulfillmentStatus(String fulfillmentStatus) { this.fulfillmentStatus = fulfillmentStatus; }
+    public Integer getShippedQuantity() { return shippedQuantity; }
+    public void setShippedQuantity(Integer shippedQuantity) { this.shippedQuantity = shippedQuantity; }
+    public Integer getReceivedQuantity() { return receivedQuantity; }
+    public void setReceivedQuantity(Integer receivedQuantity) { this.receivedQuantity = receivedQuantity; }
+    public LocalDateTime getShippedAt() { return shippedAt; }
+    public void setShippedAt(LocalDateTime shippedAt) { this.shippedAt = shippedAt; }
+    public LocalDateTime getReceivedAt() { return receivedAt; }
+    public void setReceivedAt(LocalDateTime receivedAt) { this.receivedAt = receivedAt; }
+    public Integer getRefundPendingQuantity() { return refundPendingQuantity; }
+    public void setRefundPendingQuantity(Integer refundPendingQuantity) { this.refundPendingQuantity = refundPendingQuantity; }
+    public Integer getRefundedQuantity() { return refundedQuantity; }
+    public void setRefundedQuantity(Integer refundedQuantity) { this.refundedQuantity = refundedQuantity; }
+    public Integer getReturnedQuantity() { return returnedQuantity; }
+    public void setReturnedQuantity(Integer returnedQuantity) { this.returnedQuantity = returnedQuantity; }
+    public Integer getRestockedQuantity() { return restockedQuantity; }
+    public void setRestockedQuantity(Integer restockedQuantity) { this.restockedQuantity = restockedQuantity; }
 }

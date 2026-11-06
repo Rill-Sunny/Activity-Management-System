@@ -85,7 +85,9 @@ public interface ProductOrderMapper {
                    qualification_type_snapshot,qualification_scope_snapshot,qualification_session_id_snapshot,
                    qualification_guard_version_snapshot,
                    refund_policy_template_snapshot,refund_policy_version_snapshot,
-                   special_policy_acknowledged,policy_acknowledged_at
+                   special_policy_acknowledged,policy_acknowledged_at,
+                   fulfillment_status,shipped_quantity,received_quantity,shipped_at,received_at,
+                   refund_pending_quantity,refunded_quantity,returned_quantity,restocked_quantity
             FROM product_order_item WHERE order_id=#{orderId} ORDER BY sku_id
             """)
     @Results(id = "productOrderItemResult", value = {
@@ -105,10 +107,88 @@ public interface ProductOrderMapper {
             @Result(column = "refund_policy_template_snapshot", property = "refundPolicyTemplateSnapshot"),
             @Result(column = "refund_policy_version_snapshot", property = "refundPolicyVersionSnapshot"),
             @Result(column = "special_policy_acknowledged", property = "specialPolicyAcknowledged"),
-            @Result(column = "policy_acknowledged_at", property = "policyAcknowledgedAt")
+            @Result(column = "policy_acknowledged_at", property = "policyAcknowledgedAt"),
+            @Result(column = "fulfillment_status", property = "fulfillmentStatus"),
+            @Result(column = "shipped_quantity", property = "shippedQuantity"),
+            @Result(column = "received_quantity", property = "receivedQuantity"),
+            @Result(column = "shipped_at", property = "shippedAt"),
+            @Result(column = "received_at", property = "receivedAt"),
+            @Result(column = "refund_pending_quantity", property = "refundPendingQuantity"),
+            @Result(column = "refunded_quantity", property = "refundedQuantity"),
+            @Result(column = "returned_quantity", property = "returnedQuantity"),
+            @Result(column = "restocked_quantity", property = "restockedQuantity")
     })
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     List<ProductOrderItem> findItems(@Param("orderId") Long orderId);
+
+    @Select("""
+            SELECT order_item_id,order_id,product_id,sku_id,quantity,unit_price,
+                   product_name_snapshot,sku_name_snapshot,activity_id_snapshot,
+                   qualification_type_snapshot,qualification_scope_snapshot,qualification_session_id_snapshot,
+                   qualification_guard_version_snapshot,refund_policy_template_snapshot,refund_policy_version_snapshot,
+                   special_policy_acknowledged,policy_acknowledged_at,
+                   fulfillment_status,shipped_quantity,received_quantity,shipped_at,received_at,
+                   refund_pending_quantity,refunded_quantity,returned_quantity,restocked_quantity
+            FROM product_order_item WHERE order_id=#{orderId} ORDER BY order_item_id FOR UPDATE
+            """)
+    @org.apache.ibatis.annotations.ResultMap("productOrderItemResult")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    List<ProductOrderItem> findItemsForUpdate(@Param("orderId") Long orderId);
+
+    @Update("""
+            UPDATE product_order_item
+            SET shipped_quantity=#{quantity},fulfillment_status='SHIPPED',shipped_at=CURRENT_TIMESTAMP(3)
+            WHERE order_id=#{orderId} AND order_item_id=#{orderItemId}
+              AND fulfillment_status='UNSHIPPED' AND shipped_quantity=0 AND received_quantity=0
+              AND refund_pending_quantity=0 AND #{quantity}>0
+              AND quantity-refunded_quantity=#{quantity}
+            """)
+    int markShipped(@Param("orderId") Long orderId, @Param("orderItemId") Long orderItemId,
+                    @Param("quantity") Integer quantity);
+
+    @Update("""
+            UPDATE product_order_item
+            SET received_quantity=shipped_quantity,fulfillment_status='RECEIVED',received_at=CURRENT_TIMESTAMP(3)
+            WHERE order_id=#{orderId} AND order_item_id=#{orderItemId}
+              AND fulfillment_status='SHIPPED' AND received_quantity=0 AND shipped_quantity=#{quantity}
+              AND #{quantity}>0
+            """)
+    int markReceived(@Param("orderId") Long orderId, @Param("orderItemId") Long orderItemId,
+                     @Param("quantity") Integer quantity);
+
+    @Update("""
+            UPDATE product_order_item
+            SET refund_pending_quantity=refund_pending_quantity+#{quantity}
+            WHERE order_id=#{orderId} AND order_item_id=#{orderItemId}
+              AND #{quantity}>0
+              AND quantity-refunded_quantity-refund_pending_quantity>=#{quantity}
+            """)
+    int reserveRefundQuantity(@Param("orderId") Long orderId, @Param("orderItemId") Long orderItemId,
+                              @Param("quantity") Integer quantity);
+
+    @Update("""
+            UPDATE product_order_item
+            SET refund_pending_quantity=refund_pending_quantity-#{quantity},
+                refunded_quantity=refunded_quantity+#{quantity},
+                returned_quantity=returned_quantity+#{returnedQuantity},
+                restocked_quantity=restocked_quantity+#{restockedQuantity}
+            WHERE order_id=#{orderId} AND order_item_id=#{orderItemId}
+              AND #{quantity}>0 AND refund_pending_quantity>=#{quantity}
+              AND #{returnedQuantity}>=0 AND #{restockedQuantity}>=0
+            """)
+    int completeRefund(@Param("orderId") Long orderId, @Param("orderItemId") Long orderItemId,
+                       @Param("quantity") Integer quantity, @Param("returnedQuantity") Integer returnedQuantity,
+                       @Param("restockedQuantity") Integer restockedQuantity);
+
+    @Select("SELECT COALESCE(SUM(quantity-refunded_quantity),0) FROM product_order_item WHERE order_id=#{orderId}")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    Integer findUnrefundedQuantity(@Param("orderId") Long orderId);
+
+    @Update("""
+            UPDATE product_order SET status=#{status}
+            WHERE order_id=#{orderId} AND status IN ('PAID','PARTIALLY_REFUNDED')
+            """)
+    int updateRefundSummary(@Param("orderId") Long orderId, @Param("status") String status);
 
     @Update("""
             UPDATE product_order_item

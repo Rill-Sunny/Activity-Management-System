@@ -7,6 +7,7 @@ import com.limitactivitysystem.activity.mapper.SessionSeatMapper;
 import com.limitactivitysystem.activity.model.Activity;
 import com.limitactivitysystem.activity.model.SessionSeat;
 import com.limitactivitysystem.activity.model.SessionZone;
+import com.limitactivitysystem.cache.CacheInvalidationRecorder;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +22,13 @@ public class PublisherZoneSeatService {
 
     private final ActivityOwnershipService ownershipService;
     private final SessionSeatMapper seatMapper;
+    private final CacheInvalidationRecorder invalidations;
 
-    public PublisherZoneSeatService(ActivityOwnershipService ownershipService, SessionSeatMapper seatMapper) {
+    public PublisherZoneSeatService(ActivityOwnershipService ownershipService, SessionSeatMapper seatMapper,
+                                    CacheInvalidationRecorder invalidations) {
         this.ownershipService = ownershipService;
         this.seatMapper = seatMapper;
+        this.invalidations = invalidations;
     }
 
     @Transactional
@@ -59,6 +63,7 @@ public class PublisherZoneSeatService {
         } catch (DuplicateKeyException exception) {
             throw new ActivityException(ActivityErrorCode.SEAT_ALREADY_EXISTS, "Seat position already exists in this zone");
         }
+        invalidations.record("las:seat-layout:" + ownership.session().getActivitySessionId());
         return seats;
     }
 

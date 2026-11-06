@@ -1,5 +1,6 @@
 package com.limitactivitysystem.ticketorder.service;
 
+import com.limitactivitysystem.cache.RedisRequestDeduplicator;
 import com.limitactivitysystem.ticketorder.dto.TicketPaymentResponse;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderErrorCode;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
@@ -19,13 +20,16 @@ public class TicketPaymentService {
     private final TicketPaymentFailureService failures;
     private final CurrentUserProvider currentUser;
     private final PaymentTelemetry telemetry;
+    private final RedisRequestDeduplicator deduplicator;
 
     public TicketPaymentService(PaymentRetryExecutor payment, TicketPaymentFailureService failures,
-                                CurrentUserProvider currentUser, PaymentTelemetry telemetry) {
+                                CurrentUserProvider currentUser, PaymentTelemetry telemetry,
+                                RedisRequestDeduplicator deduplicator) {
         this.payment = payment;
         this.failures = failures;
         this.currentUser = currentUser;
         this.telemetry = telemetry;
+        this.deduplicator = deduplicator;
     }
 
     /** Keep failure recording outside the failed payment transaction and any caller snapshot. */
@@ -37,7 +41,13 @@ public class TicketPaymentService {
         try {
             // Principal extraction performs no SQL; the payment transaction still locks Order first.
             userId = currentUser.getAuthenticatedUserId();
-            result = executePayment(userId, orderId);
+            try (var lease = deduplicator.beginPayment(orderId, userId)) {
+                if (lease.inProgress()) {
+                    throw new TicketOrderException(TicketOrderErrorCode.REQUEST_IN_PROGRESS,
+                            "Payment request is already in progress; query the order for its current status");
+                }
+                result = executePayment(userId, orderId);
+            }
         } catch (RuntimeException | Error failure) {
             telemetry.record(userId, orderId, failure, System.nanoTime() - started);
             throw failure;

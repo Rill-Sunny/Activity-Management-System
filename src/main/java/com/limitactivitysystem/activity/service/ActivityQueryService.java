@@ -5,6 +5,7 @@ import com.limitactivitysystem.activity.exception.ActivityErrorCode;
 import com.limitactivitysystem.activity.exception.ActivityException;
 import com.limitactivitysystem.activity.mapper.ActivityMapper;
 import com.limitactivitysystem.activity.model.Activity;
+import com.limitactivitysystem.cache.CacheAsideService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,9 +14,11 @@ import java.util.List;
 public class ActivityQueryService {
 
     private final ActivityMapper activityMapper;
+    private final CacheAsideService cache;
 
-    public ActivityQueryService(ActivityMapper activityMapper) {
+    public ActivityQueryService(ActivityMapper activityMapper, CacheAsideService cache) {
         this.activityMapper = activityMapper;
+        this.cache = cache;
     }
 
     // Publication controls visibility; the sale/reservation window is checked when creating orders.
@@ -24,10 +27,13 @@ public class ActivityQueryService {
     }
 
     public ActivityResponse getPublished(Long id) {
-        Activity activity = activityMapper.findPublishedById(id);
-        if (activity == null) {
+        ActivityResponse response = cache.get("las:activity:" + id, ActivityResponse.class, () -> {
+            Activity activity = activityMapper.findPublishedById(id);
+            return activity == null ? null : ActivityResponse.from(activity);
+        });
+        if (response == null) {
             throw new ActivityException(ActivityErrorCode.ACTIVITY_NOT_FOUND, "Activity not found");
         }
-        return ActivityResponse.from(activity);
+        return response;
     }
 }

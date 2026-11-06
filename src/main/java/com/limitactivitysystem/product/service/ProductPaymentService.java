@@ -1,5 +1,6 @@
 package com.limitactivitysystem.product.service;
 
+import com.limitactivitysystem.cache.RedisRequestDeduplicator;
 import com.limitactivitysystem.product.dto.ProductOrderResponse;
 import com.limitactivitysystem.product.exception.ProductException;
 import com.limitactivitysystem.product.exception.ProductOrderOutOfStockException;
@@ -27,16 +28,26 @@ public class ProductPaymentService {
     private final ProductPaymentTransactionService payment;
     private final ProductOrderClosureService closing;
     private final PaymentRetryBackoff backoff;
+    private final RedisRequestDeduplicator deduplicator;
 
     public ProductPaymentService(CurrentUserProvider currentUser, ProductPaymentTransactionService payment,
-            ProductOrderClosureService closing, PaymentRetryBackoff backoff) {
+            ProductOrderClosureService closing, PaymentRetryBackoff backoff, RedisRequestDeduplicator deduplicator) {
         this.currentUser = currentUser; this.payment = payment; this.closing = closing; this.backoff = backoff;
+        this.deduplicator = deduplicator;
     }
 
     /** Each attempt crosses a separate REQUIRES_NEW proxy; retries start only after rollback completes. */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ProductOrderResponse pay(@NotNull @Positive Long orderId) {
         Long buyerId = currentUser.getAuthenticatedUserId();
+        try (var lease = deduplicator.beginPayment(orderId, buyerId)) {
+            // Redis is only a contention hint. The order row lock and PAID state make duplicate
+            // payment calls idempotent, so let concurrent requests serialize in MySQL.
+            return executePayment(orderId, buyerId);
+        }
+    }
+
+    private ProductOrderResponse executePayment(Long orderId, Long buyerId) {
         for (int attempt = 1; ; attempt++) {
             try {
                 return payment.payOnce(orderId, buyerId);

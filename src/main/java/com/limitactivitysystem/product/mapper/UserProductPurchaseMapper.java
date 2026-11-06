@@ -26,4 +26,12 @@ public interface UserProductPurchaseMapper {
             """)
     int tryIncrease(@Param("userId") Long userId, @Param("productId") Long productId,
                     @Param("quantity") Integer quantity, @Param("purchaseLimit") Integer purchaseLimit);
+
+    @Update("""
+            UPDATE user_product_purchase SET valid_count=valid_count-#{quantity}
+            WHERE user_id=#{userId} AND product_id=#{productId}
+              AND #{quantity}>0 AND valid_count>=#{quantity}
+            """)
+    int tryDecrease(@Param("userId") Long userId, @Param("productId") Long productId,
+                    @Param("quantity") Integer quantity);
 }

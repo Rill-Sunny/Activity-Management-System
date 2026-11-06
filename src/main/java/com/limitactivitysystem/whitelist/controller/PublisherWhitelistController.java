@@ -27,18 +27,18 @@ public class PublisherWhitelistController {
     public PublisherWhitelistController(PublisherWhitelistService service) { this.service = service; }
 
     @PutMapping("/activities/{activityId}/whitelist")
-    public WhitelistConfigResponse enableActivity(@PathVariable Long activityId) {
+    public WhitelistConfigResponse enableActivity(@PathVariable("activityId") Long activityId) {
         return WhitelistConfigResponse.from(service.enable(ACTIVITY, activityId));
     }
 
     @PutMapping("/sessions/{sessionId}/whitelist")
-    public WhitelistConfigResponse enableSession(@PathVariable Long sessionId) {
+    public WhitelistConfigResponse enableSession(@PathVariable("sessionId") Long sessionId) {
         return WhitelistConfigResponse.from(service.enable(SESSION, sessionId));
     }
 
     @PostMapping("/activities/{activityId}/whitelist/members")
     @ResponseStatus(HttpStatus.CREATED)
-    public WhitelistMemberResponse addActivityMember(@PathVariable Long activityId,
+    public WhitelistMemberResponse addActivityMember(@PathVariable("activityId") Long activityId,
                                                       @Valid @RequestBody AddWhitelistMemberRequest request) {
         WhitelistMember member = service.addMember(ACTIVITY, activityId, request.getUserId());
         return new WhitelistMemberResponse(member.getMemberId(), member.getUserId());
@@ -46,7 +46,7 @@ public class PublisherWhitelistController {
 
     @PostMapping("/sessions/{sessionId}/whitelist/members")
     @ResponseStatus(HttpStatus.CREATED)
-    public WhitelistMemberResponse addSessionMember(@PathVariable Long sessionId,
+    public WhitelistMemberResponse addSessionMember(@PathVariable("sessionId") Long sessionId,
                                                      @Valid @RequestBody AddWhitelistMemberRequest request) {
         WhitelistMember member = service.addMember(SESSION, sessionId, request.getUserId());
         return new WhitelistMemberResponse(member.getMemberId(), member.getUserId());
@@ -54,21 +54,21 @@ public class PublisherWhitelistController {
 
     @DeleteMapping("/activities/{activityId}/whitelist/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeActivityMember(@PathVariable Long activityId, @PathVariable Long userId) {
+    public void removeActivityMember(@PathVariable("activityId") Long activityId, @PathVariable("userId") Long userId) {
         service.removeMember(ACTIVITY, activityId, userId);
     }
 
     @DeleteMapping("/sessions/{sessionId}/whitelist/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeSessionMember(@PathVariable Long sessionId, @PathVariable Long userId) {
+    public void removeSessionMember(@PathVariable("sessionId") Long sessionId, @PathVariable("userId") Long userId) {
         service.removeMember(SESSION, sessionId, userId);
     }
 
     @DeleteMapping("/activities/{activityId}/whitelist")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void disableActivity(@PathVariable Long activityId) { service.disable(ACTIVITY, activityId); }
+    public void disableActivity(@PathVariable("activityId") Long activityId) { service.disable(ACTIVITY, activityId); }
 
     @DeleteMapping("/sessions/{sessionId}/whitelist")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void disableSession(@PathVariable Long sessionId) { service.disable(SESSION, sessionId); }
+    public void disableSession(@PathVariable("sessionId") Long sessionId) { service.disable(SESSION, sessionId); }
 }

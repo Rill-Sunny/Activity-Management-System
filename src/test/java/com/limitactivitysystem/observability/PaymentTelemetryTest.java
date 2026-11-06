@@ -4,6 +4,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.limitactivitysystem.security.CurrentUserProvider;
+import com.limitactivitysystem.cache.RedisRequestDeduplicator;
+import com.limitactivitysystem.cache.CacheMetrics;
 import com.limitactivitysystem.ticketorder.dto.TicketPaymentResponse;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderErrorCode;
 import com.limitactivitysystem.ticketorder.exception.TicketOrderException;
@@ -27,6 +29,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,8 +53,13 @@ class PaymentTelemetryTest {
     @BeforeEach void captureOnlyThePaymentLogger() {
         given(user.getAuthenticatedUserId()).willReturn(1L);
         var telemetry = new PaymentTelemetry(registry);
+        StringRedisTemplate redis = org.mockito.Mockito.mock(StringRedisTemplate.class);
+        @SuppressWarnings("unchecked") ValueOperations<String, String> values = org.mockito.Mockito.mock(ValueOperations.class);
+        given(redis.opsForValue()).willReturn(values);
+        given(values.setIfAbsent(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(java.time.Duration.class))).willReturn(true);
         payment = new TicketPaymentService(new PaymentRetryExecutor(transaction, new PaymentRetryBackoff(), telemetry),
-                closure, user, telemetry);
+                closure, user, telemetry, new RedisRequestDeduplicator(redis, new CacheMetrics(registry)));
         logger = (Logger) LoggerFactory.getLogger(PaymentTelemetry.class);
         logs = new ListAppender<>(); logs.start(); logger.addAppender(logs);
         MDC.put("requestId", "server-request-id");

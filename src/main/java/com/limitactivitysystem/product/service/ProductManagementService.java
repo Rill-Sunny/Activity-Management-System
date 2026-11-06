@@ -1,5 +1,6 @@
 package com.limitactivitysystem.product.service;
 
+import com.limitactivitysystem.cache.CacheInvalidationRecorder;
 import com.limitactivitysystem.identity.mapper.AppUserMapper;
 import com.limitactivitysystem.product.dto.*;
 import com.limitactivitysystem.product.exception.ProductException;
@@ -21,7 +22,9 @@ public class ProductManagementService {
     private final ProductScopeService scope;
     private final ProductMapper products;
     private final AppUserMapper users;
-    public ProductManagementService(ProductScopeService scope,ProductMapper products,AppUserMapper users) {this.scope=scope;this.products=products;this.users=users;}
+    private final CacheInvalidationRecorder invalidations;
+    public ProductManagementService(ProductScopeService scope,ProductMapper products,AppUserMapper users,
+                                    CacheInvalidationRecorder invalidations) {this.scope=scope;this.products=products;this.users=users;this.invalidations=invalidations;}
 
     public ProductResponse create(@NotNull @Valid CreateProductRequest request) {
         Long publisher=scope.requirePublisher();validateShape(request);
@@ -36,27 +39,30 @@ public class ProductManagementService {
         values.put("name",request.name().strip());values.put("description",request.description());values.put("qualificationType",request.qualificationType());
         values.put("qualificationScope",request.qualificationScope());values.put("qualificationSessionId",request.qualificationSessionId());
         values.put("purchaseLimit",request.purchaseLimit());values.put("refundPolicy",request.refundPolicy());
-        changed(products.insert(values));return response(((Number)values.get("productId")).longValue());
+        changed(products.insert(values));Long id=((Number)values.get("productId")).longValue();
+        invalidations.record(productCacheKey(id));return response(id);
     }
     public Sku addSku(@NotNull @Positive Long id,@NotNull @Valid SaveSkuRequest request) {
         requireDraft(scope.owned(id,true).product());var values=skuValues(id,request);
         try {changed(products.insertSku(values));} catch(DuplicateKeyException conflict){throw duplicateSku();}
+        invalidations.record(productCacheKey(id));
         return products.sku(id,((Number)values.get("skuId")).longValue());
     }
     public Sku updateSku(@NotNull @Positive Long id,@NotNull @Positive Long skuId,@NotNull @Valid SaveSkuRequest request) {
         requireDraft(scope.owned(id,true).product());requireSku(id,skuId);var values=skuValues(id,request);values.put("skuId",skuId);
-        try {changed(products.updateSku(values));} catch(DuplicateKeyException conflict){throw duplicateSku();}return products.sku(id,skuId);
+        try {changed(products.updateSku(values));} catch(DuplicateKeyException conflict){throw duplicateSku();}
+        invalidations.record(productCacheKey(id));return products.sku(id,skuId);
     }
     public ProductResponse publish(@NotNull @Positive Long id) {
         var owned=scope.owned(id,true);
         if(!"PUBLISHED".equals(owned.activity().getStatus())){throw new ProductException(PRODUCT_ACTIVITY_UNAVAILABLE,"Product publication requires a published activity");}
         if(products.skus(id).stream().noneMatch(sku -> "ACTIVE".equals(sku.status()))){throw new ProductException(PRODUCT_NOT_READY,"At least one ACTIVE SKU is required");}
-        if(!"ON_SALE".equals(owned.product().status())){changed(products.publish(id));}return response(id);
+        if(!"ON_SALE".equals(owned.product().status())){changed(products.publish(id));invalidations.record(productCacheKey(id));}return response(id);
     }
     public ProductResponse takeOffSale(@NotNull @Positive Long id) {
         var owned=scope.owned(id,true);
         if("DRAFT".equals(owned.product().status())){throw new ProductException(PRODUCT_INVALID_STATE,"A draft has not been published");}
-        if("ON_SALE".equals(owned.product().status())){changed(products.takeOffSale(id));}return response(id);
+        if("ON_SALE".equals(owned.product().status())){changed(products.takeOffSale(id));invalidations.record(productCacheKey(id));}return response(id);
     }
     public List<Long> addMember(@NotNull @Positive Long id,@NotNull @Positive Long userId) {
         requireWhitelist(scope.owned(id,true).product());var user=users.findByIdForShare(userId);
@@ -86,5 +92,6 @@ public class ProductManagementService {
     }
     private ProductResponse response(Long id){return ProductResponse.from(products.find(id),products.skus(id));}
     private ProductException duplicateSku(){return new ProductException(SKU_ALREADY_EXISTS,"SKU name already exists in this product");}
+    private String productCacheKey(Long id){return "las:product:"+id;}
     private void changed(int rows){if(rows!=1){throw new ProductException(PRODUCT_INVALID_STATE,"Product resource did not change exactly once");}}
 }

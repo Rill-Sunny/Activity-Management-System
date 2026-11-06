@@ -441,6 +441,32 @@ ProductOrder
 
 Product 名单管理按 Account/Activity → Product 排他锁 → Member；不再获取 guard、额度或订单。商品支付持有 Product 共享锁再查询成员，名单为空也由 Product 行协调。Product/SKU 管理按父 Product 后子 SKU，禁止先 SKU 后 Product。
 
+### 商品履约与售后实际顺序（Day 17）
+
+商品发货、收货和退款均从当前业务 `ProductOrder` 根行开始，并在同一 `READ_COMMITTED` 事务执行。完整顺序为：
+
+```text
+ProductOrder（FOR UPDATE）
+→ 操作者 Account（FOR SHARE）
+→ 该订单全部 product_order_item（order_item_id ASC，FOR UPDATE）
+→ product_after_sale_request / product_after_sale_item（售后写入）
+→ user_product_purchase（product_id ASC，条件减少）
+→ 需要恢复库存的 SKU（sku_id ASC，FOR UPDATE）
+→ 更新已锁订单汇总
+```
+
+发货、收货分别由 `ProductFulfillmentService` 的独立 REQUIRES_NEW 事务实现；售后申请、模拟退回/验收、退款生效和资源恢复由 `ProductAfterSaleTransactionService` 的单个 REQUIRES_NEW 事务完成。事务方法由独立 Service Bean 代理调用，不依赖 Spring 代理内自调用。售后先按 `order_item_id ASC` 使用 `refund_pending_quantity` 条件更新并要求每行影响 1，再按 Product ID 升序减少共享限购，最后按 SKU ID 升序恢复可再售库存。任一步失败整笔回滚，包含申请和先前资源改动。
+
+发货和收货也先锁 ProductOrder，再锁操作者账号，最后锁该订单全部明细。发布者必须匹配订单 `publisher_id`；买家确认收货必须匹配 `buyer_id`。发货条件更新与售后数量预留竞争同一个明细行，且发货要求 `refund_pending_quantity = 0`，因此不会在申请处理中把相同数量转为已发货。收货要求明细状态为 `SHIPPED`，一次收齐已发货数量。
+
+主退款事务失败后，售后门面在主事务完成回滚后调用独立 REQUIRES_NEW 失败记录事务。失败记录仍按 ProductOrder → Account → 全部订单明细升序获取锁，再插入 FAILED 申请和明细；该事务不恢复限购或库存，也不保留退款数量。相同 requestId 重试会先持有同一 ProductOrder 根锁，再按相同明细顺序重新验证和预留，因此与发货仍互斥。
+
+商品支付保持 Day 16 的 `Order → Account → Activity/Session/Product → Qualification Guard → user_product_purchase ASC → SKU ASC`。售后不锁 Activity、Session、Product 或 Qualification Guard，也不在取得 Quota/SKU 后回头锁这些行；支付、发货、收货和售后对同一商品订单由根订单行协调，其他订单之间的限购与库存竞争保持相同 `Quota → SKU` 顺序。SKU 库存只在未发货退款或已退回且验收为可再售时增加。退款无论是否可再售都会按数量减少共享限购。
+
+七日检查使用数据库当前时间和订单明细 `received_at` 快照，边界为 `[received_at, received_at + INTERVAL 7 DAY)`。时刻正好等于终点时拒绝。时间校验在明细锁内完成，不能使用客户端时间。
+
+参考：[MySQL 8.4 锁定读](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking-reads.html)、[Spring 声明式事务代理](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)。
+
 ### 票务接入实际顺序
 
 票务支付路径为 Order → Account → Activity → Session → 当前资格配置检查 → Guard → 票务 Quota → Zone ASC → Seat ASC → 新 Ticket → Order PAID。退款处理沿 Order → Refund/Item → Account → Activity → Session → Guard → Quota → Zone ASC → Seat ASC → Ticket ASC → 原汇总更新。退款只锁对应的父 Activity/Session 行作为资格范围门禁，不排他锁整个 Activity，也不按每次商品支付扫锁所有 Activity。

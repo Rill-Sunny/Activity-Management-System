@@ -6,6 +6,7 @@ import com.limitactivitysystem.activity.exception.ActivityException;
 import com.limitactivitysystem.activity.mapper.ActivitySessionMapper;
 import com.limitactivitysystem.activity.model.Activity;
 import com.limitactivitysystem.activity.model.ActivitySession;
+import com.limitactivitysystem.cache.CacheInvalidationRecorder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,13 +16,16 @@ public class PublisherActivitySessionService {
     private final ActivityOwnershipService ownershipService;
     private final ActivitySessionMapper activitySessionMapper;
     private final ActivitySessionConfigurationValidator configurationValidator;
+    private final CacheInvalidationRecorder invalidations;
 
     public PublisherActivitySessionService(ActivityOwnershipService ownershipService,
                                            ActivitySessionMapper activitySessionMapper,
-                                           ActivitySessionConfigurationValidator configurationValidator) {
+                                           ActivitySessionConfigurationValidator configurationValidator,
+                                           CacheInvalidationRecorder invalidations) {
         this.ownershipService = ownershipService;
         this.activitySessionMapper = activitySessionMapper;
         this.configurationValidator = configurationValidator;
+        this.invalidations = invalidations;
     }
 
     @Transactional
@@ -42,6 +46,7 @@ public class PublisherActivitySessionService {
         session.setStatus("SCHEDULED");
         configurationValidator.validate(activity, session);
         activitySessionMapper.insert(session);
+        invalidations.record("las:seat-layout:" + session.getActivitySessionId());
         return session;
     }
 }

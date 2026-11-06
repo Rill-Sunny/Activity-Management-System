@@ -97,3 +97,11 @@ mvn '-Dtest=QualificationEntryPointMySqlIntegrationTest,ActivityPublishingMySqlI
 2026-10-24 的本阶段复跑结果：资格入口 29 个、发布冻结 44 个、名单管理 41 个，共 114 个用例，失败、错误、跳过均为零。该记录仅覆盖上述三个测试类。
 
 测试源码：[资格入口](../src/test/java/com/limitactivitysystem/activity/integration/QualificationEntryPointMySqlIntegrationTest.java)、[发布冻结](../src/test/java/com/limitactivitysystem/activity/integration/ActivityPublishingMySqlIntegrationTest.java)、[名单管理](../src/test/java/com/limitactivitysystem/whitelist/integration/WhitelistManagementMySqlIntegrationTest.java)。执行结果以本次 `target/surefire-reports/TEST-*.xml` 的计数、时间和失败记录为准，不能将跳过的 MySQL 测试计作通过。
+
+## Redis 缓存与失效
+
+`ActivityQueryService`、`SeatLayoutQueryService` 和 `ProductQueryService` 通过 `CacheAsideService` 读取公开缓存。缓存未命中时由 MySQL 加载。商品读取把数据库事务隔离在独立的 `ProductQueryTransactionService` 中，缓存命中不会开启 MySQL 事务。
+
+`CacheInvalidationRecorder` 在业务事务内递增 MySQL generation 并写入失效任务。`CacheInvalidationListener` 在提交后立即删除 Redis Key。后台扫描器重试未完成任务。回填与失效使用 Redis Lua 脚本比较版本，正缓存从回源开始计算 TTL，最长保留 35 秒。
+
+商品库存和座位可售状态不由缓存决定。支付、退款、资格、限购、订单状态与库存仍由 MySQL 事务保护。Redis 去重只抑制短时间内重复请求，MySQL 幂等和业务状态仍决定交易结果。指标与 Key 约束见 [缓存参考](cache.md)。

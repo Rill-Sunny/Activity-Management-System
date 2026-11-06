@@ -4,32 +4,72 @@
 
 ## 商品目录与商品订单状态
 
-Day 15/16 已实现待支付商品订单、模拟支付、缺货关闭和过期扫描。商品售后转换仍未实现。Product 的 DRAFT/ON_SALE/OFF_SALE 与 SKU 配置由目录 API 管理。
+Day 15/16 已实现待支付商品订单、模拟支付、缺货关闭和过期扫描。V11 已实现订单明细级模拟发货/收货、售后申请和事务退款。Product 的 DRAFT/ON_SALE/OFF_SALE 与 SKU 配置由目录 API 管理。
 
-| 对象 | 候选转换 | 语义 |
+| 对象 | 状态转换 | 语义 |
 |---|---|---|
 | Product | DRAFT → ON_SALE → OFF_SALE；OFF_SALE → ON_SALE | API 已实现，首次上架时间保留；上架要求父活动 PUBLISHED 且至少一项 ACTIVE SKU。 |
 | SKU | 创建为 ACTIVE；Schema 也允许 INACTIVE | 当前没有上下架 SKU 状态切换 API；只允许 DRAFT Product 下创建/修改价格和初始库存，已上架或下架 Product 都拒绝配置写入，零库存可展示。 |
 | ProductOrder | 创建 → PENDING_PAYMENT | Day 15 只创建此状态。`created_at` 由数据库生成，`expires_at = created_at + 15 分钟`，`paid_at = NULL`；服务端计算 `total_amount` 并从 SKU → Product 推导 `publisher_id`。 |
 | ProductOrder | PENDING_PAYMENT → PAID | 商品资格、Product 共享限购、所有 SKU 库存和最终数据库期限检查成功后，同一事务扣减库存、增加限购并更新 `paid_at`。价格取订单明细快照。 |
 | ProductOrder | PENDING_PAYMENT → CLOSED | 任一 SKU 缺货时，支付事务先全部回滚，再由新事务重锁并关闭，原因 `OUT_OF_STOCK`。过期扫描按数据库时间条件关闭，原因 `EXPIRED`。 |
-| ProductOrder | PAID → PARTIALLY_REFUNDED → REFUNDED；PAID → REFUNDED | Day 20 及以后按售后结果转换，不改写原价或购买数量；本轮未实现。 |
+| ProductOrder | PAID → PARTIALLY_REFUNDED → REFUNDED；PAID → REFUNDED | V11 冻结按成功退款数量汇总的转换；不改写原价或购买数量。处理 Service 尚未实现。 |
 
 ```mermaid
 stateDiagram-v2
     [*] --> PENDING_PAYMENT: 创建，期限 15 分钟
     PENDING_PAYMENT --> PAID: 重新验资格、原子占 Product 限购并扣完全部 SKU
     PENDING_PAYMENT --> CLOSED: 缺货回滚后关闭 / DB 过期扫描
-    PAID --> PARTIALLY_REFUNDED: 部分售后（后续阶段）
-    PARTIALLY_REFUNDED --> REFUNDED: 全部售后（后续阶段）
-    PAID --> REFUNDED: 全额售后（后续阶段）
+    PAID --> PARTIALLY_REFUNDED: 订单明细成功退款后仍有未退款数量
+    PARTIALLY_REFUNDED --> REFUNDED: 所有订单明细全部退款
+    PAID --> REFUNDED: 所有订单明细一次全部退款
 ```
 
 模拟支付只接受认证买家和订单 ID。Ticket 限定商品在账号 × Activity Guard 内重新查询有效 Ticket；SESSION 范围限定到指定场次。同一 Product 的所有 SKU 共用一条有效购买计数，多个 Product 按 ID 升序更新，多个 SKU 按 ID 升序扣减。订单已 PAID 时重复请求返回原结果，不再产生资源变化。达到 `expires_at` 本身不会自动改变状态，必须由支付拒绝或独立过期扫描事务关闭。
 
-ProductOrder 的财务状态不代表已发货、已收货或可再售。履约和部分售后的完整状态、操作历史在 Day 17 设计，不能把 REFUNDED 直接解释为 SKU 已恢复库存。
+ProductOrder 的财务状态不代表已发货、已收货或可再售。V11 将履约事实与退款事实分开保存在订单明细及售后记录中，不能把 `REFUNDED` 直接解释为 SKU 已恢复库存。
 
-售后模板本身不是交易状态：STANDARD_7D、SPECIAL_NO_REASON_RETURN 都不能变成一个覆盖所有原因的“永不可退”状态。商品成功支付会扣减 SKU 余量、增加 Product 购买计数。订单明细保留购买时资格范围和 Guard 版本；退款最后有效票时订单事实仍保留，Day 20 再实现限定商品售后联动。本轮没有商品退款、发货或收货转换。
+售后模板本身不是交易状态：STANDARD_7D、SPECIAL_NO_REASON_RETURN 都不能变成一个覆盖所有原因的“永不可退”状态。商品成功支付会扣减 SKU 余量、增加 Product 购买计数。订单明细保留购买时资格范围和 Guard 版本；退款最后有效票时订单事实仍保留，Day 20 再实现限定商品售后联动。
+
+## 商品履约与售后申请
+
+履约状态和累计数量保存在 `product_order_item`。一对一的履约表会重复已有明细，因此 V11 不另建 `product_fulfillment`。支付成功时，明细处于 `UNSHIPPED`，发货和收货时间为空。服务端按数据库时间记录首次发货和首次收货。
+
+| 状态 | 数量条件 |
+|---|---|
+| `UNSHIPPED` | `shipped_quantity = 0`，`received_quantity = 0`。 |
+| `SHIPPED` | `shipped_quantity > 0`，`received_quantity = 0`。 |
+| `RECEIVED` | `received_quantity = shipped_quantity > 0`。 |
+
+```mermaid
+stateDiagram-v2
+    [*] --> UNSHIPPED: 商品订单支付成功
+    UNSHIPPED --> SHIPPED: 发布者确认该明细全部未退款数量
+    SHIPPED --> RECEIVED: 买家确认该明细全部已发货数量
+```
+
+发货数量、收货数量必须满足 `0 <= received_quantity <= shipped_quantity <= quantity`。模拟发货、收货各按明细一次确认全部对应数量，避免一个时间字段错误代表多批不同时间的商品。`shipped_at`、`received_at` 由数据库写入，接口不接受客户端时间。重复发货/收货因当前状态不匹配而拒绝。发货、收货和退款都先锁定同一 ProductOrder 与订单明细行。
+
+商品售后申请保存 `PENDING`、`PROCESSING`、`SUCCEEDED` 或 `FAILED` 状态：
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: 事务内创建申请并原子预留全部明细数量
+    PENDING --> PROCESSING: 模拟退回、验收和退款
+    PROCESSING --> SUCCEEDED: 限购、库存和订单汇总更新后整笔提交
+    PROCESSING --> FAILED: 主事务回滚后，独立事务持久化失败原因
+    FAILED --> PENDING: 相同买家、requestId 和载荷安全重试
+```
+
+`PENDING` 和 `PROCESSING` 只在同一 `READ_COMMITTED` 主事务内存在。各明细按 `order_item_id ASC` 用条件更新增加 `refund_pending_quantity`，且必须影响一行；数据库同时检查 `0 <= refunded_quantity + refund_pending_quantity <= quantity`。Java 不能先查询剩余数量后无条件写入。成功时同一事务把预留数转成已退款数；任一步失败都会回滚主事务的申请、资源及数量变更，随后新事务保留 `FAILED` 申请、明细与失败原因，但不占用退款数量。只有同一幂等键和完全相同载荷可以重试失败记录；已提交的成功重放返回原结果。申请资格校验阶段被拒绝的请求不创建失败记录。
+
+`NO_REASON` 只可使用 `STANDARD_7D`，要求明细已收货、模拟验收允许再次销售，且数据库当前时间位于 `[received_at, received_at + 7 days)`。时间窗口按经过 168 小时计算，等于到期时刻即拒绝。`SPECIAL_NO_REASON_RETURN` 只拒绝普通无理由退货；`QUALITY_PROBLEM`、`TICKET_QUALIFICATION_LOST`、`ACTIVITY_CANCELLED` 仍能表达和受理。后两种原因暂不触发 Day 20 自动联动。`returned_at` 由数据库记录。
+
+相同买家、`request_id` 和相同订单/明细/数量/原因/模拟验收输入返回原结果；载荷不同返回幂等冲突。不同请求键的并发申请由订单明细锁、原子条件更新及数据库 `CHECK` 共同限额。事务未提交时重试不会产生重复退款。
+
+未发货且符合条件的数量可直接模拟退款。已发货商品必须先由买家确认收货，再模拟退回和验收；只有退回且验收通过、`is_resalable = TRUE` 的数量可恢复 SKU 库存。退款成功都会按数量恢复 Product 限购，不可再售商品也会恢复限购。验收结果取 `NOT_REQUIRED`、`PENDING`、`PASSED` 或 `FAILED`；尚未验收时 `is_resalable` 为空。`simulateInspectionPassed` 与 `simulateResalable` 分别表达验收是否通过及通过后是否可再售；二者都只是本地模拟输入，不表示真实仓储事实。
+
+售后订单状态只按成功退款数量汇总。一次申请可包含多个订单明细，但所有明细必须属于同一订单；商品请求幂等由 `UNIQUE(buyer_id, request_id)` 保护，申请内重复的 `order_item_id` 由唯一键拒绝。退款最后有效票触发的限定商品联动仍由后续 Outbox 阶段处理。
 
 ## Activity 生命周期
 

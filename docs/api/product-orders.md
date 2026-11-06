@@ -64,3 +64,43 @@ Ticket-qualified purchases use the shared account × Activity qualification Guar
 Expired pending product orders are closed by the product-order expiration scan using database time. Payment retries only classified deadlocks or lock wait timeouts, up to three complete transaction attempts; stock and business errors are not retried.
 
 Common business errors include `SKU_NOT_FOUND`, `PRODUCT_NOT_PURCHASABLE`, `SKU_NOT_PURCHASABLE`, `PRODUCT_QUALIFICATION_DENIED`, `PRODUCT_PUBLISHER_MISMATCH`, `PRODUCT_PURCHASE_LIMIT_EXCEEDED`, `INSUFFICIENT_SKU_STOCK`, `PRODUCT_POLICY_ACK_REQUIRED`, and `IDEMPOTENCY_CONFLICT`.
+
+## Ship
+
+`POST /publisher/product-orders/{orderId}/ship`
+
+```json
+{ "orderItemId": 2001, "quantity": 2 }
+```
+
+The authenticated Publisher must own the order, and the order must be paid. The request quantity must equal the full remaining unrefunded quantity of that still-unshipped order item. The server records `shipped_at`; callers cannot set event times. Each SKU line moves independently to `SHIPPED`.
+
+## Receive
+
+`POST /product-orders/{orderId}/receive`
+
+```json
+{ "orderItemId": 2001, "quantity": 2 }
+```
+
+Only the order buyer can confirm receipt. The quantity must match all units recorded as shipped for that item. The server records `received_at`; repeated receipt confirmation is rejected. No carrier label, tracking code, or real logistics service is created.
+
+## Apply for product after-sales
+
+`POST /product-after-sales`
+
+```json
+{
+  "requestId": "return-001",
+  "orderId": 1001,
+  "items": [
+    { "orderItemId": 2001, "quantity": 2, "reason": "NO_REASON", "simulateResalable": true }
+  ]
+}
+```
+
+The buyer identity comes from authentication. Each order item can appear once per request and must belong to the paid order. Reasons are `NO_REASON`, `QUALITY_PROBLEM`, `TICKET_QUALIFICATION_LOST`, and `ACTIVITY_CANCELLED`. `simulateResalable` is an optional local inspection input that defaults to `true`; it does not assert a real warehouse inspection. `NO_REASON` requires `STANDARD_7D`, a received item, a resalable simulation result, and database time in `[received_at, received_at + 7 days)`. The endpoint rejects the exact seven-day endpoint. `SPECIAL_NO_REASON_RETURN` rejects only `NO_REASON`; the other reasons remain available.
+
+The endpoint simulates return and inspection for received goods, then simulates a refund in one transaction. All requests first atomically reserve detail quantities using a conditional database update. Unshipped refunds restore SKU stock; returned goods restore SKU stock only when inspection passes and the simulation says they are resalable. `simulateInspectionPassed` and `simulateResalable` are optional local simulation inputs. Inspection defaults to passed; resalability defaults to the inspection result. The combination `simulateInspectionPassed=true, simulateResalable=false` models an accepted inspection with goods that cannot be resold. Successful refunds always restore the Product purchase count. A failed step rolls back the main transaction's application and resource changes, then persists a queryable `FAILED` request/detail with its failure reason in a separate transaction. Replaying the same buyer/requestId/payload safely retries that failed record; changed payload returns `409 IDEMPOTENCY_CONFLICT`. Validation rejections before processing do not create an after-sale record.
+
+The response reports each detail's `returnedQuantity`, `refundedQuantity`, server `returnedAt`, `inspectionResult`, and `resalable` result.

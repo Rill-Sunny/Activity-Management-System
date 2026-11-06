@@ -2,7 +2,7 @@
 
 日期：2026-11-02；Day 15 补充：2026-11-03。依据 requirements 的 PRD-01～04、ITEM-01～05、RET-01～06、LINK-01～03，以及 schedule 的 F8、Day 14～17、Day 20。
 
-状态：目录与商品订单创建切片已实现。V8 落地 Product、SKU、独立名单及资格/公开查询；V9 落地预览、确认建单、订单快照及 Product 共享限购表。当前模型为 V2.8、23 张业务表、零物理外键。支付、售后及资格保护行尚未实现。接口见 [商品接口](api/products.md) 与 [商品订单接口](api/product-orders.md)。
+状态：V8–V12 已落地商品目录、订单支付、资格 Guard、订单明细履约及商品售后；当前模型为 V2.11、26 张业务表、零物理外键。Day 17 MySQL 验收测试已编写，但本机缺少 `DB_PASSWORD`，尚未执行。Day 20 持票资格自动联动仍未实现。接口见 [商品接口](api/products.md) 与 [商品订单接口](api/product-orders.md)。
 
 ## Day 14 冻结决定
 
@@ -137,7 +137,7 @@ product_order_item 候选字段：
 
 UNIQUE(order_id, sku_id)，索引 (product_id, order_id)、(sku_id, order_id)、(activity_id_snapshot, qualification_type_snapshot, qualification_session_id_snapshot, order_id)。请求重复出现同一 SKU 时直接拒绝。幂等按 sku_id、quantity 和必要的特殊政策确认比较，不以总额相同代替载荷相同。
 
-数量约束：0 ≤ refunded_quantity ≤ quantity；0 ≤ refund_pending_quantity ≤ quantity − refunded_quantity；0 ≤ received_quantity ≤ shipped_quantity ≤ quantity；0 ≤ returned_quantity ≤ shipped_quantity；0 ≤ restocked_quantity ≤ refunded_quantity。具体售后申请、明细、退回验收历史在 Day 17 冻结，不以这些累计字段代替操作历史。
+数量约束：0 ≤ refunded_quantity ≤ quantity；0 ≤ refund_pending_quantity ≤ quantity − refunded_quantity；0 ≤ received_quantity ≤ shipped_quantity ≤ quantity；0 ≤ returned_quantity ≤ shipped_quantity 且 returned_quantity ≤ refunded_quantity；0 ≤ restocked_quantity ≤ refunded_quantity。V11 已保存售后申请、明细、原因、模拟验收和退回历史。
 
 订单状态只汇总财务结果。PAID 不等于已发货，REFUNDED 也不等于实物可再售。只退一部分明细/数量时保留其他明细权益，不以一个订单履约状态覆盖混合明细事实。
 
@@ -171,9 +171,9 @@ WHERE sku_id = :skuId AND product_id = :productId
 
 STANDARD_7D 与 SPECIAL_NO_REASON_RETURN 都是项目已批准的普通自主退货模板。SPECIAL 仅限制普通无理由退货，不用于统一拒绝质量问题、失去持票资格或活动取消的特殊处理。
 
-下单前展示服务端预设说明、版本及必要确认。特殊模板缺少明确确认时拒绝创建；保存的模板、版本与确认时间进入订单明细快照，不能在退款时按 Product 当前模板替换。普通七日边界的基准为服务器记录的有效签收/模拟收货时间，精确规则及模拟验收入口留待 Day 17 冻结，本轮不伪称已确定所有售后细节。
+下单前展示服务端预设说明、版本及必要确认。特殊模板缺少明确确认时拒绝创建；保存的模板、版本与确认时间进入订单明细快照，不能在退款时按 Product 当前模板替换。`NO_REASON` 以数据库记录的模拟收货时间为起点，按 `[received_at, received_at + 7 days)` 半开区间计算，即固定 168 小时；精确到期时拒绝。它还要求明细已收货且模拟验收可再售。
 
-未发货合法退款可恢复对应 SKU；已发货须保留退回、验收和可再售事实。退款成功与回可售库存不是同一个条件。商品质量问题等入口不得被两个模板的枚举值整体屏蔽。
+未发货合法退款可恢复对应 SKU；已发货商品必须先确认收货，再模拟退回、验收并保存可再售结果。退款成功与回可售库存不是同一个条件。商品质量问题等入口不得被两个模板的枚举值整体屏蔽。
 
 ## 账号 × 活动资格保护行
 
@@ -222,13 +222,13 @@ Day 19/20 的完整可靠路径必须是：退票及 guard version 更新 + 同�
 | Day 14 设计冻结 | 实体、约束、状态、资格/订单决定、并发协议与后续测试。 | 持票范围、订单 Publisher/Activity 边界、重复 SKU 和核心规则编辑边界均已冻结。 |
 | Day 14 商品切片 | 发布者管理 Product/SKU、上架和独立资格查询；保护行 Schema 与票务写路径接入须另行实现。 | V8 三表及实际接口已实现并验证；guard 未接入。 |
 | Day 15 | 多商品预览/建单、报价/规则快照、15 分钟有效期、同键内容比较、不占资源。 | 已由 V9 实现；支付阶段再竞争库存与限购。 |
-| Day 16 | 商品支付整单事务、Product 额度、SKU 库存、共同锁顺序及整事务 retry。 | 计划真实 MySQL 验证。 |
-| Day 17 | 分数量履约/售后、签收时间、申请中占用、验收、退款/回库条件。 | 仅冻结本页基础契约，完整售后模型待 F9。 |
+| Day 16 | 商品支付整单事务、Product 额度、SKU 库存、共同锁顺序及整事务 retry。 | 实现与 MySQL 集成用例已存在；执行结果以数据库验收为准。 |
+| Day 17 | 履约、售后原因与部分退款、签收时间、申请中占用、验收、退款/回库条件。 | V11/V12、模拟 API 与事务 Service 已实现；资格丧失和活动取消自动联动不在本阶段。 |
 | Day 19/20 | 同事务 Outbox、当前资格重检、独立联动任务和恢复。 | 设计接缝，未引入组件。 |
 
 后续增量迁移按实际实现顺序生成，不改写既有迁移，不把余下四张候选表计入当前数据库。V8 仅新增目录三表，所有迁移继续使用 PK、UNIQUE、CHECK、INDEX、NOT NULL 和零物理 FK。
 
-设计验收用例清单如下。当前已运行的目录、资格与 SKU 展示隔离见 [专项报告](day14-products.md)，以下涉及商品订单、支付和联动的内容仍是计划，不计为 PASS：
+以下清单保留商品支付和后续资格联动的设计验收范围；已实现与尚待 Day 20 的场景以状态表为准，不能把未运行的数据库测试计为 PASS：
 
 1. PUBLIC 不继承活动名单；PRODUCT_WHITELIST 空成员拒绝，活动名单中有该用户也不能代替商品成员。
 2. ACTIVITY 允许同活动其他场次的 VALID 票；SESSION 只接受指定场次。REFUNDED、GIFT、FREE 均不能提供持票资格。
@@ -241,4 +241,4 @@ Day 19/20 的完整可靠路径必须是：退票及 guard version 更新 + 同�
 9. 退票提交后、事件投递前进程中断仍能补发；重复、乱序及退票后新购票事件必须重检当前资格，不重复退款或回库。
 10. SPECIAL 普通无理由规则拒绝不覆盖质量/资格丧失等原因；不可再售退款只恢复 Product 额度，不虚增 SKU 库存。
 
-本轮实际迁移和验证仅覆盖 V8 目录、SKU、独立名单、公开展示与当前资格查询。后续商品交易、保护行、售后和异步测试仍须分别实施，不能把只读资格预览宣称为已完成交易闭环。
+V8–V12 分别落地目录/资格、商品订单、共同资格 Guard、履约/售后数据及独立验收/可再售结果。Day 17 售后并发、故障注入和 SQL 对账用例已编写；运行结果待数据库凭据可用后确认。Day 20 的异步资格联动仍须实施，不能把当前售后状态机描述成自动联动闭环。

@@ -2,6 +2,12 @@ package com.limitactivitysystem.activity.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.limitactivitysystem.activity.model.*;
+import com.limitactivitysystem.activity.service.ActivityQueryService;
+import com.limitactivitysystem.cache.CacheAsideService;
+import com.limitactivitysystem.cache.CacheInvalidationDelivery;
+import com.limitactivitysystem.cache.CacheInvalidationRecorder;
+import com.limitactivitysystem.cache.RedisCacheStore;
+import com.limitactivitysystem.cache.RedisRequestDeduplicator;
 import com.limitactivitysystem.product.dto.*;
 import com.limitactivitysystem.product.exception.ProductException;
 import com.limitactivitysystem.product.service.*;
@@ -18,6 +24,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.*;
@@ -27,7 +34,13 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.*;
 import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
 import java.nio.file.*;
@@ -35,6 +48,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -44,25 +58,52 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(ProductCatalogMySqlIntegrationTest.DatabaseConfiguration.class)
 @DirtiesContext(classMode=DirtiesContext.ClassMode.AFTER_CLASS)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIfEnvironmentVariable(named="DB_PASSWORD",matches=".+")
 class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
+    private static final String REDIS_KEY_PREFIX="las:test:product-catalog:"+UUID.randomUUID()+":";
     @Autowired ProductQualificationService qualification;
     @Autowired ProductManagementService management;
     @Autowired SchemaObservation schema;
     @Autowired FailureObservation failures;
     @Autowired com.limitactivitysystem.product.mapper.ProductOrderExpirationMapper productOrderExpirationMapper;
     @Autowired ProductOrderClosureService productOrderClosing;
+    @Autowired CacheAsideService cacheAside;
+    @Autowired ActivityQueryService activityQueries;
+    @Autowired ProductQueryService productQueries;
+    @Autowired MeterRegistry meterRegistry;
+    @Autowired CacheInvalidationRecorder cacheInvalidations;
+    @Autowired StringRedisTemplate redis;
+    @Value("${cache.redis.key-prefix:}") String redisKeyPrefix;
+    @Autowired TransactionTemplate transactions;
+    @Autowired RedisRequestDeduplicator paymentDeduplicator;
+    @Autowired CacheInvalidationDelivery invalidationDelivery;
+    @MockitoSpyBean RedisCacheStore redisCacheStore;
     private Activity paid,other,free;
     private ActivitySession first,second,otherSession,freeSession;
     private SessionZone paidZone,giftZone;
     private boolean corrupt;
+    private String expectedProductOrderViolation;
+    private Long expectedProductOrderViolationResourceId;
     private static final Map<String,Object> AUDIT=new ConcurrentSkipListMap<>();
-    @BeforeAll static void reset(){AUDIT.clear();}
+    private static final Map<String,Object> AFTER_SALE_AUDIT=new ConcurrentSkipListMap<>();
+    @DynamicPropertySource static void configureRedisNamespace(DynamicPropertyRegistry registry){
+        registry.add("cache.redis.key-prefix",()->REDIS_KEY_PREFIX);
+    }
+    @BeforeAll static void reset(){AUDIT.clear();AFTER_SALE_AUDIT.clear();}
     @AfterAll static void save() throws Exception {
         var path=Path.of("target","verification","day16-product-order-reconciliation.json");Files.createDirectories(path.getParent());
         new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(path.toFile(),Map.of("script","tests/sql/product_invariants.sql","cases",AUDIT.size(),"checks",AUDIT));
+        var afterSalePath=Path.of("target","verification","day17-product-after-sale-reconciliation.json");
+        new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(afterSalePath.toFile(),
+                Map.of("script","tests/sql/product_after_sale_invariants.sql","cases",AFTER_SALE_AUDIT.size(),"checks",AFTER_SALE_AUDIT));
+    }
+    @AfterAll void clearRedisNamespace(){
+        try {var keys=redis.keys(redisKeyPrefix+"*");if(keys!=null&&!keys.isEmpty()){redis.delete(keys);}}
+        catch(DataAccessException unavailable){/* Redis is optional for the non-Redis integration cases. */}
     }
     @BeforeEach void createPublishedActivityScopes() throws Exception {
+        corrupt=false;expectedProductOrderViolation=null;expectedProductOrderViolationResourceId=null;
         paid=activity(publisher,"PAID");first=session(paid);second=session(paid);
         paidZone=insertZone(first,"PAID",4,4);giftZone=insertZone(first,"GIFT",2,2);insertZone(second,"PAID",2,2);publish(paid,publisher).andExpect(status().isNoContent());
         other=activity(otherPublisher,"PAID");otherSession=session(other);insertZone(otherSession,"PAID",2,2);publish(other,otherPublisher).andExpect(status().isNoContent());
@@ -78,7 +119,17 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
                 assertThat(rows).isEmpty();RefundInvariantAssertions.assertConsistent(jdbc);FreeReservationInvariantAssertions.assertConsistent(jdbc);
                 assertThat(scriptViolations("gift_invariants.sql")).isEmpty();
             }
+            var afterSaleRows=afterSaleViolations();
+            if(expectedProductOrderViolation==null){assertThat(afterSaleRows).isEmpty();}
+            else{
+                assertThat(afterSaleRows).singleElement().satisfies(row -> {
+                    assertThat(row.get("violation")).isEqualTo(expectedProductOrderViolation);
+                    assertThat(((Number)row.get("resource_id")).longValue()).isEqualTo(expectedProductOrderViolationResourceId);
+                });
+            }
+            AFTER_SALE_AUDIT.put(info.getDisplayName(),Map.of("violations",afterSaleRows.size()));
         } finally {
+            jdbc.update("DELETE FROM product_after_sale_item");jdbc.update("DELETE FROM product_after_sale_request");
             jdbc.update("DELETE FROM product_order_item");jdbc.update("DELETE FROM product_order");
             jdbc.update("DELETE FROM user_product_purchase");
             jdbc.update("DELETE FROM user_activity_qualification_guard");
@@ -89,11 +140,272 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
             jdbc.update("DELETE FROM free_reservation");jdbc.update("DELETE FROM free_session_quota");
         }
     }
-    @Test void v10MigrationPreservesExistingTablesAndUsesNoPhysicalForeignKeys() throws Exception {
-        assertThat(schema.before).isEqualTo(schema.after);assertThat(schema.executed).isEqualTo(3);assertThat(schema.repeated).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND table_name<>'flyway_schema_history'",Integer.class)).isEqualTo(24);
+    @Test void v13CacheTaskMigrationPreservesExistingTablesAndUsesNoPhysicalForeignKeys() throws Exception {
+        assertThat(schema.before).isEqualTo(schema.after);assertThat(schema.executed).isEqualTo(6);assertThat(schema.repeated).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND table_name<>'flyway_schema_history'",Integer.class)).isEqualTo(28);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()",Integer.class)).isZero();
-        evidence("day16-qualification-guard-migration",Map.of("beforeVersion",7,"afterVersion",10,"newTables",7,"businessTables",24,"existingTableDefinitionsUnchanged",17,"physicalForeignKeys",0,"repeatedMigrations",0));
+        evidence("day18-redis-cache-invalidation-migration",Map.of("beforeVersion",7,"afterVersion",13,"newTables",11,"businessTables",28,"existingTableDefinitionsUnchanged",17,"physicalForeignKeys",0,"repeatedMigrations",0));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void redisStringTemplateRoundTripsAndExpiresTtlKey() throws Exception {
+        String key=redisKey("las:test:ttl:redis-string-template");
+        redis.delete(key);
+        assertThat(redis.hasKey(key)).isFalse();
+        redis.opsForValue().set(key,"expected-value",java.time.Duration.ofMillis(700));
+        assertThat(redis.opsForValue().get(key)).isEqualTo("expected-value");
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(3);
+        while(Boolean.TRUE.equals(redis.hasKey(key)) && System.nanoTime()<deadline){TimeUnit.MILLISECONDS.sleep(40);}
+        assertThat(redis.hasKey(key)).isFalse();
+        evidence("day18-redis-string-ttl",Map.of("fixture",Map.of("label","string-template-ttl","key",key),
+                "redisBefore","absent","redisValueImmediatelyAfterSet","expected-value","ttlMillis",700,
+                "redisAfterExpiry","absent"));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void publishedActivityCacheMissLoadsMysqlAndNextReadHitsRedis() throws Exception {
+        Long activityId=paid.getActivityId();String identity="las:activity:"+activityId;
+        redis.delete(redisKey(identity));
+        var mysqlBefore=jdbc.queryForMap("SELECT activity_id,name,status FROM activity WHERE activity_id=?",activityId);
+        double missesBefore=metricCount("cache.miss","activity"),fallbacksBefore=metricCount("cache.db_fallback","activity"),hitsBefore=metricCount("cache.hit","activity");
+
+        var first=activityQueries.getPublished(activityId);
+        jdbc.update("UPDATE activity SET name=? WHERE activity_id=?","changed-without-invalidation",activityId);
+        var second=activityQueries.getPublished(activityId);
+        var mysqlAfter=jdbc.queryForMap("SELECT activity_id,name,status FROM activity WHERE activity_id=?",activityId);
+
+        assertThat(first.name()).isEqualTo(mysqlBefore.get("name"));
+        assertThat(second.name()).isEqualTo(first.name());
+        assertThat(second.name()).isNotEqualTo(mysqlAfter.get("name"));
+        assertThat(redis.opsForValue().get(redisKey(identity))).contains(first.name());
+        assertThat(metricCount("cache.miss","activity")-missesBefore).isEqualTo(1);
+        assertThat(metricCount("cache.db_fallback","activity")-fallbacksBefore).isEqualTo(1);
+        assertThat(metricCount("cache.hit","activity")-hitsBefore).isEqualTo(1);
+        evidence("day18-redis-activity-miss-hit",Map.of("fixture",Map.of("label","published-paid-activity","activityId",activityId),
+                "mysqlBefore",mysqlBefore,"mysqlAfter",mysqlAfter,"redisBefore","absent","redisAfter",redis.opsForValue().get(redisKey(identity)),
+                "firstRead","MISS then MySQL","secondRead","HIT","mysqlValueChangedBetweenReads",true));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void missingActivityUsesShortNegativeCacheAndReloadsAfterExpiry() throws Exception {
+        Long missingId=Long.MAX_VALUE;String identity="las:activity:"+missingId;redis.delete(redisKey(identity));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM activity WHERE activity_id=?",Integer.class,missingId)).isZero();
+        double missesBefore=metricCount("cache.miss","activity"),fallbacksBefore=metricCount("cache.db_fallback","activity"),hitsBefore=metricCount("cache.hit","activity");
+
+        assertThatThrownBy(()->activityQueries.getPublished(missingId)).isInstanceOf(com.limitactivitysystem.activity.exception.ActivityException.class);
+        Long ttl=redis.getExpire(redisKey(identity),TimeUnit.MILLISECONDS);
+        assertThat(ttl).isNotNull().isBetween(2500L,5000L);
+        assertThatThrownBy(()->activityQueries.getPublished(missingId)).isInstanceOf(com.limitactivitysystem.activity.exception.ActivityException.class);
+        assertThat(metricCount("cache.hit","activity")-hitsBefore).isEqualTo(1);
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(6);
+        while(Boolean.TRUE.equals(redis.hasKey(redisKey(identity)))&&System.nanoTime()<deadline){TimeUnit.MILLISECONDS.sleep(25);}
+        assertThat(redis.hasKey(redisKey(identity))).isFalse();
+        assertThatThrownBy(()->activityQueries.getPublished(missingId)).isInstanceOf(com.limitactivitysystem.activity.exception.ActivityException.class);
+        assertThat(metricCount("cache.miss","activity")-missesBefore).isEqualTo(2);
+        assertThat(metricCount("cache.db_fallback","activity")-fallbacksBefore).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM activity WHERE activity_id=?",Integer.class,missingId)).isZero();
+        evidence("day18-redis-negative-cache-expiry",Map.of("fixture",Map.of("label","missing-activity","activityId",missingId),
+                "mysqlRowsBefore",0,"mysqlRowsAfter",0,"redisTtlMillisAtWrite",ttl,"redisAfterExpiry",Boolean.FALSE,
+                "reads","MISS, HIT, TTL expiry, MISS","missDelta",2,"hitDelta",1));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void productOffSaleCommitInvalidatesItsPreviouslyCachedPublicDetail() throws Exception {
+        long id=live("PUBLIC",null,null);String identity="las:product:"+id;
+        var cached=productQueries.get(id);assertThat(redis.opsForValue().get(redisKey(identity))).isNotNull();
+        var mysqlBefore=jdbc.queryForMap("SELECT product_id,name,status FROM product WHERE product_id=?",id);
+        var taskBefore=jdbc.queryForObject("SELECT COUNT(*) FROM cache_invalidation_task WHERE cache_identity=?",Integer.class,identity);
+
+        postJson("/publisher/products/"+id+"/off-sale",publisher,Map.of()).andExpect(status().isOk());
+
+        var mysqlAfter=jdbc.queryForMap("SELECT product_id,name,status FROM product WHERE product_id=?",id);
+        assertThat(mysqlAfter.get("status")).isEqualTo("OFF_SALE");
+        assertThat(redis.opsForValue().get(redisKey(identity))).isNull();
+        String redisAfterInvalidation="absent";
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cache_invalidation_task WHERE cache_identity=? AND completed_at IS NOT NULL",Integer.class,identity))
+                .isGreaterThan(taskBefore);
+        mvc.perform(get("/products/{id}",id)).andExpect(status().isNotFound());
+        String redisAfterPublicRead=Boolean.TRUE.equals(redis.hasKey(redisKey(identity)))?"negative-cache-marker":"absent";
+        evidence("day18-redis-product-commit-invalidation",Map.of("fixture",Map.of("label","published-public-product","productId",id),
+                "mysqlBefore",mysqlBefore,"mysqlAfter",mysqlAfter,"redisBefore",cached.name(),
+                "redisAfterInvalidation",redisAfterInvalidation,"redisAfterPublicRead",redisAfterPublicRead,
+                "completedInvalidationTasks",jdbc.queryForObject("SELECT COUNT(*) FROM cache_invalidation_task WHERE cache_identity=? AND completed_at IS NOT NULL",Integer.class,identity)));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void productRollbackNeverCachesTheUncommittedName() throws Exception {
+        long id=live("PUBLIC",null,null);String identity="las:product:"+id;redis.delete(redisKey(identity));
+        String committedName=jdbc.queryForObject("SELECT name FROM product WHERE product_id=?",String.class,id);
+        var cached=transactions.execute(status->{
+            jdbc.update("UPDATE product SET name=? WHERE product_id=?","uncommitted-product-name",id);
+            cacheInvalidations.record(identity);
+            var result=productQueries.get(id);
+            status.setRollbackOnly();
+            return result;
+        });
+
+        assertThat(cached).isNotNull();assertThat(cached.name()).isEqualTo(committedName);
+        assertThat(jdbc.queryForObject("SELECT name FROM product WHERE product_id=?",String.class,id)).isEqualTo(committedName);
+        String cacheAfterRollbackBeforeReload=redis.opsForValue().get(redisKey(identity));
+        assertThat(cacheAfterRollbackBeforeReload).isNull();
+        assertThat(productQueries.get(id).name()).isEqualTo(committedName);
+        evidence("day18-redis-product-rollback",Map.of("fixture",Map.of("label","published-product","productId",id),
+                "mysqlNameBefore",committedName,"mysqlNameAfterRollback",jdbc.queryForObject("SELECT name FROM product WHERE product_id=?",String.class,id),
+                "redisAfterRollbackBeforeReload",cacheAfterRollbackBeforeReload==null?"absent":"present",
+                "redisAfterCommittedReload",redis.opsForValue().get(redisKey(identity)),"uncommittedNameCached",false));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void paymentDedupeCompetitionAllowsOneLiveOwner() throws Exception {
+        long orderId=1801001L;Long requesterId=9012L;
+        int contenders=12;CountDownLatch start=new CountDownLatch(1),entered=new CountDownLatch(contenders),release=new CountDownLatch(1);
+        AtomicInteger winners=new AtomicInteger();var executor=Executors.newFixedThreadPool(contenders);String key="las:dedupe:pay:"+orderId+":"+requesterId;
+        redis.delete(redisKey(key));
+        try {
+            List<Future<Boolean>> results=new ArrayList<>();
+            for(int i=0;i<contenders;i++)results.add(executor.submit(()->{
+                if(!start.await(5,TimeUnit.SECONDS))throw new IllegalStateException("Start gate timed out");
+                try(var lease=paymentDeduplicator.beginPayment(orderId,requesterId)){
+                    if(!lease.inProgress())winners.incrementAndGet();entered.countDown();
+                    if(!release.await(5,TimeUnit.SECONDS))throw new IllegalStateException("Release gate timed out");
+                    return lease.inProgress();
+                }
+            }));
+            start.countDown();assertThat(entered.await(5,TimeUnit.SECONDS)).isTrue();
+            assertThat(winners.get()).isEqualTo(1);assertThat(redis.hasKey(redisKey(key))).isTrue();release.countDown();
+            for(Future<Boolean> result:results)result.get(5,TimeUnit.SECONDS);
+            assertThat(redis.hasKey(redisKey(key))).isFalse();
+        } finally {release.countDown();executor.shutdownNow();}
+        evidence("day18-redis-dedupe-contention",Map.of("fixture",Map.of("label","same-order-and-requester","orderId",orderId,"requesterId",requesterId),
+                "contenders",contenders,"owners",winners.get(),"redisKeyAfterRelease",Boolean.FALSE));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void expiredDedupeOwnerCannotReleaseTheNextOwnersKey() throws Exception {
+        long orderId=1801002L;Long requesterId=9012L;
+        String key="las:dedupe:pay:"+orderId+":"+requesterId;
+        redis.delete(redisKey(key));
+        var oldOwner=paymentDeduplicator.beginPayment(orderId,requesterId);
+        assertThat(oldOwner.inProgress()).isFalse();
+        try {
+            assertThat(redis.expire(redisKey(key),java.time.Duration.ZERO)).isTrue();
+            try(var newOwner=paymentDeduplicator.beginPayment(orderId,requesterId)){
+                assertThat(newOwner.inProgress()).isFalse();
+                oldOwner.close();
+                assertThat(redis.hasKey(redisKey(key))).isTrue();
+                newOwner.close();
+                assertThat(redis.hasKey(redisKey(key))).isFalse();
+            }
+        } finally {oldOwner.close();redis.delete(redisKey(key));}
+        evidence("day18-redis-dedupe-owner-release",Map.of("fixture",Map.of("label","expired-owner-replaced","orderId",orderId,"requesterId",requesterId),
+                "newOwnerSurvivedOldRelease",true,"keyAfterNewOwnerRelease",false));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void productReadFallsBackToRealMysqlWhenRedisAccessFails() throws Exception {
+        long id=live("PUBLIC",null,null);String identity="las:product:"+id;redis.delete(redisKey(identity));
+        org.mockito.Mockito.doThrow(new org.springframework.data.redis.RedisConnectionFailureException("simulated Redis outage"))
+                .when(redisCacheStore).read(identity);
+        double fallbacksBefore=metricCount("cache.db_fallback","product");
+
+        assertThat(productQueries.get(id).productId()).isEqualTo(id);
+
+        assertThat(metricCount("cache.db_fallback","product")-fallbacksBefore).isEqualTo(1);
+        assertThat(redis.opsForValue().get(redisKey(identity))).isNull();
+        org.mockito.Mockito.reset(redisCacheStore);
+        evidence("day18-redis-read-fallback",Map.of("fixture",Map.of("label","published-public-product","productId",id),
+                "redisRead","injected connection failure","mysqlProductId",id,"fallbackDelta",1,"redisCacheAfterRead","absent"));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void cacheGenerationPreventsOldMissValueFromBeingRefilledAfterCommit() throws Exception {
+        Long activityId=paid.getActivityId();
+        String identity="las:activity:"+activityId;
+        String mysqlBefore=jdbc.queryForObject("SELECT name FROM activity WHERE activity_id=?",String.class,activityId);
+        assertThat(redis.opsForValue().get(redisKey(identity))).isNull();
+        CountDownLatch mysqlReadOldValue=new CountDownLatch(1);
+        CountDownLatch allowCacheFill=new CountDownLatch(1);
+        var executor=Executors.newSingleThreadExecutor();
+        try {
+            Future<String> oldRead=executor.submit(() -> cacheAside.get(identity,String.class,()->{
+                String oldName=jdbc.queryForObject("SELECT name FROM activity WHERE activity_id=?",String.class,activityId);
+                mysqlReadOldValue.countDown();
+                try {
+                    if(!allowCacheFill.await(10,TimeUnit.SECONDS)){throw new IllegalStateException("Timed out waiting to resume cache fill");}
+                } catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new IllegalStateException(interrupted);}
+                return oldName;
+            }));
+            assertThat(mysqlReadOldValue.await(5,TimeUnit.SECONDS)).isTrue();
+            String oldName=jdbc.queryForObject("SELECT name FROM activity WHERE activity_id=?",String.class,activityId);
+            assertThat(oldName).isEqualTo(mysqlBefore);
+            transactions.executeWithoutResult(status -> {
+                jdbc.update("UPDATE activity SET name=? WHERE activity_id=?","Updated display name",activityId);
+                cacheInvalidations.record(identity);
+            });
+            allowCacheFill.countDown();
+            assertThat(oldRead.get(5,TimeUnit.SECONDS)).isEqualTo(oldName);
+            assertThat(redis.opsForValue().get(redisKey(identity))).isNull();
+            String freshName=cacheAside.get(identity,String.class,()->jdbc.queryForObject(
+                    "SELECT name FROM activity WHERE activity_id=?",String.class,activityId));
+            assertThat(freshName).isEqualTo("Updated display name");
+            assertThat(cacheAside.get(identity,String.class,()->"unexpected-reload")).isEqualTo("Updated display name");
+            evidence("day18-redis-stale-refill-race",Map.of("fixture",Map.of("label","published-paid-activity","activityId",activityId),
+                    "mysqlNameBefore",mysqlBefore,"mysqlNameAfterCommit",jdbc.queryForObject(
+                            "SELECT name FROM activity WHERE activity_id=?",String.class,activityId),
+                    "redisBefore","absent","redisAfterOldReadResumed","absent","redisAfterFreshRead",redis.opsForValue().get(redisKey(identity)),
+                    "oldReadResult",oldRead.get(1,TimeUnit.SECONDS),"freshReadResult",freshName));
+        } finally {
+            allowCacheFill.countDown();executor.shutdownNow();
+        }
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void paymentDedupeUsesNxAndOnlyReleasesItsOwnToken() throws Exception {
+        long orderId=1801003L;
+        Long requesterId=9012L;
+        String key="las:dedupe:pay:"+orderId+":"+requesterId;
+        redis.delete(redisKey(key));
+        try(var owner=paymentDeduplicator.beginPayment(orderId,requesterId)){
+            assertThat(owner.inProgress()).isFalse();
+            try(var duplicate=paymentDeduplicator.beginPayment(orderId,requesterId)){
+                assertThat(duplicate.inProgress()).isTrue();
+            }
+            redis.opsForValue().set(redisKey(key),"later-owner",java.time.Duration.ofSeconds(10));
+        }
+        assertThat(redis.opsForValue().get(redisKey(key))).isEqualTo("later-owner");
+        redis.delete(redisKey(key));
+        evidence("day18-redis-dedupe-token-release",Map.of("fixture",Map.of("label","same-payment-key","orderId",orderId,"requesterId",requesterId),
+                "redisBefore","absent","duplicateRejected",true,"redisAfterOldOwnerRelease","later-owner","redisAfterCleanup","absent"));
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="REDIS_TEST_ENABLED",matches="true")
+    void failedCacheInvalidationStaysDurableAndScannerRetriesIt() throws Exception {
+        String identity="las:test:repair:failed-delete-fixture";
+        String generationKey="las:cache-generation:"+identity;
+        redis.delete(redisKey(identity));redis.delete(redisKey(generationKey));
+        jdbc.update("DELETE FROM cache_invalidation_task WHERE cache_identity=?",identity);
+        jdbc.update("DELETE FROM cache_generation WHERE cache_identity=?",identity);
+        double failuresBefore=metricCount("cache.invalidation_failure","other");
+        org.mockito.Mockito.doThrow(new org.springframework.data.redis.RedisSystemException(
+                "simulated Redis failure",new IllegalStateException("offline")))
+                .when(redisCacheStore).invalidate(identity,1L);
+        transactions.executeWithoutResult(status -> cacheInvalidations.record(identity));
+
+        var pending=jdbc.queryForMap("SELECT attempts, completed_at FROM cache_invalidation_task WHERE cache_identity=?",identity);
+        assertThat(pending.get("attempts")).isEqualTo(1);
+        assertThat(pending.get("completed_at")).isNull();
+
+        org.mockito.Mockito.reset(redisCacheStore);
+        jdbc.update("UPDATE cache_invalidation_task SET next_attempt_at=CURRENT_TIMESTAMP(3) WHERE cache_identity=?",identity);
+        invalidationDelivery.retryPending();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cache_invalidation_task WHERE cache_identity=? AND completed_at IS NOT NULL",
+                Integer.class,identity)).isEqualTo(1);
+        assertThat(metricCount("cache.invalidation_failure","other")-failuresBefore).isEqualTo(1);
+        evidence("day18-redis-invalidation-retry",Map.of("fixture",Map.of("label","failed-delete-repair","cacheIdentity",identity),
+                "mysqlAfterFailure",pending,"mysqlAfterRetry",jdbc.queryForMap(
+                        "SELECT attempts, completed_at FROM cache_invalidation_task WHERE cache_identity=?",identity),
+                "redisBefore","generation absent and cache absent","redisGenerationAfterRetry",redis.opsForValue().get(redisKey(generationKey)),
+                "redisCacheAfterRetry",Boolean.TRUE.equals(redis.hasKey(redisKey(identity)))?"present":"absent"));
     }
     @Test void publishAndReadBlackMZeroStockWithoutSubstitutingWhiteL() throws Exception {
         long id=product(body("PUBLIC",null,null));
@@ -378,7 +690,7 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         insertZone(anotherSession,"PAID",2,2);publish(anotherActivity,publisher).andExpect(status().isNoContent());
         var secondBody=body("PUBLIC",null,null);secondBody.put("activityId",anotherActivity.getActivityId());secondBody.put("purchaseLimit",10);
         long secondProduct=product(secondBody);long secondSku=sku(secondProduct,"SECOND",5).path("skuId").asLong();publishProduct(secondProduct);
-        jdbc.update("INSERT INTO user_product_purchase(user_id,product_id,valid_count) VALUES(?,?,1)",buyer.getId(),firstProduct);
+        payOrder("product-cross-activity-existing-purchase",List.of(Map.of("skuId",firstSku,"quantity",1)));
         Map<String,Object> request=Map.of("requestId","product-cross-activity","items",List.of(
                 Map.of("skuId",firstSku,"quantity",1),Map.of("skuId",additionalSku,"quantity",2),Map.of("skuId",secondSku,"quantity",1)));
         var beforeStock=jdbc.queryForList("SELECT sku_id,remains_stock FROM sku ORDER BY sku_id");
@@ -510,6 +822,9 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         long productId=product(configuration);long firstSku=sku(productId,"A-FIRST",10).path("skuId").asLong();
         long secondSku=sku(productId,"B-SOLD-OUT",4).path("skuId").asLong();publishProduct(productId);
         long orderId=createProductOrder("p16-atomic-stock",List.of(Map.of("skuId",firstSku,"quantity",2),Map.of("skuId",secondSku,"quantity",1)));
+        expectedProductOrderViolation="SKU_AVAILABLE_STOCK_MISMATCH";
+        expectedProductOrderViolationResourceId=secondSku;
+        // Represents stock depleted outside the paid product-order ledger.
         jdbc.update("UPDATE sku SET remains_stock=0 WHERE sku_id=?",secondSku);
         var beforeItems=jdbc.queryForList("SELECT order_item_id,sku_id,quantity,unit_price FROM product_order_item WHERE order_id=? ORDER BY sku_id",orderId);
         postJson("/product-orders/"+orderId+"/pay",buyer,Map.of())
@@ -546,6 +861,9 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
     @Test void p18_duplicateConcurrentPaymentReturnsTheSamePaidOrderWithoutRepeatingEffects() throws Exception {
         long productId=product(body("PUBLIC",null,null));long skuId=sku(productId,"PAY-ONCE",5).path("skuId").asLong();publishProduct(productId);
         long orderId=createProductOrder("p18-idempotent-pay",List.of(Map.of("skuId",skuId,"quantity",2)));
+        var mysqlBefore=Map.of("skuStock",jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId),
+                "purchaseRows",jdbc.queryForObject("SELECT COUNT(*) FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId),
+                "orderStatus",jdbc.queryForObject("SELECT status FROM product_order WHERE order_id=?",String.class,orderId));
         var start=new CyclicBarrier(2);
         var first=async(() -> {start.await(10,TimeUnit.SECONDS);return mvc.perform(post("/product-orders/{id}/pay",orderId).header(HttpHeaders.AUTHORIZATION,bearer(buyer))).andReturn().getResponse();});
         var second=async(() -> {start.await(10,TimeUnit.SECONDS);return mvc.perform(post("/product-orders/{id}/pay",orderId).header(HttpHeaders.AUTHORIZATION,bearer(buyer))).andReturn().getResponse();});
@@ -556,6 +874,13 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(3);
         assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT paid_at IS NOT NULL FROM product_order WHERE order_id=?",Boolean.class,orderId)).isTrue();
+        var mysqlAfter=Map.of("skuStock",jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId),
+                "validCount",jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId),
+                "paidOrders",jdbc.queryForObject("SELECT COUNT(*) FROM product_order WHERE order_id=? AND status='PAID'",Integer.class,orderId),
+                "orderStatus",jdbc.queryForObject("SELECT status FROM product_order WHERE order_id=?",String.class,orderId));
+        evidence("day18-redis-down-duplicate-payment",Map.of("fixture",Map.of("label","p18-idempotent-product-payment","productId",productId,"skuId",skuId,"orderId",orderId),
+                "mysqlBeforePayment",mysqlBefore,"mysqlAfterTwoRequests",mysqlAfter,"httpStatuses",List.of(a.getStatus(),b.getStatus()),
+                "redisStateAtEnd",redisState(),"stockDeductedOnce",true,"quotaChargedOnce",true));
     }
 
     @Test void p19_deadlockRetriesOnlyAfterRollbackAndCompletesOnce() throws Exception {
@@ -579,8 +904,9 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
     }
 
     @Test void p21_multiProductMultiSkuPaymentUsesPersistedPricesAndAggregatesEachProduct() throws Exception {
-        long firstProduct=live("PUBLIC",null,null);long firstSku=jdbc.queryForObject("SELECT sku_id FROM sku WHERE product_id=?",Long.class,firstProduct);
+        long firstProduct=product(body("PUBLIC",null,null));long firstSku=sku(firstProduct,"main",1).path("skuId").asLong();
         long alternateSku=sku(firstProduct,"SECOND-SIZE",4).path("skuId").asLong();
+        publishProduct(firstProduct);
         long secondProduct=live("PUBLIC",null,null);long thirdSku=jdbc.queryForObject("SELECT sku_id FROM sku WHERE product_id=?",Long.class,secondProduct);
         long orderId=createProductOrder("p21-snapshot-payment",List.of(Map.of("skuId",firstSku,"quantity",1),
                 Map.of("skuId",alternateSku,"quantity",1),Map.of("skuId",thirdSku,"quantity",1)));
@@ -708,6 +1034,7 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         long id=live("PUBLIC",null,null),otherProduct=product(body("PUBLIC",null,null));long otherSku=sku(otherProduct,"other",1).path("skuId").asLong();
         mvc.perform(get("/products/{id}/skus/{sku}",id,otherSku)).andExpect(status().isNotFound());
         jdbc.update("UPDATE activity SET status='CANCELLED' WHERE activity_id=?",paid.getActivityId());
+        evictTestCacheIfAvailable("las:product:"+id);
         mvc.perform(get("/products/{id}",id)).andExpect(status().isNotFound());allowed(id,false,"PRODUCT_NOT_ON_SALE");
     }
     @Test void independentServiceQueriesRejectInactiveAccountsAndDoNotConsumeStock() throws Exception {
@@ -715,12 +1042,223 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         jdbc.update("UPDATE app_user SET status='DISABLED' WHERE id=?",buyer.getId());
         assertThat(qualification.check(buyer.getId(),id).reason()).isEqualTo("USER_INACTIVE");assertThat(snapshot()).isEqualTo(before);
     }
+
+    @Test void fulfillmentIsTrackedPerOrderItemAndChecksPublisherAndBuyerOwnership() throws Exception {
+        var productBody=body("PUBLIC",null,null);productBody.put("purchaseLimit",10);
+        long productId=product(productBody);long black=sku(productId,"BLACK-M",5).path("skuId").asLong();
+        long white=sku(productId,"WHITE-L",5).path("skuId").asLong();publishProduct(productId);
+        long orderId=payOrder("fulfillment-multi-sku",List.of(Map.of("skuId",black,"quantity",1),Map.of("skuId",white,"quantity",1)));
+        long blackItem=orderItem(orderId,black),whiteItem=orderItem(orderId,white);
+        postJson("/publisher/product-orders/"+orderId+"/ship",otherPublisher,Map.of("orderItemId",blackItem,"quantity",1))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PRODUCT_ORDER_ACCESS_DENIED"));
+        var shipped=postJson("/publisher/product-orders/"+orderId+"/ship",publisher,Map.of("orderItemId",blackItem,"quantity",1))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SHIPPED"))
+                .andExpect(jsonPath("$.shippedAt").isNotEmpty()).andReturn().getResponse();
+        assertThat(jdbc.queryForObject("SELECT fulfillment_status FROM product_order_item WHERE order_item_id=?",String.class,whiteItem)).isEqualTo("UNSHIPPED");
+        postJson("/product-orders/"+orderId+"/receive",otherPublisher,Map.of("orderItemId",blackItem,"quantity",1))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PRODUCT_ORDER_ACCESS_DENIED"));
+        var received=postJson("/product-orders/"+orderId+"/receive",buyer,Map.of("orderItemId",blackItem,"quantity",1))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("RECEIVED"))
+                .andExpect(jsonPath("$.receivedAt").isNotEmpty()).andReturn().getResponse();
+        var shipJson=objectMapper.readTree(shipped.getContentAsString());var receiveJson=objectMapper.readTree(received.getContentAsString());
+        assertThat(receiveJson.path("receivedAt").asText()).isGreaterThanOrEqualTo(shipJson.path("shippedAt").asText());
+        postJson("/product-orders/"+orderId+"/receive",buyer,Map.of("orderItemId",blackItem,"quantity",1))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PRODUCT_FULFILLMENT_INVALID"));
+        postJson("/product-after-sales",buyer,Map.of("requestId","mixed-only-white-refund","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",whiteItem,"quantity",1,"reason","QUALITY_PROBLEM"))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SUCCEEDED"));
+        assertThat(jdbc.queryForObject("SELECT fulfillment_status FROM product_order_item WHERE order_item_id=?",String.class,blackItem)).isEqualTo("RECEIVED");
+        assertThat(jdbc.queryForObject("SELECT refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,blackItem)).isZero();
+        assertThat(jdbc.queryForObject("SELECT fulfillment_status FROM product_order_item WHERE order_item_id=?",String.class,whiteItem)).isEqualTo("UNSHIPPED");
+        assertThat(jdbc.queryForObject("SELECT refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,whiteItem)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,black)).isEqualTo(4);
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,white)).isEqualTo(5);
+        assertThat(afterSaleViolations()).isEmpty();
+    }
+
+    @Test void unshippedPartialRefundRestoresSkuQuotaAndReturnsTheOriginalIdempotentResult() throws Exception {
+        var productBody=body("PUBLIC",null,null);productBody.put("purchaseLimit",10);
+        long productId=product(productBody);long skuId=sku(productId,"refund-unshipped",10).path("skuId").asLong();publishProduct(productId);
+        long orderId=payOrder("after-sale-unshipped",List.of(Map.of("skuId",skuId,"quantity",3)));
+        long itemId=orderItem(orderId,skuId);
+        var mysqlBefore=Map.of("skuStock",jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId),
+                "productValidCount",jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId),
+                "orderStatus",jdbc.queryForObject("SELECT status FROM product_order WHERE order_id=?",String.class,orderId),
+                "refundPending",jdbc.queryForObject("SELECT refund_pending_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId),
+                "refunded",jdbc.queryForObject("SELECT refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId));
+        var input=Map.of("requestId","partial-return-2","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",2,"reason","QUALITY_PROBLEM")));
+        var first=postJson("/product-after-sales",buyer,input).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED")).andExpect(jsonPath("$.items[0].refundedQuantity").value(2))
+                .andExpect(jsonPath("$.items[0].returnedQuantity").value(0)).andReturn().getResponse().getContentAsString();
+        postJson("/product-after-sales",buyer,input).andExpect(status().isCreated()).andExpect(content().json(first));
+        postJson("/product-after-sales",buyer,Map.of("requestId","partial-return-2","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",1,"reason","QUALITY_PROBLEM"))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT refund_pending_quantity+0 FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isZero();
+        assertThat(jdbc.queryForObject("SELECT refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT status FROM product_order WHERE order_id=?",String.class,orderId)).isEqualTo("PARTIALLY_REFUNDED");
+        assertThat(afterSaleViolations()).isEmpty();
+        var mysqlAfter=Map.of("skuStock",jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId),
+                "productValidCount",jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId),
+                "orderStatus",jdbc.queryForObject("SELECT status FROM product_order WHERE order_id=?",String.class,orderId),
+                "refundPending",jdbc.queryForObject("SELECT refund_pending_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId),
+                "refunded",jdbc.queryForObject("SELECT refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId));
+        evidence("day18-redis-down-refund-idempotency",Map.of("fixture",Map.of("label","unshipped-partial-refund","productId",productId,"skuId",skuId,"orderId",orderId,"orderItemId",itemId),
+                "mysqlBeforeRefund",mysqlBefore,"mysqlAfterDuplicateAndConflictRequests",mysqlAfter,"redisStateAtEnd",redisState(),
+                "sameRequestReturnedOriginalResult",true,"changedRequestPayloadRejected",true));
+    }
+
+    @Test void concurrentAfterSaleRequestsCannotRefundMoreThanPurchased() throws Exception {
+        var productBody=body("PUBLIC",null,null);productBody.put("purchaseLimit",10);
+        long productId=product(productBody);long skuId=sku(productId,"refund-race",10).path("skuId").asLong();publishProduct(productId);
+        long orderId=payOrder("after-sale-race",List.of(Map.of("skuId",skuId,"quantity",3)));
+        long itemId=orderItem(orderId,skuId);var start=new CountDownLatch(1);
+        Callable<Integer> first=() -> {start.await(10,TimeUnit.SECONDS);return postJson("/product-after-sales",buyer,
+                Map.of("requestId","race-a","orderId",orderId,"items",List.of(Map.of("orderItemId",itemId,"quantity",2,"reason","QUALITY_PROBLEM"))))
+                .andReturn().getResponse().getStatus();};
+        Callable<Integer> second=() -> {start.await(10,TimeUnit.SECONDS);return postJson("/product-after-sales",buyer,
+                Map.of("requestId","race-b","orderId",orderId,"items",List.of(Map.of("orderItemId",itemId,"quantity",2,"reason","QUALITY_PROBLEM"))))
+                .andReturn().getResponse().getStatus();};
+        var a=async(first);var b=async(second);start.countDown();List<Integer> statuses=List.of(a.get(15,TimeUnit.SECONDS),b.get(15,TimeUnit.SECONDS));
+        assertThat(statuses).containsExactlyInAnyOrder(201,409);
+        assertThat(jdbc.queryForObject("SELECT refunded_quantity+refund_pending_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isEqualTo(1);
+        assertThat(afterSaleViolations()).isEmpty();
+    }
+
+    @Test void shippingAndUnshippedRefundCannotBothSucceed() throws Exception {
+        var productBody=body("PUBLIC",null,null);productBody.put("purchaseLimit",10);
+        long productId=product(productBody);long skuId=sku(productId,"ship-refund-race",5).path("skuId").asLong();publishProduct(productId);
+        long orderId=payOrder("ship-refund-race-order",List.of(Map.of("skuId",skuId,"quantity",1)));
+        long itemId=orderItem(orderId,skuId);var start=new CountDownLatch(1);
+        Callable<Integer> ship=() -> {start.await(10,TimeUnit.SECONDS);return postJson("/publisher/product-orders/"+orderId+"/ship",publisher,
+                Map.of("orderItemId",itemId,"quantity",1)).andReturn().getResponse().getStatus();};
+        Callable<Integer> refund=() -> {start.await(10,TimeUnit.SECONDS);return postJson("/product-after-sales",buyer,
+                Map.of("requestId","ship-refund-race","orderId",orderId,"items",List.of(Map.of(
+                        "orderItemId",itemId,"quantity",1,"reason","QUALITY_PROBLEM"))))
+                .andReturn().getResponse().getStatus();};
+        var shipped=async(ship);var refunded=async(refund);start.countDown();
+        int shipStatus=shipped.get(15,TimeUnit.SECONDS),refundStatus=refunded.get(15,TimeUnit.SECONDS);
+        assertThat((shipStatus==200 && refundStatus==409) || (shipStatus==409 && refundStatus==201)).isTrue();
+        var line=jdbc.queryForMap("SELECT fulfillment_status,refunded_quantity,refund_pending_quantity FROM product_order_item WHERE order_item_id=?",itemId);
+        assertThat(("SHIPPED".equals(line.get("fulfillment_status")) && ((Number)line.get("refunded_quantity")).intValue()==0)
+                || ("UNSHIPPED".equals(line.get("fulfillment_status")) && ((Number)line.get("refunded_quantity")).intValue()==1)).isTrue();
+        assertThat(((Number)line.get("refund_pending_quantity")).intValue()).isZero();
+        if(shipStatus==200){
+            assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(4);
+            assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isEqualTo(1);
+        }else{
+            assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(5);
+            assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isZero();
+        }
+        assertThat(afterSaleViolations()).isEmpty();
+    }
+
+    @Test void specialTemplateBlocksOnlyNoReasonAndNonresalableReturnedGoodsDoNotRestoreStock() throws Exception {
+        var productBody=body("PUBLIC",null,null);productBody.put("purchaseLimit",10);productBody.put("refundPolicy","SPECIAL_NO_REASON_RETURN");
+        long productId=product(productBody);long skuId=sku(productId,"special-return",5).path("skuId").asLong();publishProduct(productId);
+        var orderResponse=postJson("/product-orders/confirm",buyer,Map.of("requestId","special-return-order","items",List.of(Map.of(
+                "skuId",skuId,"quantity",3,"acknowledgeSpecialPolicy",true)))).andExpect(status().isCreated()).andReturn().getResponse();
+        long orderId=objectMapper.readTree(orderResponse.getContentAsString()).path("orderId").asLong();
+        postJson("/product-orders/"+orderId+"/pay",buyer,Map.of()).andExpect(status().isOk());long itemId=orderItem(orderId,skuId);
+        postJson("/publisher/product-orders/"+orderId+"/ship",publisher,Map.of("orderItemId",itemId,"quantity",3)).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(2);
+        postJson("/product-after-sales",buyer,Map.of("requestId","special-no-reason","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",1,"reason","NO_REASON"))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PRODUCT_AFTER_SALE_NOT_ALLOWED"));
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(2);
+        postJson("/product-orders/"+orderId+"/receive",buyer,Map.of("orderItemId",itemId,"quantity",3)).andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(2);
+        postJson("/product-after-sales",buyer,Map.of("requestId","special-quality","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",1,"reason","QUALITY_PROBLEM","simulateInspectionPassed",false,"simulateResalable",false))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.items[0].inspectionResult").value("FAILED"))
+                .andExpect(jsonPath("$.items[0].returnedQuantity").value(1))
+                .andExpect(jsonPath("$.items[0].returnedAt").isNotEmpty());
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(2);
+        postJson("/product-after-sales",buyer,Map.of("requestId","special-passed-not-resalable","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",1,"reason","QUALITY_PROBLEM","simulateInspectionPassed",true,"simulateResalable",false))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.items[0].inspectionResult").value("PASSED"))
+                .andExpect(jsonPath("$.items[0].resalable").value(false));
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(2);
+        postJson("/product-after-sales",buyer,Map.of("requestId","special-passed-resalable","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",1,"reason","QUALITY_PROBLEM"))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.items[0].inspectionResult").value("PASSED"))
+                .andExpect(jsonPath("$.items[0].resalable").value(true));
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT returned_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT restocked_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isZero();
+        assertThat(afterSaleViolations()).isEmpty();
+    }
+
+    @Test void standardNoReasonUsesServerRecordedReceiptTime() throws Exception {
+        var productBody=body("PUBLIC",null,null);productBody.put("purchaseLimit",10);
+        long productId=product(productBody);long skuId=sku(productId,"standard-return",5).path("skuId").asLong();publishProduct(productId);
+        long orderId=payOrder("standard-return-order",List.of(Map.of("skuId",skuId,"quantity",1)));long itemId=orderItem(orderId,skuId);
+        postJson("/publisher/product-orders/"+orderId+"/ship",publisher,Map.of("orderItemId",itemId,"quantity",1)).andExpect(status().isOk());
+        postJson("/product-orders/"+orderId+"/receive",buyer,Map.of("orderItemId",itemId,"quantity",1)).andExpect(status().isOk());
+        jdbc.update("UPDATE product_order_item SET shipped_at=CURRENT_TIMESTAMP(3)-INTERVAL 6 DAY, "
+                + "received_at=CURRENT_TIMESTAMP(3)-INTERVAL 6 DAY WHERE order_item_id=?",itemId);
+        postJson("/product-after-sales",buyer,Map.of("requestId","standard-no-reason","orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",1,"reason","NO_REASON"))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SUCCEEDED"));
+        assertThat(jdbc.queryForObject("SELECT returned_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isEqualTo(1);
+        assertThat(afterSaleViolations()).isEmpty();
+    }
+
+    @ParameterizedTest @ValueSource(strings={"ProductAfterSaleMapper.markItemSucceeded","UserProductPurchaseMapper.tryDecrease","SkuMapper.restoreStock"})
+    void afterSaleFailuresAreQueryableAndCanBeSafelyRetried(String point) throws Exception {
+        var productBody=body("PUBLIC",null,null);productBody.put("purchaseLimit",10);
+        long productId=product(productBody);long skuId=sku(productId,"refund-rollback-"+point,5).path("skuId").asLong();publishProduct(productId);
+        long orderId=payOrder("after-sale-rollback-"+point,List.of(Map.of("skuId",skuId,"quantity",1)));long itemId=orderItem(orderId,skuId);
+        var input=Map.of("requestId","after-sale-rollback-"+point,"orderId",orderId,"items",List.of(Map.of(
+                "orderItemId",itemId,"quantity",1,"reason","QUALITY_PROBLEM")));
+        failures.point.set(point);
+        postJson("/product-after-sales",buyer,input).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("PRODUCT_TECHNICAL_FAILURE"));
+        assertThat(jdbc.queryForObject("SELECT status FROM product_after_sale_request WHERE request_id=?",String.class,input.get("requestId"))).isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("SELECT failure_reason FROM product_after_sale_request WHERE request_id=?",String.class,input.get("requestId"))).isNotBlank();
+        assertThat(jdbc.queryForObject("SELECT a.status FROM product_after_sale_item a JOIN product_after_sale_request r ON r.after_sale_request_id=a.after_sale_request_id WHERE r.request_id=?",String.class,input.get("requestId"))).isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(4);
+        assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT refund_pending_quantity+refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isZero();
+        assertThat(afterSaleViolations()).isEmpty();
+        postJson("/product-after-sales",buyer,input).andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("SUCCEEDED"));
+        assertThat(jdbc.queryForObject("SELECT status FROM product_after_sale_request WHERE request_id=?",String.class,input.get("requestId"))).isEqualTo("SUCCEEDED");
+        assertThat(jdbc.queryForObject("SELECT remains_stock FROM sku WHERE sku_id=?",Integer.class,skuId)).isEqualTo(5);
+        assertThat(jdbc.queryForObject("SELECT valid_count FROM user_product_purchase WHERE user_id=? AND product_id=?",Integer.class,buyer.getId(),productId)).isZero();
+        assertThat(jdbc.queryForObject("SELECT refunded_quantity FROM product_order_item WHERE order_item_id=?",Integer.class,itemId)).isEqualTo(1);
+        assertThat(afterSaleViolations()).isEmpty();
+    }
     @ParameterizedTest @ValueSource(strings={"product","sku","member"})
     void logicalOrphansAreDetectedByCatalogReconciliation(String table) throws Exception {
         long id=live("PRODUCT_WHITELIST",null,null);corrupt=true;
         switch(table){case "product"->jdbc.update("UPDATE product SET activity_id=? WHERE product_id=?",Long.MAX_VALUE,id);case "sku"->jdbc.update("UPDATE sku SET product_id=? WHERE product_id=?",Long.MAX_VALUE,id);default->jdbc.update("INSERT INTO product_whitelist_member(product_id,user_id) VALUES(?,?)",id,Long.MAX_VALUE);}
         assertThat(violations()).isNotEmpty();
     }
+    private double metricCount(String name,String cacheType){
+        var counter=meterRegistry.find(name).tag("cache",cacheType).counter();return counter==null?0:counter.count();
+    }
+
+    private String redisState(){
+        var factory=redis.getConnectionFactory();if(factory==null)return "not-configured";
+        try(var connection=factory.getConnection()){connection.ping();return "available";}
+        catch(DataAccessException unavailable){return "unavailable";}
+    }
+
+    private String redisKey(String identity){return redisKeyPrefix+identity;}
+
+    private void evictTestCacheIfAvailable(String identity){
+        try {redis.delete(redisKey(identity));}
+        catch(DataAccessException unavailable){/* Raw SQL fixture changes have no cache event when Redis is absent. */}
+    }
+
     private Activity activity(com.limitactivitysystem.identity.model.AppUser owner,String type){
         var a=insertDraft(owner,type);var now=now();jdbc.update("UPDATE activity SET open_time=?,close_time=? WHERE activity_id=?",now.minusDays(10),now.plusDays(1),a.getActivityId());return a;
     }
@@ -732,6 +1270,14 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
     private long createProductOrder(String requestId,List<Map<String,Object>> items) throws Exception {
         var response=postJson("/product-orders/confirm",buyer,Map.of("requestId",requestId,"items",items)).andExpect(status().isCreated()).andReturn().getResponse();
         return objectMapper.readTree(response.getContentAsString()).path("orderId").asLong();
+    }
+    private long payOrder(String requestId,List<Map<String,Object>> items) throws Exception {
+        long orderId=createProductOrder(requestId,items);
+        postJson("/product-orders/"+orderId+"/pay",buyer,Map.of()).andExpect(status().isOk());
+        return orderId;
+    }
+    private long orderItem(long orderId,long skuId) {
+        return jdbc.queryForObject("SELECT order_item_id FROM product_order_item WHERE order_id=? AND sku_id=?",Long.class,orderId,skuId);
     }
     private long createRefundRequest(long ticketId,String requestId) throws Exception {
         var response=postJson("/ticket-refunds",buyer,Map.of("requestId",requestId,"orderId",jdbc.queryForObject(
@@ -760,8 +1306,9 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
         var response=postJson("/ticket-refunds",buyer,Map.of("requestId",key,"orderId",order,"ticketIds",List.of(ticket),"reason","USER_REQUEST")).andExpect(status().isCreated()).andReturn().getResponse();
         long refund=objectMapper.readTree(response.getContentAsString()).path("refundId").asLong();mvc.perform(post("/ticket-refunds/{id}/process",refund).header(HttpHeaders.AUTHORIZATION,bearer(buyer))).andExpect(status().isOk());
     }
-    private Map<String,Object> snapshot(){var result=new LinkedHashMap<String,Object>();for(String table:List.of("product","sku","product_whitelist_member","ticket","ticket_order","ticket_order_item","user_session_purchase","user_activity_qualification_guard","product_order","product_order_item","user_product_purchase")){result.put(table,jdbc.queryForList("SELECT * FROM "+table+" ORDER BY 1"));}return result;}
+    private Map<String,Object> snapshot(){var result=new LinkedHashMap<String,Object>();for(String table:List.of("product","sku","product_whitelist_member","ticket","ticket_order","ticket_order_item","user_session_purchase","user_activity_qualification_guard","product_order","product_order_item","product_after_sale_request","product_after_sale_item","user_product_purchase")){result.put(table,jdbc.queryForList("SELECT * FROM "+table+" ORDER BY 1"));}return result;}
     private List<Map<String,Object>> violations() throws Exception {return scriptViolations("product_invariants.sql");}
+    private List<Map<String,Object>> afterSaleViolations() throws Exception {return scriptViolations("product_after_sale_invariants.sql");}
     private List<Map<String,Object>> scriptViolations(String name) throws Exception {var sql=Files.readString(Path.of("tests","sql",name)).lines().filter(line->!line.startsWith("--")).collect(Collectors.joining("\n"));var rows=new ArrayList<Map<String,Object>>();for(String statement:sql.split(";")){if(!statement.isBlank()){rows.addAll(jdbc.queryForList(statement));}}return rows;}
 
     static class SchemaObservation {Map<String,String> before,after;int executed,repeated;}
@@ -799,7 +1346,7 @@ class ProductCatalogMySqlIntegrationTest extends PaymentResourceTestSupport {
             var source=new IsolatedQualificationMySqlDataSource(properties,6,List.of());
             try {
                 var directory=Files.createDirectories(Path.of("target","product-migrations",UUID.randomUUID().toString()));
-                for(String name:List.of("V1__create_schema.sql","V3__create_whitelist_tables.sql","V4__create_free_reservation_tables.sql","V5__create_ticket_refund_tables.sql","V6__add_refund_processing_results.sql","V7__add_gift_inventory_operations.sql","V8__create_product_catalog.sql","V9__create_product_orders.sql","V10__add_qualification_guard_and_order_version.sql")){
+                for(String name:List.of("V1__create_schema.sql","V3__create_whitelist_tables.sql","V4__create_free_reservation_tables.sql","V5__create_ticket_refund_tables.sql","V6__add_refund_processing_results.sql","V7__add_gift_inventory_operations.sql","V8__create_product_catalog.sql","V9__create_product_orders.sql","V10__add_qualification_guard_and_order_version.sql","V11__freeze_product_after_sales.sql","V12__separate_after_sale_inspection_and_resalability.sql","V13__create_cache_invalidation_tasks.sql")){
                     try(var input=new ClassPathResource("db/migration/"+name).getInputStream()){Files.copy(input,directory.resolve(name));}
                 }
                 String location="filesystem:"+directory.toAbsolutePath().toString().replace('\\','/');

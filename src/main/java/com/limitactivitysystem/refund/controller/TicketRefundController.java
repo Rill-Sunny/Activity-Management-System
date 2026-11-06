@@ -18,7 +18,7 @@ public class TicketRefundController {
         this.refunds = refunds; this.processing = processing;
     }
     @PostMapping("/ticket-refunds/{refundId}/process")
-    public TicketRefundResponse process(@PathVariable @Positive Long refundId,
+    public TicketRefundResponse process(@PathVariable("refundId") @Positive Long refundId,
                                        @RequestBody(required = false) String body) {
         if (body != null && !body.isBlank()) {
             throw new TicketRefundException(TicketRefundErrorCode.INVALID_REFUND_REQUEST,

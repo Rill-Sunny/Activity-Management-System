@@ -9,6 +9,7 @@ import com.limitactivitysystem.activity.mapper.SessionZoneMapper;
 import com.limitactivitysystem.activity.model.Activity;
 import com.limitactivitysystem.activity.model.ActivitySession;
 import com.limitactivitysystem.activity.model.SessionZone;
+import com.limitactivitysystem.cache.CacheInvalidationRecorder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,17 +26,20 @@ public class PublisherActivityPublishService {
     private final SessionSeatMapper seatMapper;
     private final ActivityOwnershipService ownershipService;
     private final ActivitySessionConfigurationValidator sessionConfigurationValidator;
+    private final CacheInvalidationRecorder invalidations;
 
     public PublisherActivityPublishService(ActivityMapper activityMapper, ActivitySessionMapper sessionMapper,
                                            SessionZoneMapper zoneMapper, SessionSeatMapper seatMapper,
                                            ActivityOwnershipService ownershipService,
-                                           ActivitySessionConfigurationValidator sessionConfigurationValidator) {
+                                           ActivitySessionConfigurationValidator sessionConfigurationValidator,
+                                           CacheInvalidationRecorder invalidations) {
         this.activityMapper = activityMapper;
         this.sessionMapper = sessionMapper;
         this.zoneMapper = zoneMapper;
         this.seatMapper = seatMapper;
         this.ownershipService = ownershipService;
         this.sessionConfigurationValidator = sessionConfigurationValidator;
+        this.invalidations = invalidations;
     }
 
     // Account lookup may precede a wait for the root lock. READ_COMMITTED prevents that earlier
@@ -87,6 +91,7 @@ public class PublisherActivityPublishService {
             throw new ActivityException(ActivityErrorCode.ACTIVITY_PUBLISH_CONFLICT,
                     "Activity state changed; publication failed");
         }
+        invalidations.record("las:activity:" + activityId);
     }
 
     private void validatePaidSessionResources(ActivitySession session) {

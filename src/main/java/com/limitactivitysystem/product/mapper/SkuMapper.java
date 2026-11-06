@@ -41,4 +41,12 @@ public interface SkuMapper {
             """)
     int decreaseStock(@Param("skuId") Long skuId, @Param("productId") Long productId,
                       @Param("quantity") Integer quantity);
+
+    @Update("""
+            UPDATE sku SET remains_stock=remains_stock+#{quantity}
+            WHERE sku_id=#{skuId} AND product_id=#{productId}
+              AND #{quantity}>0 AND remains_stock<=total_stock-#{quantity}
+            """)
+    int restoreStock(@Param("skuId") Long skuId, @Param("productId") Long productId,
+                     @Param("quantity") Integer quantity);
 }

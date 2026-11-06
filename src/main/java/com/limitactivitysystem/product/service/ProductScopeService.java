@@ -43,11 +43,17 @@ public class ProductScopeService {
         }return scope;
     }
     public Scope resolve(Long id,boolean write) {
+        return resolve(id, write, true);
+    }
+    public Scope resolveForPublicRead(Long id) {
+        return resolve(id, false, false);
+    }
+    private Scope resolve(Long id,boolean write,boolean lockRead) {
         var discovered=products.find(id);if(discovered==null){throw new ProductException(PRODUCT_NOT_FOUND,"Product not found");}
         var activity=activity(discovered.activityId());
         try {session(discovered.qualificationSessionId(),activity.getActivityId());}
         catch(ProductException failure){throw new ProductException(PRODUCT_SCOPE_INVALID,"Stored qualification session is inconsistent");}
-        var product=write ? products.lock(id) : products.share(id);
+        var product=write ? products.lock(id) : lockRead ? products.share(id) : discovered;
         if(product==null){throw new ProductException(PRODUCT_NOT_FOUND,"Product not found");}
         if(!discovered.activityId().equals(product.activityId()) || !Objects.equals(discovered.qualificationSessionId(),product.qualificationSessionId())
                 || !activity.getPublisherId().equals(product.publisherId())

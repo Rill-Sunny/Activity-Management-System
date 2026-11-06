@@ -11,12 +11,12 @@ import java.util.List;
 public class ProductController {
     private final ProductQueryService queries;private final ProductQualificationService qualification;
     public ProductController(ProductQueryService queries,ProductQualificationService qualification){this.queries=queries;this.qualification=qualification;}
-    @GetMapping("/products/{productId}") public ProductResponse get(@PathVariable @Positive Long productId){return queries.get(productId);}
-    @GetMapping("/activities/{activityId}/products") public List<ProductResponse> byActivity(@PathVariable @Positive Long activityId){return queries.byActivity(activityId);}
+    @GetMapping("/products/{productId}") public ProductResponse get(@PathVariable("productId") @Positive Long productId){return queries.get(productId);}
+    @GetMapping("/activities/{activityId}/products") public List<ProductResponse> byActivity(@PathVariable("activityId") @Positive Long activityId){return queries.byActivity(activityId);}
     @GetMapping("/products/{productId}/skus/{skuId}")
-    public Sku sku(@PathVariable @Positive Long productId,@PathVariable @Positive Long skuId){return queries.sku(productId,skuId);}
+    public Sku sku(@PathVariable("productId") @Positive Long productId,@PathVariable("skuId") @Positive Long skuId){return queries.sku(productId,skuId);}
     @GetMapping("/products/{productId}/qualification")
-    public QualificationResult qualification(@PathVariable @Positive Long productId,@RequestParam(required=false) Long userId){
+    public QualificationResult qualification(@PathVariable("productId") @Positive Long productId,@RequestParam(required=false) Long userId){
         if(userId!=null){throw new IllegalArgumentException("Qualification only previews the current account");}
         return qualification.previewCurrent(productId);
     }

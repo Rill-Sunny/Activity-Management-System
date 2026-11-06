@@ -9,6 +9,14 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  data:
+    redis:
+      # Host process: localhost. Set REDIS_HOST=redis when the application joins this Compose network.
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 300ms
+      timeout: 500ms
+
   # Flyway 数据库版本管理
   flyway:
     enabled: true
