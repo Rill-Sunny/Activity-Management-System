@@ -22,13 +22,16 @@ public class PublisherWhitelistService {
     private final AppUserMapper userMapper;
     private final WhitelistConfigMapper configMapper;
     private final WhitelistMemberMapper memberMapper;
+    private final com.limitactivitysystem.activity.mapper.ActivitySessionMapper sessions;
 
     public PublisherWhitelistService(ActivityOwnershipService ownershipService, AppUserMapper userMapper,
-                                     WhitelistConfigMapper configMapper, WhitelistMemberMapper memberMapper) {
+                                     WhitelistConfigMapper configMapper, WhitelistMemberMapper memberMapper,
+                                     com.limitactivitysystem.activity.mapper.ActivitySessionMapper sessions) {
         this.ownershipService = ownershipService;
         this.userMapper = userMapper;
         this.configMapper = configMapper;
         this.memberMapper = memberMapper;
+        this.sessions = sessions;
     }
 
     public WhitelistConfig enable(WhitelistScopeType scopeType, Long scopeId) {
@@ -92,6 +95,13 @@ public class PublisherWhitelistService {
         Activity activity = scopeType == WhitelistScopeType.SESSION
                 ? ownershipService.assertSessionOwner(scopeId).activity()
                 : ownershipService.assertActivityOwner(scopeId);
+        // The discovery Session may predate a wait on Activity X. Read its current state after that lock.
+        if(scopeType==WhitelistScopeType.SESSION) {
+            var session=sessions.findByIdForShare(scopeId);
+            if(session==null||!activity.getActivityId().equals(session.getActivityId())||!"SCHEDULED".equals(session.getStatus())) {
+                throw new WhitelistException(WhitelistErrorCode.WHITELIST_NOT_EDITABLE,"Whitelist requires a scheduled session");
+            }
+        }
         // Check the current lifecycle under the root lock, which remains held through the mutation.
         // Whitelists stay editable after publication; terminal and unknown states fail closed.
         if (!"DRAFT".equals(activity.getStatus()) && !"PUBLISHED".equals(activity.getStatus())) {

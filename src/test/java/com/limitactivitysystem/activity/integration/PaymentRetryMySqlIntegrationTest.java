@@ -96,7 +96,7 @@ class PaymentRetryMySqlIntegrationTest extends PaymentResourceTestSupport {
 
     @Test void aRealTimeoutAfterAllResourceWritesRollsBackThenANewAttemptCommits() throws Exception {
         var order = payableOrder();
-        var blocker = newOrder(session, buyer);
+        var blocker = payableOrder();
         var before = snapshot();
         var locked = gate(); var release = gate();
         var holder = async(() -> tx(() -> { orders.findByIdForUpdate(blocker.getOrderId()); locked.countDown(); await(release); return true; }));
@@ -135,7 +135,7 @@ class PaymentRetryMySqlIntegrationTest extends PaymentResourceTestSupport {
 
     @Test void threeRealTimeoutsReturn503AndLeaveEveryResourceAndTheOrderUnchanged() throws Exception {
         var order = payableOrder();
-        var blocker = newOrder(session, buyer);
+        var blocker = payableOrder();
         var before = snapshot();
         var locked = gate(); var release = gate();
         var holder = async(() -> tx(() -> { orders.findByIdForUpdate(blocker.getOrderId()); locked.countDown(); await(release); return true; }));
@@ -169,8 +169,8 @@ class PaymentRetryMySqlIntegrationTest extends PaymentResourceTestSupport {
     }
 
     @Test void reversedOrderLocksCauseARealDeadlockAndAscendingLocksBothCommit() throws Exception {
-        var low = newOrder(session, buyer).getOrderId();
-        var high = newOrder(session, buyer).getOrderId();
+        var low = payableOrder().getOrderId();
+        var high = payableOrder().getOrderId();
         var before = snapshot();
         var bothLocked = new CyclicBarrier(2);
         var a = new LockTrace("A", low, high);

@@ -1,0 +1,25 @@
+groups:
+  - name: las-backend-development
+    rules:
+      - alert: LasInstanceDown
+        expr: up{job="las-backend"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: 'LAS instance {{ $labels.instance }} unavailable'
+          description: 'Check this instance logs and readiness; the other instance can still be UP.'
+      - alert: LasOutboxOldestAge
+        # Both instances read the same DB: max prevents counting the same backlog twice.
+        expr: max(outbox_oldest_age_seconds{job="las-backend"}) > 60
+        for: 30s
+        labels: {severity: warning}
+        annotations:
+          summary: 'Oldest unresolved Outbox event is older than 60 seconds'
+          description: 'Inspect outbox_event status, attempts, lease and error; then reconcile consumer_process.'
+      - alert: LasDeadLetterMessages
+        expr: sum(rabbitmq_queue_messages{job="las-rabbitmq",queue=~".*[.]dead"}) > 0
+        for: 15s
+        labels: {severity: warning}
+        annotations:
+          summary: 'RabbitMQ has dead-letter messages'
+          description: 'Inspect consumer_failure and trace by event ID; fix cause before controlled replay.'

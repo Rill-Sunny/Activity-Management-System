@@ -1,0 +1,9 @@
+{
+  "grafana/tempo:2.8.2": "grafana/tempo:2.8.2@sha256:0ef775495967cd5d7a6b2e146b6ea695d624803c8db8349fb8ce4164f719f9b7",
+  "prom/prometheus:v3.5.0": "prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+  "mysql:8.4.11": "mysql:8.4.11@sha256:0f51e63e537a1f176423fa03ef559aabe6fa4372a53160a44bc7e75da7d15364",
+  "rabbitmq:4.4.0-management": "rabbitmq:4.4.0-management@sha256:7ddb7fd4630026bc84f72760f33629e8c1ef3bb106360fb385fae0dd4ef886f3",
+  "grafana/grafana:12.1.1": "grafana/grafana:12.1.1@sha256:a1701c2180249361737a99a01bc770db39381640e4d631825d38ff4535efa47d",
+  "redis:8.10.3": "redis:8.10.3@sha256:1f88291b4c57bdf249f02eb085a8669889b2d2954e91d4de5118a5da6b78dd53",
+  "eclipse-temurin:23.0.2_7-jre-noble": "eclipse-temurin:23.0.2_7-jre-noble@sha256:482448f7d10c123f7453a2ef54035a315399547fdfc8339c37b69995845b8738"
+}

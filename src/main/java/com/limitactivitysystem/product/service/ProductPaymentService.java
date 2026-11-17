@@ -65,6 +65,7 @@ public class ProductPaymentService {
                     throw new ProductException(PRODUCT_PAYMENT_RETRIES_EXHAUSTED,
                             "Product payment could not complete after three database concurrency attempts", failure);
                 }
+                com.limitactivitysystem.observability.BusinessTelemetry.productRetry();
                 backoff.pause(attempt);
             }
         }

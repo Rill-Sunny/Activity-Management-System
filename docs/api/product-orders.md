@@ -59,7 +59,9 @@ Confirmation checks current stock but does not reserve it. It does not change `r
 
 If any SKU is short, all quota and stock changes in the payment attempt roll back. A separate transaction then closes the still-pending order with `closedReason=OUT_OF_STOCK`. The response is `409 PRODUCT_ORDER_OUT_OF_STOCK` with the observed `skuId`, `requestedQuantity`, `availableStock`, and `status=INSUFFICIENT_STOCK`. This is a point-in-time inventory observation; the order’s original items remain unchanged. To try another selection, preview and confirm it under a new `requestId`.
 
-Ticket-qualified purchases use the shared account × Activity qualification Guard. `SESSION` qualification checks a valid ticket for the exact configured session. A later ticket refund does not automatically refund or close a paid product order in this phase; Day 20 handles that after-sales workflow.
+Ticket-qualified purchases use the shared account × Activity qualification Guard. `SESSION` qualification checks a valid ticket for the exact configured session. A successful ticket refund emits a transactional Outbox event. The RabbitMQ consumer rechecks current eligibility and creates per-line after-sale tasks only when the buyer has lost the required qualification. Public products and independently qualified lines remain unchanged.
+
+Confirmation and payment responses return the persisted `items[].orderItemId`. Keep this ID for shipping, receipt and partial after-sales requests; `skuId` identifies catalog stock and cannot replace an order line ID. An idempotent replay returns the same line IDs. All downstream endpoints still check the authenticated account and order ownership.
 
 Expired pending product orders are closed by the product-order expiration scan using database time. Payment retries only classified deadlocks or lock wait timeouts, up to three complete transaction attempts; stock and business errors are not retried.
 

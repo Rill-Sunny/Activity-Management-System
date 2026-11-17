@@ -184,8 +184,9 @@ class ObservabilityTest {
             assertThat(requestId).isNotNull().isNotEqualTo(clientRequestId);
             assertThat(UUID.fromString(requestId).toString()).isEqualTo(requestId);
             ILoggingEvent event = requestLogs.list.get(i);
-            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", requestId)
-                    .doesNotContainKey("traceId");
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", requestId);
+            assertThat(event.getMDCPropertyMap().get("traceId")).matches("[0-9a-f]{32}");
+            assertThat(event.getMDCPropertyMap().get("spanId")).matches("[0-9a-f]{16}");
             assertThat(event.getFormattedMessage())
                     .startsWith("HTTP request method=" + result.getRequest().getMethod()
                             + " path=" + result.getRequest().getRequestURI()

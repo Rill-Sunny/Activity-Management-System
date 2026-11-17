@@ -35,6 +35,10 @@ logs/
 *.iws
 *.iml
 *.ipr
+/.idea/db-forest-config.xml
+/.run/*.local.run.xml
+/.run/Day21-Product.run.xml
+/.run/Day21-RabbitMQ.run.xml
 
 ### Eclipse ###
 .apt_generated
@@ -65,4 +69,5 @@ Thumbs.db
 Desktop.ini
 
 ### docs ###
-docs/verification/
+qa/verification/
+backups/

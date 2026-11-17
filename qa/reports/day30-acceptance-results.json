@@ -1,0 +1,223 @@
+{
+  "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603",
+  "rcTag": "v1.0.0-rc1",
+  "counts": {
+    "tests": 1790,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 1,
+    "passed": 1789
+  },
+  "native": {
+    "schema": "day26_suite_f5569b57bff248aabba48de756b5df93",
+    "gitHead": "6aa8e757519ff1a6313c1e5c9007b107c7b45603",
+    "startedAt": "2026-11-15T20:25:15.3522368+08:00",
+    "counts": {
+      "tests": 1790,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 1
+    },
+    "realOutages": true,
+    "command": "mvn -o -B clean test -Djunit.jupiter.extensions.autodetection.enabled=true -Dcache.redis.key-prefix=las:test:day28:day26_suite_f5569b57bff248aabba48de756b5df93:",
+    "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603",
+    "sourceUnchangedDuringRun": true,
+    "finishedAt": "2026-11-15T20:37:04.6913141+08:00",
+    "exitCode": 0
+  },
+  "atPassed": 20,
+  "riskPassed": 8,
+  "faultFamilies": 10,
+  "snapshots": 124,
+  "sourceFiles": 502,
+  "requirements": [
+    "AT-01",
+    "AT-02",
+    "AT-03",
+    "AT-04",
+    "AT-05",
+    "AT-06",
+    "AT-07",
+    "AT-08",
+    "AT-09",
+    "AT-10",
+    "AT-11",
+    "AT-12",
+    "AT-13",
+    "AT-14",
+    "AT-15",
+    "AT-16",
+    "AT-17",
+    "AT-18",
+    "AT-19",
+    "AT-20",
+    "D28-CANCELLATION-PARTIAL-FAILURE",
+    "D28-CONNECTION-LOSS",
+    "D28-F04-DIFFERENT-EVENTS",
+    "D28-F05-OLD-EVENT",
+    "D28-MULTI-SKU-ROLLBACK",
+    "D28-ORDER-ROLLBACK",
+    "D28-PRODUCT-REFUND-ROLLBACK",
+    "D28-REAL-LOCKS",
+    "D28-TICKET-PAYMENT-ROLLBACK",
+    "D28-TICKET-REFUND-ROLLBACK"
+  ],
+  "skipped": [
+    {
+      "class": "com.limitactivitysystem.messaging.integration.Day21ReconciliationMySqlIntegrationTest",
+      "method": "allSqlScriptsUseOneReadOnlySnapshotAndSaveEveryResultSet",
+      "skipped": true
+    }
+  ],
+  "dualInstanceScenarios": [
+    {
+      "status": "PASSED",
+      "detail": {
+        "orderId": 1,
+        "responses": [
+          200,
+          201
+        ]
+      },
+      "scenario": "duplicate-order-across-instances"
+    },
+    {
+      "status": "PASSED",
+      "detail": {
+        "ticketId": 1,
+        "remaining": 2,
+        "quota": 1,
+        "orderId": 1
+      },
+      "scenario": "same-order-payment-across-instances"
+    },
+    {
+      "status": "PASSED",
+      "detail": {
+        "remaining": 0,
+        "responses": [
+          409,
+          200
+        ]
+      },
+      "scenario": "last-seat-across-instances"
+    },
+    {
+      "status": "PASSED",
+      "detail": {
+        "remaining": 3,
+        "refundId": 1,
+        "quota": 0
+      },
+      "scenario": "duplicate-refund-across-instances"
+    },
+    {
+      "status": "PASSED",
+      "detail": {
+        "validCount": 2,
+        "responses": [
+          200,
+          409
+        ],
+        "remainingTotal": 8
+      },
+      "scenario": "shared-product-quota-across-instances"
+    },
+    {
+      "status": "PASSED",
+      "detail": [
+        {
+          "paymentStatus": 200,
+          "sessionId": 240003
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240004
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240005
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240006
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240007
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240008
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240009
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240010
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240011
+        },
+        {
+          "paymentStatus": 409,
+          "sessionId": 240012
+        }
+      ],
+      "scenario": "cancel-versus-payment-across-instances"
+    },
+    {
+      "status": "PASSED",
+      "detail": {
+        "sent": 30,
+        "unpublished": 0
+      },
+      "scenario": "shared-outbox-relays"
+    },
+    {
+      "status": "PASSED",
+      "detail": {
+        "redeliveries": 20,
+        "markers": 1,
+        "eventId": "3beeb881-6da4-40d5-9c10-aa8b30aa3cc6",
+        "notifications": 1
+      },
+      "scenario": "duplicate-consumer-delivery-across-instances"
+    }
+  ],
+  "demo": {
+    "finishedAt": "2026-11-15T20:45:57.9026166+08:00",
+    "startedAt": "2026-11-15T20:43:24.2584912+08:00",
+    "roleBootstrapOnly": true,
+    "databaseDifferences": 0,
+    "passed": true,
+    "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603",
+    "steps": 81,
+    "seconds": 153.645236
+  },
+  "demoPath": "docs/verification/day30/20261115-202331-cada828e/demo-204324-a184ba",
+  "environmentCheckPath": "docs/verification/day30/20261115-202331-cada828e/release-check-204622",
+  "persistence": {
+    "rabbitQueueDurable": true,
+    "volumesDeleted": false,
+    "tables": 43,
+    "restoreDatabase": "las_restore_2724bd5f6e49490c996d58139590cb0f",
+    "redisMarkerRetained": true,
+    "rabbitMessages": 1,
+    "databaseDifferences": 0
+  },
+  "audit": {
+    "apiOperations": 69,
+    "demoHttpRequests": 75,
+    "jar": {
+      "sha256": "8ea3aa08437b516c3d72cddfd1722f2a3a915b134569eea8a86b1dee15195394",
+      "testClassesPackaged": false
+    },
+    "privateArtifacts": [],
+    "runtimeFaultEntrypoints": []
+  },
+  "normalDatabaseDifferences": 0
+}

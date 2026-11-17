@@ -12,7 +12,7 @@
 
 ## 申请时间与政策快照
 
-认证通过后、等待业务锁之前，从专用 ticketRefundClock 读取一次服务器时间作为 requested_at。生产 Bean 为 DatabaseRefundClock，通过 DatabaseTimeMapper 取得数据库 CURRENT_TIMESTAMP(3)，与出票共用时间源。ticket-refund.time-zone 显式配置为 Asia/Shanghai，与 JDBC 的 DATETIME 时区一致。保存前截断到毫秒，匹配 DATETIME(3)。后续所有政策判断使用这个值。重放返回原申请及其 requested_at、逐票金额，处理阶段使用已存快照。Day 13 修复的跨时间源误拒绝见 [阶段测试报告](reports/test-report.md#bug-003刚支付后退款被误判早于出票)。
+认证通过后、等待业务锁之前，从专用 ticketRefundClock 读取一次服务器时间作为 requested_at。生产 Bean 为 DatabaseRefundClock，通过 DatabaseTimeMapper 取得数据库 CURRENT_TIMESTAMP(3)，与出票共用时间源。ticket-refund.time-zone 显式配置为 Asia/Shanghai，与 JDBC 的 DATETIME 时区一致。保存前截断到毫秒，匹配 DATETIME(3)。后续所有政策判断使用这个值。重放返回原申请及其 requested_at、逐票金额，处理阶段使用已存快照。Day 13 修复的跨时间源误拒绝见 [阶段测试报告](../qa/reports/test-report.md#bug-003刚支付后退款被误判早于出票)。
 
 Clock 在受理入口注入。政策计算器是纯函数，只接收已保存的申请时间，不读取当前时间；同一申请的多张票因此共享同一政策时点。测试通过 Clock.fixed 固定时间，或替换为可切换 Fixed Clock 的测试时钟。
 
@@ -72,7 +72,7 @@ Clock 在受理入口注入。政策计算器是纯函数，只接收已保存�
 
 主表不保存 total_refund。测试读取实际持久化明细的 SUM(refund_amount)，并与响应逐项求和比较，均为 **1360.00**。主申请和两条明细为 PENDING，四张票仍为 VALID，四个 Seat 仍为 SOLD，各 Zone 余量与 valid_count 均保持原值。
 
-实验对应 `at09FourDifferentPricesRefundOnlyTheSelectedTicketsAtTheirActualPrices`，原始明细、合计和资源断言记录在 [day10-at09-four-prices-pending.json](verification/day10-final/day10-at09-four-prices-pending.json)。
+实验对应 `at09FourDifferentPricesRefundOnlyTheSelectedTicketsAtTheirActualPrices`，原始明细、合计和资源断言记录在 [day10-at09-four-prices-pending.json](../qa/verification/day10-final/day10-at09-four-prices-pending.json)。
 
 ## 错误语义映射
 
@@ -141,7 +141,7 @@ Clock 在受理入口注入。政策计算器是纯函数，只接收已保存�
 | 数据库状态、金额 CHECK 和同票生成唯一键 | 非法值被拒绝；FAILED 保留历史并释放同票占用 |
 | 一般不允许受理、窗口关闭、金额计算错误 | 返回三个不同 code；分别为 409、409、500，全部无副作用 |
 
-本次退款验证 87 项，加安全 44 项、免费预约 41 项回归，共 **172 项通过，0 失败、0 错误、0 跳过**。指定四票价、错误语义与最终矩阵的证据见 [verification/day10-final](verification/day10-final)。此前记录保留在 [day10-refund-policy](verification/day10-refund-policy) 和 [day10-refunds](verification/day10-refunds)。AT-09 当前验证到申请受理和逐票金额快照，实际退票仍属于 Day 11。
+本次退款验证 87 项，加安全 44 项、免费预约 41 项回归，共 **172 项通过，0 失败、0 错误、0 跳过**。指定四票价、错误语义与最终矩阵的证据见 [verification/day10-final](../qa/verification/day10-final)。此前记录保留在 [day10-refund-policy](../qa/verification/day10-refund-policy) 和 [day10-refunds](../qa/verification/day10-refunds)。AT-09 当前验证到申请受理和逐票金额快照，实际退票仍属于 Day 11。
 
 ## Day 10 必测矩阵
 
@@ -192,9 +192,9 @@ MySQL 用例要求 DB_PASSWORD，没有凭据时会跳过；跳过不算验收�
 
 [处理集成测试](../src/test/java/com/limitactivitysystem/activity/integration/TicketRefundProcessingMySqlIntegrationTest.java) 使用实际下单、支付和受理产生夹具，覆盖部分退款、连续多次退款、整单退款、成功重放、跨场次开始与生命周期变更、同申请并发、同订单多申请并发、支付与退款竞争、真实 Order 锁等待、资源损坏及条件更新检查。故障注入在实际 SQL 写入之后抛出异常，比较全部八张相关表的完整快照，再用原申请重试。
 
-第 20～24 项补充 [退款对账 SQL](../tests/sql/refund_invariants.sql)、[RefundTelemetry](../src/main/java/com/limitactivitysystem/observability/RefundTelemetry.java) 及完整验收矩阵。指标区分调用结果与实际成功退款明细，逐用例检查正常数据无对账差异，故意损坏的夹具须能被对账发现。口径、日志字段和复跑方式见 [Day 11 退款验收](day11-refund-verification.md)。
+第 20～24 项补充 [退款对账 SQL](../tests/sql/refund_invariants.sql)、[RefundTelemetry](../src/main/java/com/limitactivitysystem/observability/RefundTelemetry.java) 及完整验收矩阵。指标区分调用结果与实际成功退款明细，逐用例检查正常数据无对账差异，故意损坏的夹具须能被对账发现。口径、日志字段和复跑方式见 [Day 11 退款验收](../qa/reports/day11-refund-verification.md)。
 
-补齐第十三至二十四项后，十类回归共 398 项通过，失败、错误、跳过均为零。其中政策 30 项、Day 10 受理 57 项、Day 11 处理 70 项、退款指标日志 18 项，覆盖精确四票价 AT-09、同票 AT-10、双向支付退款锁等待、十四个故障场景、独立失败记录与重试、对账和基础观测。逐场景证据见 [Day 11 退款验收](day11-refund-verification.md)。
+补齐第十三至二十四项后，十类回归共 398 项通过，失败、错误、跳过均为零。其中政策 30 项、Day 10 受理 57 项、Day 11 处理 70 项、退款指标日志 18 项，覆盖精确四票价 AT-09、同票 AT-10、双向支付退款锁等待、十四个故障场景、独立失败记录与重试、对账和基础观测。逐场景证据见 [Day 11 退款验收](../qa/reports/day11-refund-verification.md)。
 
 ```powershell
 	mvn '-Dtest=OrdinaryTicketRefundPolicyTest,TicketRefundApplicationMySqlIntegrationTest,TicketRefundProcessingMySqlIntegrationTest' test

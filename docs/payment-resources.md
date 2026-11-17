@@ -156,7 +156,7 @@ Day 7 核心并发补验覆盖最后库存、AT-05、同 Seat 与同订单重复
 
 时间实验在 Order、Zone 锁上观察到真实等待，并在数据库期限到达后释放锁；另在 PAID UPDATE 前后暂停至订单过期或场次开始。八种组合都返回具体时间错误，订单、全部 Ticket 和资源恢复原快照。限购、库存、Seat、Ticket 及最终 PAID 更新前后注入的技术故障也不留下局部提交。
 
-七个指定故障点逐项观察实际写入，再核对完整快照与 [payment_invariants.sql](../tests/sql/payment_invariants.sql)。四组核心并发、缺货关闭竞争及锁等待跨期测试结束后自动运行同一 SQL。指标、脱敏日志、SQL 规则和矩阵详见[支付故障矩阵、对账与可观测性](payment-verification.md)。
+七个指定故障点逐项观察实际写入，再核对完整快照与 [payment_invariants.sql](../tests/sql/payment_invariants.sql)。四组核心并发、缺货关闭竞争及锁等待跨期测试结束后自动运行同一 SQL。指标、脱敏日志、SQL 规则和矩阵详见[支付故障矩阵、对账与可观测性](../qa/reports/payment-verification.md)。
 
 已配置 MySQL 连接与 `DB_PASSWORD` 后，在项目根目录运行本轮新增测试：
 

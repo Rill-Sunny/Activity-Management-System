@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Day 12 A-D through real publisher and consumer APIs, without an outer test transaction. */
 @SpringBootTest(properties = {JwtTestTokens.SECRET_PROPERTY, "spring.flyway.enabled=false"})
 @AutoConfigureMockMvc
-@Import(GiftInventorySchemaMySqlIntegrationTest.DatabaseConfiguration.class)
+@Import(CurrentSchemaTestConfiguration.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIfEnvironmentVariable(named = "DB_PASSWORD", matches = ".+")
 class WhitelistChangeMySqlIntegrationTest extends PaymentResourceTestSupport {

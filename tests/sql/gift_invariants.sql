@@ -18,13 +18,13 @@ HAVING SUM(CASE WHEN z.zone_type = 'PAID' THEN z.total_amount ELSE 0 END)
 
 SELECT 'GIFT_STOCK' AS violation, CAST(z.zone_id AS CHAR) AS resource_id
 FROM session_zone z
-LEFT JOIN (SELECT zone_id, COUNT(*) AS allocated FROM session_seat WHERE allocation_status = 'GIFT_ALLOCATED' GROUP BY zone_id) s
+LEFT JOIN (SELECT zone_id, COUNT(*) AS allocated FROM session_seat WHERE allocation_status IN ('GIFT_ALLOCATED','GIFT_CANCELLED') GROUP BY zone_id) s
   ON s.zone_id = z.zone_id
 WHERE z.zone_type = 'GIFT' AND z.remains_amount + COALESCE(s.allocated, 0) <> z.total_amount;
 
 SELECT 'SEAT_POOL' AS violation, CAST(s.seat_id AS CHAR) AS resource_id
 FROM session_seat s JOIN session_zone z ON z.zone_id = s.zone_id
-WHERE (z.zone_type = 'GIFT' AND s.allocation_status = 'SOLD') OR (z.zone_type = 'PAID' AND s.allocation_status = 'GIFT_ALLOCATED');
+WHERE (z.zone_type = 'GIFT' AND s.allocation_status = 'SOLD') OR (z.zone_type = 'PAID' AND s.allocation_status IN ('GIFT_ALLOCATED','GIFT_CANCELLED'));
 
 SELECT 'GIFT_OPERATION_ITEMS' AS violation, CAST(o.operation_id AS CHAR) AS resource_id
 FROM gift_inventory_operation o LEFT JOIN gift_inventory_operation_item i ON i.operation_id = o.operation_id
@@ -37,11 +37,11 @@ LEFT JOIN session_seat s ON s.seat_id = i.seat_id
 LEFT JOIN session_zone z ON z.zone_id = s.zone_id
 WHERE o.operation_id IS NULL OR s.seat_id IS NULL OR z.zone_id IS NULL
    OR z.zone_type <> 'GIFT' OR o.zone_id <> s.zone_id OR o.session_id <> z.session_id
-   OR s.allocation_status <> 'GIFT_ALLOCATED';
+   OR s.allocation_status NOT IN ('GIFT_ALLOCATED','GIFT_CANCELLED');
 
 SELECT 'GIFT_SEAT_HISTORY' AS violation, CAST(s.seat_id AS CHAR) AS resource_id
 FROM session_seat s LEFT JOIN gift_inventory_operation_item i ON i.seat_id = s.seat_id
-WHERE s.allocation_status = 'GIFT_ALLOCATED'
+WHERE s.allocation_status IN ('GIFT_ALLOCATED','GIFT_CANCELLED')
 GROUP BY s.seat_id HAVING COUNT(i.operation_item_id) <> 1;
 
 SELECT 'GIFT_PAID_TICKET' AS violation, CAST(t.ticket_id AS CHAR) AS resource_id

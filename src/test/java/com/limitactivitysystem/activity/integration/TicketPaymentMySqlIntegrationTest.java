@@ -72,6 +72,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIfEnvironmentVariable(named = "DB_PASSWORD", matches = ".+")
 class TicketPaymentMySqlIntegrationTest extends PaymentResourceTestSupport {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.limitactivitysystem.cache.RedisRequestDeduplicator paymentDeduplicator;
     @Autowired private TicketPaymentService payment;
     @Autowired private PublisherWhitelistService whitelist;
     @Autowired private PaymentObservation observer;
@@ -82,6 +84,10 @@ class TicketPaymentMySqlIntegrationTest extends PaymentResourceTestSupport {
     private SessionZone zone;
 
     @BeforeEach void publishACompleteScopeWithAnOpenCreationWindow() throws Exception {
+        // Force all contenders into MySQL; Redis suppression is covered by cache regressions.
+        org.mockito.BDDMockito.given(paymentDeduplicator.beginPayment(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong()))
+                .willAnswer(call -> org.mockito.Mockito.mock(com.limitactivitysystem.cache.RedisRequestDeduplicator.Lease.class));
         LocalDateTime now = jdbc.queryForObject("SELECT CURRENT_TIMESTAMP(3)", LocalDateTime.class);
         activity = insertDraft(publisher, "PAID");
         activity.setOpenTime(now.minusHours(1)); activity.setCloseTime(now.plusHours(1));
@@ -444,10 +450,20 @@ class TicketPaymentMySqlIntegrationTest extends PaymentResourceTestSupport {
         assertThat(observed.completions).containsExactly(TransactionSynchronization.STATUS_ROLLED_BACK, TransactionSynchronization.STATUS_COMMITTED);
         assertThat(observed.transactions).hasSize(2);
         assertThat(orders.findById(order.getOrderId()).getClosedReason()).isEqualTo("INSUFFICIENT_INVENTORY");
+        var injectedDifferences = PaymentInvariantAssertions.violations(jdbc);
+        assertThat(injectedDifferences).singleElement().satisfies(row -> {
+            assertThat(row.get("violation")).isEqualTo("ZONE_INVENTORY");
+            assertThat(row.get("resource_id").toString()).isEqualTo(secondZone.getZoneId().toString());
+        });
+        // The forced shortage deliberately has no sale ledger; restore it only after verifying rollback and close.
+        jdbc.update("UPDATE session_zone SET remains_amount = 4 WHERE zone_id = ?", secondZone.getZoneId());
+        PaymentInvariantAssertions.assertConsistent(jdbc);
         evidence("payment-stock-failure-independent-close", Map.of("paymentRolledBackBeforeClose", true,
                 "firstZoneRestored", zoneMapper.findById(zone.getZoneId()).getRemainsAmount(), "secondZoneUnchanged", 0,
                 "quotaRestored", purchases.findValidCount(buyer.getId(), session.getActivitySessionId()),
-                "ticketCount", jdbc.queryForObject("SELECT COUNT(*) FROM ticket", Long.class), "finalOrderState", "CLOSED"));
+                "ticketCount", jdbc.queryForObject("SELECT COUNT(*) FROM ticket", Long.class), "finalOrderState", "CLOSED",
+                "expectedDetectedDifferences", injectedDifferences,
+                "differencesAfterFixtureRestore", PaymentInvariantAssertions.violations(jdbc)));
     }
 
     @Test void simultaneousHttpPaymentsOfTheSameOrderWaitThenReturnTheSameTickets() throws Exception {

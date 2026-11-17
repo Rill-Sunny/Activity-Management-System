@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+  - name: LAS
+    orgId: 1
+    folder: LAS
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 15
+    options:
+      path: /var/lib/grafana/dashboards

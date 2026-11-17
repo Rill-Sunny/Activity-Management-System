@@ -43,4 +43,11 @@ public class ProductAfterSaleService {
             throw duplicate;
         }
     }
+
+    /** Runs the same refund transaction for a trusted ticket-qualification worker. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ProductAfterSaleResponse applyForQualification(@NotNull @Valid CreateProductAfterSaleRequest request,
+                                                           @NotNull Long buyerId) {
+        return transactions.applyForQualification(request, buyerId);
+    }
 }

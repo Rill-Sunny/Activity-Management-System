@@ -1,0 +1,10 @@
+# Only for the explicitly authorized isolated acceptance project.
+services:
+  mysql:
+    ports: ["127.0.0.1:${TEST_MYSQL_PORT:-23306}:3306"]
+  redis:
+    ports: ["127.0.0.1:${TEST_REDIS_PORT:-26379}:6379"]
+  rabbitmq:
+    ports:
+      - "127.0.0.1:${TEST_RABBIT_PORT:-25672}:5672"
+      - "127.0.0.1:${TEST_RABBIT_MANAGEMENT_PORT:-25673}:15672"

@@ -39,6 +39,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIfEnvironmentVariable(named = "DB_PASSWORD", matches = ".+")
 class GiftInventorySchemaMySqlIntegrationTest extends PaymentResourceTestSupport {
+    // Keep the historical schema target; cache tables were introduced in V13.
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.limitactivitysystem.cache.CacheInvalidationRecorder cacheInvalidations;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.limitactivitysystem.cache.CacheInvalidationDelivery cacheDelivery;
     @Autowired private UpgradeObservation upgrade;
     private ActivitySession session;
     private SessionZone gift;

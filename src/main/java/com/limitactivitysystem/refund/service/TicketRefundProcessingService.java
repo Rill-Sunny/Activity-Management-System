@@ -18,9 +18,11 @@ import com.limitactivitysystem.ticketorder.mapper.DatabaseTimeMapper;
 import com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper;
 import com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper;
 import com.limitactivitysystem.ticketorder.model.TicketOrder;
+import com.limitactivitysystem.outbox.OutboxEventWriter;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ import org.springframework.validation.annotation.Validated;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.Map;
 
 import static com.limitactivitysystem.refund.exception.TicketRefundErrorCode.*;
 
@@ -47,24 +50,52 @@ public class TicketRefundProcessingService {
     private final ActivityMapper activities;
     private final ActivitySessionMapper sessions;
     private final QualificationGuardService qualificationGuards;
+    private final OutboxEventWriter outbox;
+
+    @Autowired
+    public TicketRefundProcessingService(CurrentUserProvider currentUser, AppUserMapper users,
+            TicketOrderMapper orders, TicketRefundMapper refunds, RefundTicketMapper tickets,
+            UserSessionPurchaseMapper purchases, SessionZoneMapper zones, SessionSeatMapper seats,
+            DatabaseTimeMapper databaseTime, ActivityMapper activities, ActivitySessionMapper sessions,
+            QualificationGuardService qualificationGuards, OutboxEventWriter outbox) {
+        this.currentUser = currentUser; this.users = users; this.orders = orders; this.refunds = refunds;
+        this.tickets = tickets; this.purchases = purchases; this.zones = zones; this.seats = seats;
+        this.databaseTime = databaseTime;
+        this.activities = activities; this.sessions = sessions; this.qualificationGuards = qualificationGuards;
+        this.outbox = outbox;
+    }
 
     public TicketRefundProcessingService(CurrentUserProvider currentUser, AppUserMapper users,
             TicketOrderMapper orders, TicketRefundMapper refunds, RefundTicketMapper tickets,
             UserSessionPurchaseMapper purchases, SessionZoneMapper zones, SessionSeatMapper seats,
             DatabaseTimeMapper databaseTime, ActivityMapper activities, ActivitySessionMapper sessions,
             QualificationGuardService qualificationGuards) {
-        this.currentUser = currentUser; this.users = users; this.orders = orders; this.refunds = refunds;
-        this.tickets = tickets; this.purchases = purchases; this.zones = zones; this.seats = seats;
-        this.databaseTime = databaseTime;
-        this.activities = activities; this.sessions = sessions; this.qualificationGuards = qualificationGuards;
+        this(currentUser, users, orders, refunds, tickets, purchases, zones, seats, databaseTime,
+                activities, sessions, qualificationGuards, null);
     }
 
     /** Executes an accepted quote atomically. No policy, qualification, or session-time reevaluation. */
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public TicketRefundResponse process(@NotNull @Positive Long refundId) {
         Long buyerId = currentUser.getAuthenticatedUserId();
+        return execute(refundId,buyerId,false);
+    }
+
+    /** Internal cancellation worker only; joins its effect + task transaction, never an HTTP actor override. */
+    @Transactional(propagation=Propagation.MANDATORY)
+    public TicketRefundResponse processForCancellation(@NotNull @Positive Long refundId,@NotNull @Positive Long eventId) {
+        var request=refunds.findById(refundId);
+        if(request==null || !"CANCELLATION_REFUND".equals(request.getRefundPolicy())
+                || !eventId.equals(request.getSourceEventId()) || refunds.cancellationScope(eventId,request.getOrderId())!=1) {
+            throw new TicketRefundException(REFUND_ACCESS_DENIED,"Cancellation refund scope is invalid");
+        }
+        return execute(refundId,request.getBuyerId(),true);
+    }
+
+    private TicketRefundResponse execute(Long refundId,Long buyerId,boolean cancellation) {
         var discovered = refunds.findById(refundId);
         if (discovered == null) { throw new TicketRefundException(REFUND_NOT_FOUND, "Refund request not found"); }
+        com.limitactivitysystem.observability.BusinessTelemetry.refundPolicy(discovered.getRefundPolicy());
         requireBuyer(buyerId, discovered.getBuyerId());
         // Discovery does not lock the request. All payment/refund writers acquire Order first.
         var order = orders.findByIdForUpdate(discovered.getOrderId());
@@ -75,7 +106,7 @@ public class TicketRefundProcessingService {
         requireBuyer(buyerId, request.getBuyerId());
         require(order.getOrderId().equals(request.getOrderId()), "Refund order reference changed");
         var user = users.findByIdForShare(buyerId);
-        if (user == null || !"ACTIVE".equals(user.getStatus())) {
+        if (user == null || (!cancellation && !"ACTIVE".equals(user.getStatus()))) {
             throw new TicketRefundException(REFUND_USER_DISABLED, "Current account is not active");
         }
         if ("SUCCEEDED".equals(request.getStatus())) { return response(request); }
@@ -89,6 +120,7 @@ public class TicketRefundProcessingService {
         var items = refunds.findItemsForUpdate(refundId);
         require(!items.isEmpty(), "Accepted refund has no items");
         if (retry) {
+            com.limitactivitysystem.observability.BusinessTelemetry.refundRetry();
             // Reclaim the same tickets under the unique claim key before taking shared resources.
             for (var item : items) { changed(refunds.reopenItem(item.refundItemId()), "Failed refund item cannot be retried"); }
             changed(refunds.reopen(refundId), "Failed refund cannot be retried");
@@ -102,6 +134,9 @@ public class TicketRefundProcessingService {
         if (activity == null || session == null || !activity.getActivityId().equals(discoveredSession.getActivityId())
                 || !activity.getActivityId().equals(session.getActivityId())) {
             throw new TicketRefundException(REFUND_RESOURCE_CONFLICT, "Refund activity or session is inconsistent");
+        }
+        if(!cancellation && "CANCELLED".equals(session.getStatus())) {
+            throw new TicketRefundException(REFUND_RESOURCE_CONFLICT,"Cancelled sessions are refunded by their full-refund batch");
         }
         qualificationGuards.lockActivities(buyerId, List.of(activity.getActivityId()));
         lockAndValidateResources(order, items, selected);
@@ -121,10 +156,24 @@ public class TicketRefundProcessingService {
             changed(tickets.markRefunded(item.ticketId(), processedAt), "Ticket could not be refunded");
             changed(refunds.markItemSucceeded(item.refundItemId(), processedAt), "Refund item could not succeed");
         }
-        qualificationGuards.advanceVersion(buyerId, activity.getActivityId());
+        long qualificationVersion = qualificationGuards.advanceVersion(buyerId, activity.getActivityId());
         long remaining = tickets.countValidByOrder(order.getOrderId());
         changed(orders.updateRefundSummary(order.getOrderId(), remaining == 0 ? "REFUNDED" : "PARTIALLY_REFUNDED"), "Order summary could not be updated");
         changed(refunds.markSucceeded(refundId, processedAt), "Refund request could not succeed");
+        if (outbox != null) {
+            outbox.append("REFUND_SUCCEEDED", refundId, Map.of(
+                    "refundId", refundId,
+                    "orderId", order.getOrderId(),
+                    "userId", buyerId,
+                    "content", "退款申请 " + refundId + " 已成功处理"));
+            outbox.append("TICKET_QUALIFICATION_CHANGED", refundId, Map.of(
+                    "buyerId", buyerId,
+                    "activityId", activity.getActivityId(),
+                    "sessionId", order.getSessionId(),
+                    "refundId", refundId,
+                    "occurredAt", processedAt,
+                    "eventVersion", qualificationVersion));
+        }
         return response(refunds.findById(refundId));
     }
 

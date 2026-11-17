@@ -8,7 +8,7 @@ public record ProductOrderResponse(Long orderId, String requestId, Long publishe
                                    String status, LocalDateTime createdAt, LocalDateTime expiresAt, LocalDateTime paidAt,
                                    String closedReason,
                                    List<Item> items) {
-    public record Item(Long productId, Long skuId, String productName, String skuName,
+    public record Item(Long orderItemId, Long productId, Long skuId, String productName, String skuName,
                        Integer quantity, BigDecimal unitPrice, BigDecimal subtotal,
                        Long activityId, String qualificationType, String qualificationScope,
                        Long qualificationSessionId, String refundPolicyTemplate, Integer refundPolicyVersion,

@@ -55,7 +55,7 @@ CSRF 风险与浏览器是否会自动附带认证凭据有关，不能仅凭“
 
 ### 发布冻结决策
 
-发布后的类型、开放窗口、容量、限购、选座模式、区域容量、票价和座位配置冻结。场次开始与结束时间的普通修改也被拒绝，专用改期流程留到 Day 22。当前配置新增入口在根记录锁后校验 `DRAFT`，发布后返回 `409 ACTIVITY_NOT_DRAFT`。尚未开放的普通编辑返回 `404` 或 `405`。
+发布后的类型、开放窗口、容量、限购、选座模式、区域容量、票价和座位配置冻结。场次开始与结束时间的普通修改也被拒绝，必须使用已实现的专用改期流程。当前配置新增入口在根记录锁后校验 `DRAFT`，发布后返回 `409 ACTIVITY_NOT_DRAFT`。尚未开放的普通编辑返回 `404` 或 `405`。
 
 白名单是可变参与资格，所属活动为 `DRAFT` 或 `PUBLISHED` 时允许所属发布者维护。Service 先锁定 Activity 根记录，再检查当前状态，随后操作白名单配置与成员。活动为 `CANCELLED`、`FINISHED` 或其他状态时返回 `409 WHITELIST_NOT_EDITABLE`。名单维护不撤销既有交易记录。
 
@@ -71,7 +71,7 @@ AT-04、AT-16 的当前验收范围及测试入口见 [当前架构与阶段验�
 
 `(buyer_id, request_id)` 标识一次创建操作。读取原订单及明细，比较 `sessionId` 和每项的 `zoneId`、`allocationMode`、`requestedSeatId`、`quantity`、`acceptNonAdjacent`。明细按上述字段排序后逐项比较；输入顺序不影响结果，重复行及每行数量保留，不合并拆分购买行，以保留按行的自动配座与相邻偏好。
 
-相同意图返回 `200` 和原订单，不同意图返回 `409 IDEMPOTENCY_CONFLICT`；首次创建返回 `201`。重放保留已存价格、ID、期限及当前状态，不重新执行新订单的销售窗口、名单或库存预检查。账号仍须有效，未来支付仍检查当前资格和交易条件。
+相同意图返回 `200` 和原订单，不同意图返回 `409 IDEMPOTENCY_CONFLICT`；首次创建返回 `201`。重放保留已存价格、ID、期限及当前状态，不重新执行新订单的销售窗口、名单或库存预检查。账号仍须有效，支付仍检查当前资格和交易条件。
 
 ### 原因与事务边界
 
@@ -111,9 +111,9 @@ requestId idempotency protects creation only. Payment idempotency is a separate 
 
 自动配座按 `allocation_priority`、`row_no`、`seat_no`、`seat_id` 尝试连座起点，在同排寻找连续递增的 Seat 编号。没有连座时只有订单已接受非连座才使用同优先序的分散候选；不重新征求偏好、不替换指定座位，不承诺按 HTTP 到达顺序公平成交。
 
-资源组件使用 `MANDATORY` 加入调用方事务，配座要求显式 `READ_COMMITTED`，Zone 锁覆盖读取与写入窗口。当前可用座位查询禁用缓存，防止等待锁后仍使用早期结果。所有业务失败、死锁或锁超时都退出并回滚整笔事务，未来需要重试时在事务外重新开始，不能保留部分额度、库存或 Seat 写入。
+资源组件使用 `MANDATORY` 加入调用方事务，配座要求显式 `READ_COMMITTED`，Zone 锁覆盖读取与写入窗口。当前可用座位查询禁用缓存，防止等待锁后仍使用早期结果。所有业务失败、死锁或锁超时都退出并回滚整笔事务，重试在事务外重新开始，不能保留部分额度、库存或 Seat 写入。
 
-未来退款、关闭和取消需协调同一顺序，不能持有 Activity 排他锁再等待支付订单锁。资源组件没有自行完成资格、支付状态或有效期授权；可信调用方仍须先锁定订单并检查。详见 [锁策略](locking.md#ticket-payment-resources)和[支付资源验收](payment-resources.md)。
+退款、关闭和取消协调同一顺序，不能持有 Activity 排他锁再等待支付订单锁。资源组件没有自行完成资格、支付状态或有效期授权；可信调用方仍须先锁定订单并检查。详见 [锁策略](locking.md#ticket-payment-resources)和[支付资源验收](payment-resources.md)。
 
 ## ADR-006：支付骨架强制回滚与旧单支付期限
 
@@ -168,7 +168,7 @@ ORD-05 只对 `INSUFFICIENT_INVENTORY` 要求关闭旧单。支付事务先完�
 3. Java 金额计算使用 BigDecimal，金额 scale=2，数据库使用 DECIMAL。原价来自每张 Ticket.paidPrice。
 4. 舍入模式为 RoundingMode.HALF_UP。逐票计算 originalPrice × (1 − feeRate) 后保留两位；实际手续费由原价减已舍入退款金额得到。
 
-退款主申请与逐票明细为一对多。主表保存政策版本、开售时间、场次开始时间与申请时间，明细保存每张票的原价、费率和应退金额。Day 13 将生产时间源由 Clock.system 改为 DatabaseRefundClock，与数据库出票时间一致；测试仍可注入 Fixed Clock 验证精确边界。主表不保存汇总金额，汇总值按 refund_id 对逐票 refund_amount 求和得到。根因、影响与回归见 [阶段测试报告](reports/test-report.md#bug-003刚支付后退款被误判早于出票)。
+退款主申请与逐票明细为一对多。主表保存政策版本、开售时间、场次开始时间与申请时间，明细保存每张票的原价、费率和应退金额。Day 13 将生产时间源由 Clock.system 改为 DatabaseRefundClock，与数据库出票时间一致；测试仍可注入 Fixed Clock 验证精确边界。主表不保存汇总金额，汇总值按 refund_id 对逐票 refund_amount 求和得到。根因、影响与回归见 [阶段测试报告](../qa/reports/test-report.md#bug-003刚支付后退款被误判早于出票)。
 
 TicketRefundPolicy.evaluate 接收申请时间、活动开售时间、场次开始时间和 Ticket 成交价，返回是否允许、手续费比例、退款比例、手续费金额、退款金额和拒绝原因。OrdinaryTicketRefundPolicy 只计算这些显式输入，不读取时钟；后续特殊退款可实现同一接口。
 
@@ -212,17 +212,17 @@ Day 14 的关键决策已冻结如下：
 | D14-Q2：同发布者订单的活动边界 | 已冻结：同 Publisher 可跨 Activity 合单；跨 Publisher 拒绝。 | 多活动持票资格按各 Product 的活动范围分别校验；Day 16 按 activity_id 升序取得共同资格 Guard。 |
 | D14-Q3：规则编辑 | 已冻结：Product 首次上架后核心规则不可修改；SKU 价格与库存仅 DRAFT 可设。 | 未来如需改规则，新增版本及订单快照协议，不覆盖旧单依赖的资格与售后事实。 |
 
-字段、单行约束、逻辑引用和后续设计见 [商品域设计](product-domain.md)。Day 14 的订单范围和重复 SKU 决策已冻结；V9 实现订单、订单明细和商品共享限购计数，V10 与 Day 16 接入共同资格 Guard、支付与过期处理。Day 20 限定商品售后联动仍未实现。目录和支付接口见 [商品订单 API](api/product-orders.md)。
+字段、单行约束、逻辑引用和后续设计见 [商品域设计](product-domain.md)。Day 14 的订单范围和重复 SKU 决策已冻结；V9 实现订单、订单明细和商品共享限购计数，V10 与 Day 16 接入共同资格 Guard、支付与过期处理。Day 20 限定商品售后联动已通过事务 Outbox 和 RabbitMQ 接入。目录和支付接口见 [商品订单 API](api/product-orders.md)。
 
 ## ADR-012：持票资格使用账号活动保护行协调
 
-日期：2026-11-02；Day 16 更新：2026-11-04。状态：V10 与 Day 16 商品支付、票务支付、票务退款已接入共同 Guard；Day 20 售后联动仍未实现。
+日期：2026-11-02；Day 16 更新：2026-11-04。状态：V10 与 Day 16 商品支付、票务支付、票务退款已接入共同 Guard；Day 20 售后联动已实现并沿用共同 Guard。
 
 选用 (user_id, activity_id) 唯一的 user_activity_qualification_guard 作为共同锁对象。它不保存最终资格真相，不以缓存有效票数、资格布尔值或版本号代替 Ticket 当前查询。同一个用户多个活动按 activity_id 升序获取保护行。
 
 商品支付先稳定账号、Activity、Session 和 Product 配置，再取得保护行并重查适用范围的有效票。公开和商品白名单商品不需要 Guard。票务支付和退款处理的有效票变动也取得同一保护行，位置在票务限购、Zone、Seat、Ticket 写锁之前。普通退款受理不改变有效票集合，不提前接入资源锁。`qualification_version` 与成交明细快照用于追踪资格先后，不代替有效 Ticket 查询。
 
-退票先提交时，商品支付重查无票并拒绝；商品先提交时，随后退最后有效票不会抹除已支付商品订单或其明细版本快照。保护行保证串行判定，不能替代可靠联动事件。本轮不自动触发售后；Day 19/20 再要求退票、版本变化与资格变化 Outbox 同事务提交，消费者按明细范围快照和当前有效票独立处理售后，不在退票事务反向锁商品订单。
+退票先提交时，商品支付重查无票并拒绝；商品先提交时，随后退最后有效票不会抹除已支付商品订单或其明细版本快照。保护行保证串行判定，不能替代可靠联动事件。Day 19/20 已将退票、版本变化与资格变化 Outbox 同事务提交，消费者按明细范围快照和当前有效票独立处理售后，不在退票事务反向锁商品订单。
 
 锁顺序及两种退款/商品支付并发顺序的 MySQL 集成用例见 [商品域并发设计](product-domain.md#最后一张票退款与商品支付)、[锁顺序](locking.md#product-qualification-and-payment-design) 和 [ProductCatalogMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/ProductCatalogMySqlIntegrationTest.java)。
 
@@ -232,7 +232,7 @@ Day 14 的关键决策已冻结如下：
 
 STANDARD_7D 表达项目的常规七日无理由模板；SPECIAL_NO_REASON_RETURN 表达不支持普通无理由退货，并要求后续购买时明确确认。两种模板都不用于一概排除质量问题、限定资格丧失、活动取消等特殊原因。API 展示 refundPolicy、refundPolicyVersion、requiresPolicyAcknowledgement 和服务端说明，不增加一个把所有场景统一关闭的 returnable=false 字段。
 
-售后先区分业务原因，再应用对应流程；不能把 `template == SPECIAL_NO_REASON_RETURN` 直接映射为所有售后拒绝。`NO_REASON` 仅允许 `STANDARD_7D`，质量问题、持票资格丧失和活动取消使用独立原因码。Day 20 的持票资格自动联动仍未接入。两种模板逐项数据库/API 一致性及公开商品资格均在 [Day 14 最终验收](day14-products.md#day-14-acceptance) 留证。
+售后先区分业务原因，再应用对应流程；不能把 `template == SPECIAL_NO_REASON_RETURN` 直接映射为所有售后拒绝。`NO_REASON` 仅允许 `STANDARD_7D`，质量问题、持票资格丧失和活动取消使用独立原因码。Day 20 的持票资格自动联动已接入独立售后任务。两种模板逐项数据库/API 一致性及公开商品资格均在 [Day 14 最终验收](../qa/reports/day14-products.md#day-14-acceptance) 留证。
 
 ## ADR-014：商品售后按订单明细原子预留退款数量
 
@@ -252,7 +252,7 @@ STANDARD_7D 表达项目的常规七日无理由模板；SPECIAL_NO_REASON_RETUR
 
 订单明细履约状态为 `UNSHIPPED`、`SHIPPED`、`RECEIVED`。每个明细一次模拟发出其全部未退款数量，一次确认全部已发货数量，以确保明细上的服务器时间对应明确事件；售后仍可申请部分数量。发货、收货及售后都锁同一商品订单和明细。退款成功总是按数量恢复 Product 限购；只有未发货退款，或退回后验收通过且可再售的商品，才恢复 SKU 可售库存。验收失败或不可再售不恢复 SKU 库存。
 
-`NO_REASON` 仅允许 `STANDARD_7D`；需要已收货、模拟验收通过且可再售，并采用 `[received_at, received_at + 7 days)` 的半开窗口，边界等于到期时刻即拒绝。验收通过与是否可再售是独立事实。`SPECIAL_NO_REASON_RETURN` 仅拒绝普通无理由退货。质量问题、持票资格丧失和活动取消可按单独原因表达；持票联动不在本阶段自动触发。
+`NO_REASON` 仅允许 `STANDARD_7D`；需要已收货、模拟验收通过且可再售，并采用 `[received_at, received_at + 7 days)` 的半开窗口，边界等于到期时刻即拒绝。验收通过与是否可再售是独立事实。`SPECIAL_NO_REASON_RETURN` 仅拒绝普通无理由退货。质量问题、持票资格丧失和活动取消可按单独原因表达；持票联动由独立异步任务触发，复用售后事务。
 
 ## ADR-015：商品售后时间与明细履约边界
 
@@ -260,7 +260,7 @@ STANDARD_7D 表达项目的常规七日无理由模板；SPECIAL_NO_REASON_RETUR
 
 每个订单明细只确认一次完整剩余数量的模拟发货和一次完整已发货数量的模拟收货。V11 的 `shipped_at` 和 `received_at` 因此各表示一个明确的订单明细事件；售后申请仍可部分退款。发货、收货和售后事务共同锁 ProductOrder 与该订单的明细行。
 
-`STANDARD_7D` 的无理由窗口固定为数据库收货时间起 168 小时的半开区间 `[received_at, received_at + 7 days)`。开始时刻接受，精确等于 7 天终点时拒绝，终点之后拒绝。无理由退货还要求已收货并在模拟验收输入中可再售。`SPECIAL_NO_REASON_RETURN` 只拒绝 `NO_REASON`；质量问题、持票资格丧失及活动取消使用独立原因码。Day 20 自动资格联动不由本次实现触发。
+`STANDARD_7D` 的无理由窗口固定为数据库收货时间起 168 小时的半开区间 `[received_at, received_at + 7 days)`。开始时刻接受，精确等于 7 天终点时拒绝，终点之后拒绝。无理由退货还要求已收货并在模拟验收输入中可再售。`SPECIAL_NO_REASON_RETURN` 只拒绝 `NO_REASON`；质量问题、持票资格丧失及活动取消使用独立原因码。自动资格联动由 Day 20 独立任务调用该售后实现。
 
 ## ADR-016：公开缓存使用 generation 和持久化失效任务
 
@@ -274,4 +274,52 @@ STANDARD_7D 表达项目的常规七日无理由模板；SPECIAL_NO_REASON_RETUR
 
 缓存指标只使用固定缓存类型标签。去重拒绝指标不带标签。Redis 支付去重采用十秒所有者令牌，Lua 只允许令牌所有者释放 Key。Redis 故障时请求继续经过数据库幂等和状态检查。
 
-验证用例与运行结果见 [Redis 测试记录](reports/redis-test.md)。
+验证用例与运行结果见 [Redis 测试记录](../qa/reports/redis-test.md)。
+
+## ADR-017：业务事件通过事务 Outbox 交付
+
+日期：2026-11-07。
+
+状态：实现已加入；真实 MySQL/RabbitMQ 故障注入结果记录在 [Day 19 验收报告](../qa/reports/day19-mq-test.md)。
+
+订单、支付和退款事务把业务变更与 `outbox_event` 同时提交。Relay 使用短事务、租约和 token 领取事件，事务提交后才发布持久消息。Confirm ACK 与无 Return 才允许转为 `SENT`；Broker 确认与数据库状态更新之间发生崩溃时接受重复发布，由消费者幂等键和业务状态机消除重复效果。
+
+消费者将业务效果与 `consumer_process` 在同一个 MySQL 事务提交，随后 ACK。失败采用有限次数延迟重试，最终写入失败状态并转入 DLQ。Rabbit TTL 只负责触发，订单到期的权威判断仍是 MySQL 时间和 `expires_at`，数据库扫描继续运行。
+
+## ADR-018：Outbox 重放使用单独的 ADMIN 权限
+
+日期：2026-11-07。
+
+状态：已实现；角色迁移见 V15。
+
+事件重放可能再次进入业务消费链，不能沿用普通发布者权限。`POST /admin/outbox-events/{eventId}/replay` 只授予 `ADMIN`。服务拒绝已有 `consumer_process` 记录的事件；重放沿用原 `event_id`，未处理成功的事件仍受相同消费幂等键保护。公开注册不创建 ADMIN，角色需要由受控运维流程配置。
+
+## ADR-019：改期事实、用户响应与退款政策独立保存
+
+日期：2026-11-11。状态：已实现，验证结果见 [Day 22 报告](../qa/reports/day22-reschedule-test.md)。
+
+每次改期都是独立事实，不更新既有事件。Session 排他锁与票务已有共享锁协调，公告事务以已提交的 VALID Ticket 建立受影响快照；公告后完成支付的票不获得本次历史资格。公告事务不锁订单，延续 Order 优先协议。
+
+用户确认和系统超时保留分别保存 USER_CONFIRMED、AUTO_RETAINED。确认不放弃特殊退款权利，退款也不覆盖响应历史。退款政策在持锁受理时根据数据库时间确定，使用原成交价全额退款；执行阶段复用既有退款资源恢复与资格 Outbox，不重新检查窗口。
+
+特殊退款允许跨订单选票，以一个提交记录固定幂等内容并原子受理，之后按原订单事务执行。不同事件、普通退款与特殊退款共用 `uq_refund_ticket_claim`，不会对同票重复恢复资源。
+
+窗口分别保存，区间为 [公告, min(公告+168h, 本次新开始))。若再次改期使当前场次更早开始，则开始后也不接受旧事件下的新主动申请；此前已受理申请仍执行。过了某次特殊窗口不禁止其他合法普通退款或后续事件资格。
+
+取消入口按 Activity → Session 生命周期保护记录宣布禁止交易，并提交独立取消事实，之后按订单小事务批处理。持生命周期排他锁时不得反向逐单锁 Order。Day 22 验证门禁竞争，Day 23 随后实现取消退款批次，见下一条决策。
+
+## ADR-020：取消门禁先提交，资源按任务独立收敛
+
+日期：2026-11-11。状态：已实现，最终验证见 [Day 23 报告](../qa/reports/day23-cancellation-test.md)。
+
+同步取消只保护生命周期；Session 单独取消也取 Activity X，覆盖活动范围商品资格的并发支付。只有取得门禁前合法完成的交易进入后续处理，取消后不允许以缓存或恢复库存重新成交。
+
+取消范围固定为尚未结束的 SCHEDULED 场次。已结束、FINISHED 和此前取消历史不重写。后台按四类主键分页，枚举历史事实而不以会变化的 VALID/PENDING 状态作为分页集合；处理时在锁内判断当前资源状态。这样不会因前页退款或订单关闭导致后页漏扫。
+
+取消退款复用已有资源恢复事务，新增受内部策略与取消范围双重校验的入口，允许为已停用账号退款。该入口无 HTTP 映射，不伪造当前用户。取消前完成的退款不补差价；取消时尚未成功的普通/改期申请保留原报价但终止占用，另存全额取消报价，避免手续费继续成交。改期事件与用户响应不删除。
+
+GIFT 失效保留专属池占用及原分配事实，不通过虚构领取账号或返还到公开票池处理。免费预约的参与效力直接受生命周期限制，后台恢复名额一次。
+
+批次显示票务处理进度，商品联动仍是独立售后任务。COMPLETED 不表示实物已退回；WAITING_RETURN 的库存和金额不能提前处理。对用户可见的失败始终保有任务、重试次数和恢复路径。
+
+取消场次的白名单管理同样冻结：获得 Activity 根锁后重新读取 Session 当前状态，四种名单写操作只接受 SCHEDULED，其他正常场次不受影响。

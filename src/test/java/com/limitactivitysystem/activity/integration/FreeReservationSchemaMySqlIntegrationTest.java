@@ -38,6 +38,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIfEnvironmentVariable(named = "DB_PASSWORD", matches = ".+")
 class FreeReservationSchemaMySqlIntegrationTest extends PaymentResourceTestSupport {
+    // Keep the historical schema target; cache tables were introduced in V13.
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.limitactivitysystem.cache.CacheInvalidationRecorder cacheInvalidations;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.limitactivitysystem.cache.CacheInvalidationDelivery cacheDelivery;
     private ActivitySession session;
     private ActivitySession otherSession;
 
@@ -291,7 +296,8 @@ class FreeReservationSchemaMySqlIntegrationTest extends PaymentResourceTestSuppo
     @TestConfiguration(proxyBeanMethods = false)
     static class DatabaseConfiguration {
         @Bean IsolatedQualificationMySqlDataSource dataSource(DataSourceProperties properties) throws Exception {
-            var source = new IsolatedQualificationMySqlDataSource(properties);
+            var source = new IsolatedQualificationMySqlDataSource(properties, 6, List.of(
+                    "db/migration/V1__create_schema.sql", "db/migration/V3__create_whitelist_tables.sql"));
             try (var connection = source.getConnection()) {
                 ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V4__create_free_reservation_tables.sql"));
                 return source;

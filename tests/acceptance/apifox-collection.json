@@ -1,0 +1,3095 @@
+{
+  "info": {
+    "name": "LAS 1.0.0 executable demo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Import as Postman 2.1 in Apifox. Prepare accounts and variables with tests/release/run-demo.ps1 -PrepareOnly. Wait/poll async steps as described; the PowerShell runner performs all SQL checks and waits automatically."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8081"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authenticated buyer",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/users/me",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/role\", function () { pm.expect(pointer(\"/role\")).to.eql(\"USER\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unauthenticated access rejected",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/users/me",
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "Expected HTTP 401"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Buyer cannot publish",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 403",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create retentionActivity",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Demo retentionActivity\",\n  \"description\": \"Release HTTP demo\",\n  \"type\": \"PAID\",\n  \"openTime\": \"{{openTime}}\",\n  \"closeTime\": \"{{retentionClose}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const times = {\"retentionClose\": 75, \"retentionStart\": 150, \"retentionEnd\": 750};",
+              "Object.entries(times).forEach(([name, seconds]) => {",
+              "  const local = new Date(Date.now() + seconds * 1000 + 8 * 3600000).toISOString().slice(0, -1);",
+              "  pm.collectionVariables.set(name, local);",
+              "  pm.collectionVariables.set(name + 'Offset', local + '+08:00');",
+              "});"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"retentionActivity\", pointer(\"/activityId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create retentionSession",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{retentionActivity}}/sessions",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startTime\": \"{{startTime}}\",\n  \"endTime\": \"{{endTime}}\",\n  \"capacity\": 2,\n  \"maxTicketsPerUser\": 2,\n  \"seatMode\": \"AUTO_ASSIGN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"retentionSession\", pointer(\"/activitySessionId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create retentionZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/sessions/{{retentionSession}}/zones",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"retentionZone\",\n  \"zoneType\": \"PAID\",\n  \"price\": 100,\n  \"totalAmount\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"retentionZone\", pointer(\"/zoneId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create seats retentionZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/zones/{{retentionZone}}/seats",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"seats\": [\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 1,\n      \"allocationPriority\": 1\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 2,\n      \"allocationPriority\": 2\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"retentionZoneSeat1\", pointer(\"/seatIds/0\"));",
+              "pm.collectionVariables.set(\"retentionZoneSeat2\", pointer(\"/seatIds/1\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publish retentionActivity",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/activities/{{retentionActivity}}/publish",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 204"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create retentionOrder",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/ticket-orders",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerC_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-retentionOrder\",\n  \"sessionId\": {{retentionSession}},\n  \"items\": [\n    {\n      \"zoneId\": {{retentionZone}},\n      \"allocationMode\": \"AUTO_ASSIGN\",\n      \"quantity\": 1,\n      \"acceptNonAdjacent\": true\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"retentionOrder\", pointer(\"/orderId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pay retentionOrder",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/ticket-orders/{{retentionOrder}}/pay",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerC_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"retentionOrderTicket1\", pointer(\"/tickets/0/ticketId\"));",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"PAID\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Short reschedule window",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/sessions/{{retentionSession}}/reschedules",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-retain\",\n  \"newStartTime\": \"{{retentionStartOffset}}\",\n  \"newEndTime\": \"{{retentionEndOffset}}\",\n  \"reason\": \"Real automatic-retention deadline\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"retentionEvent\", pointer(\"/eventId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create activityA",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Demo activityA\",\n  \"description\": \"Release HTTP demo\",\n  \"type\": \"PAID\",\n  \"openTime\": \"{{openTime}}\",\n  \"closeTime\": \"{{closeTime}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"activityA\", pointer(\"/activityId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create selectSession",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/sessions",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startTime\": \"{{startTime}}\",\n  \"endTime\": \"{{endTime}}\",\n  \"capacity\": 6,\n  \"maxTicketsPerUser\": 4,\n  \"seatMode\": \"SELECT_SEAT\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"selectSession\", pointer(\"/activitySessionId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create paidZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/sessions/{{selectSession}}/zones",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"paidZone\",\n  \"zoneType\": \"PAID\",\n  \"price\": 100,\n  \"totalAmount\": 4\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"paidZone\", pointer(\"/zoneId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create seats paidZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/zones/{{paidZone}}/seats",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"seats\": [\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 1,\n      \"allocationPriority\": 1\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 2,\n      \"allocationPriority\": 2\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 3,\n      \"allocationPriority\": 3\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 4,\n      \"allocationPriority\": 4\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"paidZoneSeat1\", pointer(\"/seatIds/0\"));",
+              "pm.collectionVariables.set(\"paidZoneSeat2\", pointer(\"/seatIds/1\"));",
+              "pm.collectionVariables.set(\"paidZoneSeat3\", pointer(\"/seatIds/2\"));",
+              "pm.collectionVariables.set(\"paidZoneSeat4\", pointer(\"/seatIds/3\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create giftZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/sessions/{{selectSession}}/zones",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"giftZone\",\n  \"zoneType\": \"GIFT\",\n  \"price\": 0,\n  \"totalAmount\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"giftZone\", pointer(\"/zoneId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create seats giftZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/zones/{{giftZone}}/seats",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"seats\": [\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 1,\n      \"allocationPriority\": 1\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 2,\n      \"allocationPriority\": 2\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"giftZoneSeat1\", pointer(\"/seatIds/0\"));",
+              "pm.collectionVariables.set(\"giftZoneSeat2\", pointer(\"/seatIds/1\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create autoSession",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/sessions",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startTime\": \"{{startTime}}\",\n  \"endTime\": \"{{endTime}}\",\n  \"capacity\": 4,\n  \"maxTicketsPerUser\": 4,\n  \"seatMode\": \"AUTO_ASSIGN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"autoSession\", pointer(\"/activitySessionId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create autoZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/sessions/{{autoSession}}/zones",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"autoZone\",\n  \"zoneType\": \"PAID\",\n  \"price\": 100,\n  \"totalAmount\": 4\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"autoZone\", pointer(\"/zoneId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create seats autoZone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/zones/{{autoZone}}/seats",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"seats\": [\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 1,\n      \"allocationPriority\": 1\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 2,\n      \"allocationPriority\": 2\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 3,\n      \"allocationPriority\": 3\n    },\n    {\n      \"rowNo\": 1,\n      \"seatNo\": 4,\n      \"allocationPriority\": 4\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"autoZoneSeat1\", pointer(\"/seatIds/0\"));",
+              "pm.collectionVariables.set(\"autoZoneSeat2\", pointer(\"/seatIds/1\"));",
+              "pm.collectionVariables.set(\"autoZoneSeat3\", pointer(\"/seatIds/2\"));",
+              "pm.collectionVariables.set(\"autoZoneSeat4\", pointer(\"/seatIds/3\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publish activityA",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/publish",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 204"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other publisher denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/sessions",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 403",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startTime\": \"{{startTime}}\",\n  \"endTime\": \"{{endTime}}\",\n  \"capacity\": 1,\n  \"maxTicketsPerUser\": 1,\n  \"seatMode\": \"AUTO_ASSIGN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Enable activity whitelist",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/whitelist",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Whitelist buyerA",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/whitelist/members",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": {{buyerA_id}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Whitelist buyerB",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/whitelist/members",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": {{buyerB_id}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Whitelist buyerC",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/whitelist/members",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": {{buyerC_id}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Allocate GIFT seats",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/gift-zones/{{giftZone}}/allocations",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-gift\",\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"giftOperation\", pointer(\"/operationId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Repeat GIFT allocation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/gift-zones/{{giftZone}}/allocations",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-gift\",\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"giftReplay\", pointer(\"/operationId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create selectedOrder",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/ticket-orders",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-selectedOrder\",\n  \"sessionId\": {{selectSession}},\n  \"items\": [\n    {\n      \"zoneId\": {{paidZone}},\n      \"allocationMode\": \"SELECT_SEAT\",\n      \"requestedSeatId\": {{paidZoneSeat1}},\n      \"quantity\": 1,\n      \"acceptNonAdjacent\": false\n    },\n    {\n      \"zoneId\": {{paidZone}},\n      \"allocationMode\": \"SELECT_SEAT\",\n      \"requestedSeatId\": {{paidZoneSeat2}},\n      \"quantity\": 1,\n      \"acceptNonAdjacent\": false\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"selectedOrder\", pointer(\"/orderId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pay selectedOrder",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/ticket-orders/{{selectedOrder}}/pay",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"selectedOrderTicket1\", pointer(\"/tickets/0/ticketId\"));",
+              "pm.collectionVariables.set(\"selectedOrderTicket2\", pointer(\"/tickets/1/ticketId\"));",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"PAID\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment replay on second instance",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrlB}}/ticket-orders/{{selectedOrder}}/pay",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"PAID\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create autoOrder",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/ticket-orders",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-autoOrder\",\n  \"sessionId\": {{autoSession}},\n  \"items\": [\n    {\n      \"zoneId\": {{autoZone}},\n      \"allocationMode\": \"AUTO_ASSIGN\",\n      \"quantity\": 2,\n      \"acceptNonAdjacent\": true\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"autoOrder\", pointer(\"/orderId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pay autoOrder",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/ticket-orders/{{autoOrder}}/pay",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"autoOrderTicket1\", pointer(\"/tickets/0/ticketId\"));",
+              "pm.collectionVariables.set(\"autoOrderTicket2\", pointer(\"/tickets/1/ticketId\"));",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"PAID\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create pendingOrder",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/ticket-orders",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-pendingOrder\",\n  \"sessionId\": {{selectSession}},\n  \"items\": [\n    {\n      \"zoneId\": {{paidZone}},\n      \"allocationMode\": \"SELECT_SEAT\",\n      \"requestedSeatId\": {{paidZoneSeat3}},\n      \"quantity\": 1,\n      \"acceptNonAdjacent\": false\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"pendingOrder\", pointer(\"/orderId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create activityB",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Demo activityB\",\n  \"description\": \"Release HTTP demo\",\n  \"type\": \"FREE\",\n  \"openTime\": \"{{openTime}}\",\n  \"closeTime\": \"{{closeTime}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"activityB\", pointer(\"/activityId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create freeSession",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityB}}/sessions",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startTime\": \"{{startTime}}\",\n  \"endTime\": \"{{endTime}}\",\n  \"capacity\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"freeSession\", pointer(\"/activitySessionId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publish activityB",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/activities/{{activityB}}/publish",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 204"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "FREE reservation",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/sessions/{{freeSession}}/reservations",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"freeReservation\", pointer(\"/reservationId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cancel FREE reservation",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/reservations/{{freeReservation}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rebook FREE reservation",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/sessions/{{freeSession}}/reservations",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"freeReservation\", pointer(\"/reservationId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create publicProduct",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/products",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"activityId\": {{activityA}},\n  \"name\": \"publicProduct\",\n  \"qualificationType\": \"PUBLIC\",\n  \"purchaseLimit\": 2,\n  \"refundPolicy\": \"STANDARD_7D\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"publicProduct\", pointer(\"/productId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create SKU publicProductBlackM",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/products/{{publicProduct}}/skus",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"BlackM\",\n  \"price\": 39.9,\n  \"stock\": 3\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"publicProductBlackM\", pointer(\"/skuId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create SKU publicProductWhiteL",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/products/{{publicProduct}}/skus",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"WhiteL\",\n  \"price\": 39.9,\n  \"stock\": 3\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"publicProductWhiteL\", pointer(\"/skuId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publish publicProduct",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/products/{{publicProduct}}/publish",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create limitedProduct",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/products",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"activityId\": {{activityA}},\n  \"name\": \"limitedProduct\",\n  \"qualificationType\": \"TICKET_REQUIRED\",\n  \"purchaseLimit\": 2,\n  \"refundPolicy\": \"SPECIAL_NO_REASON_RETURN\",\n  \"qualificationScope\": \"SESSION\",\n  \"qualificationSessionId\": {{selectSession}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"limitedProduct\", pointer(\"/productId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create SKU limitedProductBlackM",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/products/{{limitedProduct}}/skus",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"BlackM\",\n  \"price\": 39.9,\n  \"stock\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"limitedProductBlackM\", pointer(\"/skuId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create SKU limitedProductWhiteL",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/products/{{limitedProduct}}/skus",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"WhiteL\",\n  \"price\": 39.9,\n  \"stock\": 3\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"limitedProductWhiteL\", pointer(\"/skuId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publish limitedProduct",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/products/{{limitedProduct}}/publish",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Out-of-stock SKU stays selected",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/product-orders/preview",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\n      \"skuId\": {{limitedProductBlackM}},\n      \"quantity\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/available\", function () { pm.expect(pointer(\"/available\")).to.eql(false); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Explicit adjusted mixed order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/product-orders/confirm",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-mixed\",\n  \"items\": [\n    {\n      \"skuId\": {{publicProductBlackM}},\n      \"quantity\": 1\n    },\n    {\n      \"skuId\": {{publicProductWhiteL}},\n      \"quantity\": 1\n    },\n    {\n      \"skuId\": {{limitedProductWhiteL}},\n      \"quantity\": 1,\n      \"acknowledgeSpecialPolicy\": true\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"mixedOrder\", pointer(\"/orderId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Atomic multi-SKU payment",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/product-orders/{{mixedOrder}}/pay",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"publicLineA\", pointer(\"/items/0/orderItemId\"));",
+              "pm.collectionVariables.set(\"publicLineB\", pointer(\"/items/1/orderItemId\"));",
+              "pm.collectionVariables.set(\"limitedLine\", pointer(\"/items/2/orderItemId\"));",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"PAID\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shared Product limit reached",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/product-orders/confirm",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 409",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-over-limit\",\n  \"items\": [\n    {\n      \"skuId\": {{publicProductWhiteL}},\n      \"quantity\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ship one line",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/product-orders/{{mixedOrder}}/ship",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderItemId\": {{publicLineA}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Receive shipped line",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/product-orders/{{mixedOrder}}/receive",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderItemId\": {{publicLineA}},\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Partial refund without illegal restock",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/product-after-sales",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-partial\",\n  \"orderId\": {{mixedOrder}},\n  \"items\": [\n    {\n      \"orderItemId\": {{publicLineA}},\n      \"quantity\": 1,\n      \"reason\": \"QUALITY_PROBLEM\",\n      \"simulateInspectionPassed\": true,\n      \"simulateResalable\": false\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"SUCCEEDED\"); });",
+              "pm.test(\"/items/0/resalable\", function () { pm.expect(pointer(\"/items/0/resalable\")).to.eql(false); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Apply firstRefund",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/ticket-refunds",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-firstRefund\",\n  \"orderId\": {{selectedOrder}},\n  \"ticketIds\": [\n    {{selectedOrderTicket1}}\n  ],\n  \"reason\": \"Release per-ticket refund\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"firstRefund\", pointer(\"/refundId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Process firstRefund",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/ticket-refunds/{{firstRefund}}/process",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"SUCCEEDED\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Apply lastRefund",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/ticket-refunds",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-lastRefund\",\n  \"orderId\": {{selectedOrder}},\n  \"ticketIds\": [\n    {{selectedOrderTicket2}}\n  ],\n  \"reason\": \"Release per-ticket refund\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"lastRefund\", pointer(\"/refundId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Process lastRefund",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/ticket-refunds/{{lastRefund}}/process",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/status\", function () { pm.expect(pointer(\"/status\")).to.eql(\"SUCCEEDED\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reschedule paid auto session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/sessions/{{autoSession}}/reschedules",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-reschedule\",\n  \"newStartTime\": \"{{newStartOffset}}\",\n  \"newEndTime\": \"{{newEndOffset}}\",\n  \"reason\": \"Release venue change\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"rescheduleEvent\", pointer(\"/eventId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Keep one ticket",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/reschedules/{{rescheduleEvent}}/confirm",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ticketIds\": [\n    {{autoOrderTicket2}}\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Special zero-fee refund",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/reschedules/{{rescheduleEvent}}/special-refunds",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 201",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-special\",\n  \"ticketIds\": [\n    {{autoOrderTicket1}}\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"specialRefund\", pointer(\"/refunds/0/refundId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Process special refund",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/ticket-refunds/{{specialRefund}}/process",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/items/0/feeRate\", function () { pm.expect(pointer(\"/items/0/feeRate\")).to.eql(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cancel selected session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/sessions/{{selectSession}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 202",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-cancel-session\",\n  \"reason\": \"Release session cancellation\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 202', function () { pm.response.to.have.status(202); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"sessionCancellation\", pointer(\"/eventId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cancelled session rejects pending payment",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/ticket-orders/{{pendingOrder}}/pay",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerB_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 409"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wait selected-session batch",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/cancellations/{{sessionCancellation}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200; poll until {'/batch/status': 'COMPLETED'}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/batch/status\", function () { pm.expect(pointer(\"/batch/status\")).to.eql(\"COMPLETED\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cancel FREE activity",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityB}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 202",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-cancel-free\",\n  \"reason\": \"Release activity cancellation\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 202', function () { pm.response.to.have.status(202); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"freeCancellation\", pointer(\"/eventId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wait FREE batch",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/cancellations/{{freeCancellation}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200; poll until {'/batch/status': 'COMPLETED'}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/batch/status\", function () { pm.expect(pointer(\"/batch/status\")).to.eql(\"COMPLETED\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservation no longer effective",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/reservations/{{freeReservation}}/participation",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/effective\", function () { pm.expect(pointer(\"/effective\")).to.eql(false); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cancel remaining paid activity",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/publisher/activities/{{activityA}}/cancel",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 202",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requestId\": \"{{prefix}}-cancel-paid\",\n  \"reason\": \"Release final cancellation\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 202', function () { pm.response.to.have.status(202); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.collectionVariables.set(\"paidCancellation\", pointer(\"/eventId\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wait remaining paid batch",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/publisher/cancellations/{{paidCancellation}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{publisherA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200; poll until {'/batch/status': 'COMPLETED'}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/batch/status\", function () { pm.expect(pointer(\"/batch/status\")).to.eql(\"COMPLETED\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Automatic retention after actual deadline",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/reschedules/{{retentionEvent}}",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerC_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200; poll until {'/tickets/0/status': 'AUTO_RETAINED'}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "const pointer = p => p.split('/').slice(1).reduce((v,k) => v[k], body);",
+              "pm.test(\"/tickets/0/status\", function () { pm.expect(pointer(\"/tickets/0/status\")).to.eql(\"AUTO_RETAINED\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Read real notifications",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/notifications",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{buyerA_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cache first read",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/activities/{{retentionActivity}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cache repeated read",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/activities/{{retentionActivity}}",
+        "auth": {
+          "type": "noauth"
+        },
+        "description": "Expected HTTP 200"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

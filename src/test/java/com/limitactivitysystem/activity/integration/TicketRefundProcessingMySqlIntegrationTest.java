@@ -304,7 +304,7 @@ class TicketRefundProcessingMySqlIntegrationTest extends PaymentResourceTestSupp
     }
 
     @ParameterizedTest @ValueSource(booleans = {true, false})
-    void paymentAndRefundWaitOnQuotaInBothCommitOrders(boolean refundHoldsFirst) throws Exception {
+    void paymentAndRefundWaitOnQualificationGuardInBothCommitOrders(boolean refundHoldsFirst) throws Exception {
         var accepted = accept(sold);
         Long pending = createOrder(List.of(seatMapper.findByZoneId(firstZone.getZoneId()).get(2)));
         var held = gate(); var release = gate(); var attempting = gate();
@@ -317,7 +317,7 @@ class TicketRefundProcessingMySqlIntegrationTest extends PaymentResourceTestSupp
             }
         };
         waiterProbe.beforeStatement = id -> {
-            if (id.endsWith(refundHoldsFirst ? "UserSessionPurchaseMapper.ensureExists" : "UserSessionPurchaseMapper.findForUpdate")) {
+            if (id.endsWith("QualificationGuardMapper.ensureExists")) {
                 waiterId.set(connectionId()); attempting.countDown();
             }
         };
@@ -334,7 +334,7 @@ class TicketRefundProcessingMySqlIntegrationTest extends PaymentResourceTestSupp
         });
         try {
             await(attempting);
-            var wait = awaitDatabaseLockWait(waiterId.get(), holderId.get(), "user_session_purchase");
+            var wait = awaitDatabaseLockWait(waiterId.get(), holderId.get(), "user_activity_qualification_guard");
             evidence("day11-payment-refund-" + (refundHoldsFirst ? "refund-first" : "payment-first"), wait);
         } finally { release.countDown(); }
         assertThat(holder.get(15, TimeUnit.SECONDS).getStatus()).isEqualTo(200);
@@ -348,6 +348,8 @@ class TicketRefundProcessingMySqlIntegrationTest extends PaymentResourceTestSupp
     private void assertQuotaBeforeZones(Probe probe) {
         int quota = probe.statements.indexOf("com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper.findForUpdate");
         if (quota < 0) { quota = probe.statements.indexOf("com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper.ensureExists"); }
+        int guard = probe.statements.indexOf("com.limitactivitysystem.qualification.mapper.QualificationGuardMapper.lockVersion");
+        assertThat(guard).isNotNegative().isLessThan(quota);
         assertThat(quota).isNotNegative().isLessThan(probe.statements.indexOf("com.limitactivitysystem.activity.mapper.SessionZoneMapper.findByIdForUpdate"));
         assertThat(probe.zoneIds).isSorted();
         int seat = probe.statements.indexOf("com.limitactivitysystem.activity.mapper.SessionSeatMapper.findByIdForUpdate");

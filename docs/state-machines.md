@@ -13,7 +13,7 @@ Day 15/16 已实现待支付商品订单、模拟支付、缺货关闭和过期�
 | ProductOrder | 创建 → PENDING_PAYMENT | Day 15 只创建此状态。`created_at` 由数据库生成，`expires_at = created_at + 15 分钟`，`paid_at = NULL`；服务端计算 `total_amount` 并从 SKU → Product 推导 `publisher_id`。 |
 | ProductOrder | PENDING_PAYMENT → PAID | 商品资格、Product 共享限购、所有 SKU 库存和最终数据库期限检查成功后，同一事务扣减库存、增加限购并更新 `paid_at`。价格取订单明细快照。 |
 | ProductOrder | PENDING_PAYMENT → CLOSED | 任一 SKU 缺货时，支付事务先全部回滚，再由新事务重锁并关闭，原因 `OUT_OF_STOCK`。过期扫描按数据库时间条件关闭，原因 `EXPIRED`。 |
-| ProductOrder | PAID → PARTIALLY_REFUNDED → REFUNDED；PAID → REFUNDED | V11 冻结按成功退款数量汇总的转换；不改写原价或购买数量。处理 Service 尚未实现。 |
+| ProductOrder | PAID → PARTIALLY_REFUNDED → REFUNDED；PAID → REFUNDED | V11 冻结按成功退款数量汇总的转换；不改写原价或购买数量。处理 Service 已实现，成功效果与售后状态同事务提交。 |
 
 ```mermaid
 stateDiagram-v2
@@ -29,7 +29,7 @@ stateDiagram-v2
 
 ProductOrder 的财务状态不代表已发货、已收货或可再售。V11 将履约事实与退款事实分开保存在订单明细及售后记录中，不能把 `REFUNDED` 直接解释为 SKU 已恢复库存。
 
-售后模板本身不是交易状态：STANDARD_7D、SPECIAL_NO_REASON_RETURN 都不能变成一个覆盖所有原因的“永不可退”状态。商品成功支付会扣减 SKU 余量、增加 Product 购买计数。订单明细保留购买时资格范围和 Guard 版本；退款最后有效票时订单事实仍保留，Day 20 再实现限定商品售后联动。
+售后模板本身不是交易状态：STANDARD_7D、SPECIAL_NO_REASON_RETURN 都不能变成一个覆盖所有原因的“永不可退”状态。商品成功支付会扣减 SKU 余量、增加 Product 购买计数。订单明细保留购买时资格范围和 Guard 版本。最后一张有效票退款后，资格联动由独立 Outbox 事件处理。
 
 ## 商品履约与售后申请
 
@@ -63,13 +63,44 @@ stateDiagram-v2
 
 `PENDING` 和 `PROCESSING` 只在同一 `READ_COMMITTED` 主事务内存在。各明细按 `order_item_id ASC` 用条件更新增加 `refund_pending_quantity`，且必须影响一行；数据库同时检查 `0 <= refunded_quantity + refund_pending_quantity <= quantity`。Java 不能先查询剩余数量后无条件写入。成功时同一事务把预留数转成已退款数；任一步失败都会回滚主事务的申请、资源及数量变更，随后新事务保留 `FAILED` 申请、明细与失败原因，但不占用退款数量。只有同一幂等键和完全相同载荷可以重试失败记录；已提交的成功重放返回原结果。申请资格校验阶段被拒绝的请求不创建失败记录。
 
-`NO_REASON` 只可使用 `STANDARD_7D`，要求明细已收货、模拟验收允许再次销售，且数据库当前时间位于 `[received_at, received_at + 7 days)`。时间窗口按经过 168 小时计算，等于到期时刻即拒绝。`SPECIAL_NO_REASON_RETURN` 只拒绝普通无理由退货；`QUALITY_PROBLEM`、`TICKET_QUALIFICATION_LOST`、`ACTIVITY_CANCELLED` 仍能表达和受理。后两种原因暂不触发 Day 20 自动联动。`returned_at` 由数据库记录。
+`NO_REASON` 只可使用 `STANDARD_7D`，要求明细已收货、模拟验收允许再次销售，且数据库当前时间位于 `[received_at, received_at + 7 days)`。时间窗口按经过 168 小时计算，等于到期时刻即拒绝。`SPECIAL_NO_REASON_RETURN` 只拒绝普通无理由退货；`QUALITY_PROBLEM`、`TICKET_QUALIFICATION_LOST`、`ACTIVITY_CANCELLED` 仍能表达和受理。资格事件 Consumer 会为 `TICKET_QUALIFICATION_LOST` 创建联动任务并重查当前资格；取消引起的资格丧失沿用 `TICKET_QUALIFICATION_LOST` 联动，不对所有商品直接使用 `ACTIVITY_CANCELLED` 整单退款。`returned_at` 由数据库记录。
 
 相同买家、`request_id` 和相同订单/明细/数量/原因/模拟验收输入返回原结果；载荷不同返回幂等冲突。不同请求键的并发申请由订单明细锁、原子条件更新及数据库 `CHECK` 共同限额。事务未提交时重试不会产生重复退款。
 
 未发货且符合条件的数量可直接模拟退款。已发货商品必须先由买家确认收货，再模拟退回和验收；只有退回且验收通过、`is_resalable = TRUE` 的数量可恢复 SKU 库存。退款成功都会按数量恢复 Product 限购，不可再售商品也会恢复限购。验收结果取 `NOT_REQUIRED`、`PENDING`、`PASSED` 或 `FAILED`；尚未验收时 `is_resalable` 为空。`simulateInspectionPassed` 与 `simulateResalable` 分别表达验收是否通过及通过后是否可再售；二者都只是本地模拟输入，不表示真实仓储事实。
 
-售后订单状态只按成功退款数量汇总。一次申请可包含多个订单明细，但所有明细必须属于同一订单；商品请求幂等由 `UNIQUE(buyer_id, request_id)` 保护，申请内重复的 `order_item_id` 由唯一键拒绝。退款最后有效票触发的限定商品联动仍由后续 Outbox 阶段处理。
+售后订单状态只按成功退款数量汇总。一次申请可包含多个订单明细，但所有明细必须属于同一订单；商品请求幂等由 `UNIQUE(buyer_id, request_id)` 保护，申请内重复的 `order_item_id` 由唯一键拒绝。
+
+## 持票资格变化与联动售后任务
+
+Ticket 退款事务在 `(buyer_id, activity_id)` 资格保护行内完成逐票退款、增加资格版本并写入 `TICKET_QUALIFICATION_CHANGED` Outbox。事件包含买家、活动、场次、退款、发生时间和资格版本。事件不记录资格永久丧失的结论。
+
+消费者以 `consumer_process` 防止同一事件重复登记任务。消费者按 `product_order_item_id` 查询匹配的商品明细，持有同一资格保护行后重新查询当前 Ticket。`ACTIVITY` 范围检查活动内所有场次；`SESSION` 范围只检查配置场次。新票若已恢复资格，消费者跳过售后。
+
+联动任务每个商品明细最多一条。未发货明细复用 `ProductAfterSaleService` 完成模拟退款、SKU 条件回库和 Product 限购恢复。已发货明细进入 `WAITING_RETURN`；买家收货后，任务扫描器再次检查资格，再复用该 Service 模拟退回及验收。混合订单按 `order_item_id` 处理，不改变普通商品明细。当前仍有有效票时，任务进入 `SKIPPED`；后续再次失去资格时，消费者重开同一任务。
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: 当前资格已丧失，创建明细任务
+    [*] --> SKIPPED: 当前仍有有效票，保存跳过结果
+    PENDING --> SKIPPED: 重检时已有有效票
+    PENDING --> PROCESSING: 开始售后
+    PROCESSING --> SUCCEEDED: 售后与任务状态一同提交
+    PROCESSING --> WAITING_RETURN: 明细已发货
+    PROCESSING --> FAILED: 售后事务回滚，独立写入失败原因
+    FAILED --> PROCESSING: 到达 next_attempt_at，未超过五次
+    FAILED --> PENDING: ADMIN 受控重放终态任务
+    FAILED --> SKIPPED: 重试时资格已恢复
+    WAITING_RETURN --> PROCESSING: 明细已收货
+    WAITING_RETURN --> SKIPPED: 重检时资格已恢复
+    SKIPPED --> PENDING: 新事件再次确认资格丧失
+```
+
+任务创建与 `consumer_process` 在一个事务内提交。每个售后任务在独立事务中提交。消费者在任务处理返回后 ACK；若消费者在任务提交后、ACK 前崩溃，重复投递会找到已有任务并安全重放。任务失败时，独立事务保存失败原因和 `next_attempt_at`；扫描器最多尝试五次，最终状态保持可查询。若同一明细已有其他售后数量预留，任务保持 PENDING 并延后检查，不能把预留中数量误判为已退款完成。
+
+售后任务可由 `GET /admin/ticket-qualification-after-sale-tasks/{taskId}` 查询状态和失败原因。达到五次后的终态 FAILED 只能由 ADMIN 调用 `POST /admin/ticket-qualification-after-sale-tasks/{taskId}/replay` 重置为 PENDING；执行时仍重新检查资格、订单明细和履约状态。该入口不会重置 Ticket 退款或绕过 `ProductAfterSaleService` 的数量保护。
+
+商品支付和 Ticket 退款都先锁各自订单，再按 `(buyer_id, activity_id)` 顺序锁资格保护行。消费端先按 `ProductOrder.order_id` 升序锁定全部候选订单，再获取同一 Guard。Ticket 退款事务不锁 ProductOrder。商品支付持有保护行时重查指定范围内的有效票，然后才扣 SKU。退款提交后消费者持有同一保护行重查资格，因此旧事件不能覆盖新票已经恢复的资格。
 
 ## Activity 生命周期
 
@@ -87,7 +118,7 @@ stateDiagram-v2
 |---|---|---|---|
 | `DRAFT` | 所属发布者可新增 Session、Zone、Seat | 所属发布者可维护 | 创建与发布前配置已实现 |
 | `PUBLISHED` | 拒绝，`409 ACTIVITY_NOT_DRAFT` | 所属发布者可维护 | 发布与公开查询已实现 |
-| `CANCELLED` | 拒绝 | 拒绝，`409 WHITELIST_NOT_EDITABLE` | 数据库状态已定义，取消业务流程尚未实现 |
+| `CANCELLED` | 拒绝 | 拒绝，`409 WHITELIST_NOT_EDITABLE` | Day 23 已实现同步取消门禁和异步分项处理 |
 | `FINISHED` | 拒绝 | 拒绝，`409 WHITELIST_NOT_EDITABLE` | 数据库状态已定义，结束业务流程尚未实现 |
 
 重复发布 `PUBLISHED` 活动返回 `409 ACTIVITY_ALREADY_PUBLISHED`。发布不改变 `open_time` 或 `close_time`，也不表示当前已开售。公开查询只要求 `PUBLISHED`，不会因为当前时间早于 `open_time` 而隐藏活动。
@@ -105,7 +136,7 @@ stateDiagram-v2
 
 当前未开放通用核心配置编辑入口，普通编辑请求返回 `404` 或 `405`。已有配置新增入口在同一事务的 Activity 根记录锁后检查 `DRAFT`。后续新增普通编辑入口也必须遵守该规则。
 
-Day 22 才实现专用改期流程。当前没有改期 API，也没有通过改期修改时间的成功路径。Session 的 `SCHEDULED`、`FINISHED`、`CANCELLED` 是数据库已定义的状态，当前配置创建使用 `SCHEDULED`，后续结束与取消流程尚未实现。
+Day 22 已提供 `POST /publisher/sessions/{sessionId}/reschedules`。仅所属发布者可对 PUBLISHED 活动中尚未开始的 SCHEDULED 场次改期；成功后场次仍为 SCHEDULED，Ticket 和 Seat 不变。FINISHED、CANCELLED 拒绝改期。Day 23 已实现取消入口与批次；正常结束的业务入口仍按后续计划推进。
 
 ## 白名单配置状态
 
@@ -155,7 +186,7 @@ stateDiagram-v2
 | 新请求创建成功 | 订单为 `PENDING_PAYMENT`，只新增主表及明细 |
 | 相同幂等键、相同购买意图 | 读取原单当前状态，不新增订单、不续期、不重置状态 |
 | 相同幂等键、不同购买意图 | `409 IDEMPOTENCY_CONFLICT`，原单不变 |
-| 到达 `expires_at` | 已存过期时间不变；当前尚未实现自动关闭状态转换 |
+| 到达 `expires_at` | 已存过期时间不变；Outbox 延迟消息及数据库扫描器条件关闭仍待支付的订单，不能覆盖 PAID |
 | 到达活动停售时间 | 拒绝创建新单，不将已创建订单自动关闭 |
 | 名单变化 | 不修改既有订单，后续支付重新检查当前资格 |
 | 本人查询详情 | 只读取，不修改订单、明细或资源 |
@@ -184,7 +215,7 @@ stateDiagram-v2
 
 缺货关闭事务重新锁单。如果另一个请求已经提交 PAID，则返回原支付结果，不写 CLOSED；关闭先提交时，等待的支付读取 CLOSED 并拒绝。技术异常不会触发缺货关闭。
 
-过期判断与关闭状态转换是不同事件。Day 8 已实现定时过期扫描、主动取消及事务外技术重试；三条路径围绕同一订单行协调。验证与当前范围见 [Day 8 并发说明](day8-concurrency.md)。退款状态转换见下文。
+过期判断与关闭状态转换是不同事件。Day 8 已实现定时过期扫描、主动取消及事务外技术重试；三条路径围绕同一订单行协调。验证与当前范围见 [Day 8 并发说明](../qa/guides/day8-concurrency.md)。退款状态转换见下文。
 
 ## 免费预约状态机
 
@@ -200,7 +231,7 @@ stateDiagram-v2
 
 用户主动取消必须早于场次开始，只在 ACTIVE 条件更新影响一行时返还名额；重复取消不再返还。记录的 ACTIVE 状态也不能替代场次生命周期检查，场次取消后的系统失效处理按后续专用流程实现。
 
-创建中的名额扣减与 INSERT、取消中的状态变更与返还均在同一事务。中途异常回滚全部变更。状态机、唯一性、重约无优先权的验证见 [Day 9 免费预约验收](day9-concurrency.md)。
+创建中的名额扣减与 INSERT、取消中的状态变更与返还均在同一事务。中途异常回滚全部变更。状态机、唯一性、重约无优先权的验证见 [Day 9 免费预约验收](../qa/guides/day9-concurrency.md)。
 
 ## Ticket 退票状态
 
@@ -266,3 +297,36 @@ stateDiagram-v2
 同一事务将选中的 Seat 转为 GIFT_ALLOCATED、Zone remains_amount 减少 N，并提交一条 SUCCEEDED 操作与 N 条 Seat 明细。total_amount 是规划容量，分配不会修改它。GIFT 不生成普通 Ticket，不修改账号场次购票额度。
 
 操作历史只有 ALLOCATE / SUCCEEDED，状态仅随完整事务提交后可见。中途异常全部回滚，不留下已成功但资源不完整的历史。相同请求重放读取原结果，不触发 Seat 状态转换。当前未实现 RELEASE，也没有 GIFT_ALLOCATED → AVAILABLE 的业务入口。
+
+## 按事件保存改期响应
+
+```mermaid
+stateDiagram-v2
+	PENDING --> USER_CONFIRMED: 窗口内由持票用户主动确认
+	PENDING --> AUTO_RETAINED: 截止后有效票由消息或扫描保留
+```
+
+USER_CONFIRMED 保存 responded_at 和 source=USER。AUTO_RETAINED 保存 auto_retained_at 和 source=MQ 或 DEADLINE_SCAN，responded_at 必须为空。重复处理不重写首次时间。
+
+退款是独立的 ticket_refund_request 状态机。USER_CONFIRMED 不阻止窗口内特殊退款，退款成功也不清除确认历史。PENDING 表示未选择，不能单独用它判断门票有效性；已经退款或有有效退款申请的票不执行自动保留。自动保留不更新 Ticket、Seat 或订单。
+
+每次改期生成新事件、新快照和新响应。旧响应保持可查。特殊退款请求必须指定事件，按照该事件的快照和窗口受理；同票所有原因共用唯一退款占用约束。已受理申请在截止后仍沿用原报价执行，当前场次开始后不接受新主动申请。
+
+## Day 23 取消与后续处理
+
+Activity / Session 的 CANCELLED 是终态；账面库存恢复不改变该状态。同步取消只表示业务门禁生效，批次尚可处于 PENDING 或 PROCESSING。
+
+```mermaid
+stateDiagram-v2
+    PENDING --> PROCESSING: 分页生成与认领
+    PROCESSING --> COMPLETED: 扫描完成且全部明细成功
+    PROCESSING --> PARTIAL_FAILED: 至少一项达到重试上限
+    PARTIAL_FAILED --> PROCESSING: 人工重试后继续处理
+    PARTIAL_FAILED --> COMPLETED: 剩余明细完成
+```
+
+明细 PENDING / RETRY_PENDING → PROCESSING → SUCCEEDED；失败进入 RETRY_PENDING，单轮最多 5 次，之后 FAILED。租约过期可用新令牌接管，旧令牌不能提交效果。人工重试仅重置本轮次数，累计 attempt_count 保留。SUCCEEDED 不重开。
+
+FREE 仍采用 ACTIVE → CANCELLED 并恢复一次名额。赠票采用 GIFT_ALLOCATED → GIFT_CANCELLED，分配历史保留且座位不转入公开池。入口的有效参与判定同时检查生命周期，因此不等待后台落资源状态才失效。
+
+取消前成功的普通退款保持历史；尚未成功的普通或改期申请以 FAILED / CANCELLATION_SUPERSEDED 结束，原金额和改期响应不改写。新取消申请为零手续费全额退款。限定商品独立跟踪售后；取消批次的 COMPLETED 不代表 WAITING_RETURN 商品已退回。

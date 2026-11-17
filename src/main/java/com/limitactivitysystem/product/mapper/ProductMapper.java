@@ -115,6 +115,7 @@ public interface ProductMapper {
               AND (#{sessionId} IS NULL OR o.session_id=#{sessionId})
               AND t.status='VALID' AND t.refunded_at IS NULL AND t.paid_price=i.unit_price
               AND o.status IN ('PAID','PARTIALLY_REFUNDED')
+              AND s.status<>'CANCELLED'
             """)
     @Options(useCache=false,flushCache=Options.FlushCachePolicy.TRUE)
     long validTickets(@Param("userId") Long userId,@Param("activityId") Long activityId,@Param("sessionId") Long sessionId);

@@ -103,6 +103,7 @@ class TicketOrderCreationMySqlIntegrationTest extends ActivityMySqlTestSupport {
     @AfterEach
     void clearOnlyTheOwnedSchemaBeforeParentFixtures() {
         failure.reset();
+        jdbc.update("DELETE oe FROM outbox_event oe JOIN ticket_order o ON o.order_id = oe.aggregate_id");
         jdbc.update("DELETE FROM ticket_order_item");
         jdbc.update("DELETE FROM ticket_order");
         jdbc.update("DELETE FROM user_session_purchase");
@@ -118,6 +119,10 @@ class TicketOrderCreationMySqlIntegrationTest extends ActivityMySqlTestSupport {
         JsonNode response = createAs(actor, request(auto(firstZone, 1, true)));
         var stored = orders.findById(response.path("orderId").asLong());
         assertThat(stored.getBuyerId()).isEqualTo(actor.getId());
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM outbox_event
+                WHERE event_type = 'ORDER_EXPIRED' AND aggregate_id = ? AND status = 'PENDING'
+                """, Long.class, stored.getOrderId())).isEqualTo(1);
         assertThat(stored.getStatus()).isEqualTo("PENDING_PAYMENT");
         assertThat(stored.getCreatedAt()).isAfterOrEqualTo(activity.getOpenTime()).isBefore(activity.getCloseTime());
         assertThat(stored.getExpiresAt()).isEqualTo(stored.getCreatedAt().plusMinutes(15));
@@ -479,6 +484,8 @@ class TicketOrderCreationMySqlIntegrationTest extends ActivityMySqlTestSupport {
         assertThat(orders.findByBuyerIdAndRequestId(publisher.getId(), input.getRequestId())).isNull();
         assertThat(orders.findById(observed.orderIds().get(0))).isNull();
         assertThat(items.findByOrderId(observed.orderIds().get(0))).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM outbox_event WHERE aggregate_id = ?",
+                Long.class, observed.orderIds().get(0))).isZero();
         assertThat(inventorySnapshot()).isEqualTo(before);
     }
 

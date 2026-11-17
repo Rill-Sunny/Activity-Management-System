@@ -41,7 +41,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             try {
                 int status = failed && !response.isCommitted() ? 500 : response.getStatus();
                 // Log only metadata. Never log query strings, headers, bodies, or exceptions here.
-                log.info("HTTP request method={} path={} status={} durationMs={}",
+                log.atInfo().addKeyValue("businessOperation", "http.request")
+                        .addKeyValue("duration", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started))
+                        .addKeyValue("errorCode", status >= 400 ? "HTTP_" + status : "NONE")
+                        .log("HTTP request method={} path={} status={} durationMs={}",
                         safeLogValue(request.getMethod()), safeLogValue(request.getRequestURI()), status,
                         TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
             } finally {

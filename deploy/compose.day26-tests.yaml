@@ -1,0 +1,8 @@
+# Isolated Day 26 only: random loopback ports are supplied by the runner.
+services:
+  mysql:
+    environment:
+      MYSQL_ROOT_HOST: "%"
+  tempo:
+    ports:
+      - "127.0.0.1:${TEST_OTLP_PORT:?set TEST_OTLP_PORT}:4318"

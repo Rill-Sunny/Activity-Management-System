@@ -14,6 +14,10 @@
 
 JSON 中的密码仅用于隔离测试账号，不是部署凭据。测试不保存登录 token 或数据库密码到验收证据。
 
+## Messaging payload examples
+
+`messaging/payment-succeeded.json` and `messaging/order-expired.json` show the durable envelope and payload shape consumed by the Rabbit listeners. Their IDs are documentation examples only. The real-service reliability test generates fresh event IDs, aggregate IDs and content, and removes only its own MySQL rows after execution.
+
 订单、门票、退款和预约通过既有 API 构建，主链固定步骤如下：
 
 1. `journey-four` 下单并支付四张不同票价的票，申请退第二、第四张，再处理原退款申请。
@@ -31,6 +35,16 @@ AT-05 复用自动配座场，两单各三张并发支付。AT-07 通过相同�
 	mvn '-Dtest=Phase1JourneyMySqlIntegrationTest' test
 ```
 
-完整阶段回归使用 `mvn test`。数据库测试被跳过时不能记为通过，报告与修复记录见 [阶段测试报告](../../docs/reports/test-report.md)。
+完整阶段回归使用 `mvn test`。数据库测试被跳过时不能记为通过，报告与修复记录见 [阶段测试报告](../../qa/reports/test-report.md)。
 
 只演示 PAID → FREE → GIFT 三条连续流程时，执行 `mvn '-Dtest=Phase1JourneyMySqlIntegrationTest#demoABCRunsPaidFreeAndGiftContinuouslyAgainstCommittedDatabaseState' test`。手工 API 步骤、预期数据库终态及实测证据见 [Phase 1 Demo](../../docs/demo-phase1.md)。
+
+## Day 26 固定版本验收夹具
+
+`day26/acceptance-matrix.json` 将 20 个 AT 映射到真实方法和数据形状，`day26/risk-matrix.json` 补充高风险范围。测试方法自己的 `@BeforeEach` 创建业务数据，避免长期保留的数据影响本轮结论。
+
+`Day26TestDatabase.java` 只允许在 MySQL 8.4.11 上创建或删除本轮 `day26_suite_<随机值>` 空夹具库。它使用 Flyway 执行业务迁移，排除仅含演示数据的 V2；应用部署库仍执行完整 V1～V18。不要把临时测试库名称改成开发数据库。
+
+`Day26EvidenceExtension` 仅在专用运行器开启环境开关和 JUnit 扩展发现时启用。它在 `@AfterEach` 清理前读取已提交记录，执行全部 SQL，不写业务数据；缺少快照或存在正常不变量差异会阻止 AT 汇总通过。p16 的预期异常和恢复后的零差异分别保留。
+
+运行与证据说明见 [Day 26 M5 报告](../../qa/reports/day26-m5-test-report.md)。授权前不执行构建、专项、全仓或跨实例测试；依赖未缓存时停止离线运行并确认下载范围。

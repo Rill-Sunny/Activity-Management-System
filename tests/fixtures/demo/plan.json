@@ -1,0 +1,1139 @@
+{
+  "version": 1,
+  "description": "All business transitions use HTTP. SQL entries only verify committed facts. Role bootstrap is separate.",
+  "steps": [
+    {
+      "name": "Authenticated buyer",
+      "method": "GET",
+      "path": "/users/me",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "check": {
+        "/role": "USER"
+      }
+    },
+    {
+      "name": "Unauthenticated access rejected",
+      "method": "GET",
+      "path": "/users/me",
+      "actor": "",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Buyer cannot publish",
+      "method": "POST",
+      "path": "/publisher/activities",
+      "actor": "buyerA",
+      "expectedStatus": 403,
+      "body": {}
+    },
+    {
+      "name": "Set short retention times",
+      "setTimes": {
+        "retentionClose": 75,
+        "retentionStart": 150,
+        "retentionEnd": 750
+      }
+    },
+    {
+      "name": "Create retentionActivity",
+      "method": "POST",
+      "path": "/publisher/activities",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "Demo retentionActivity",
+        "description": "Release HTTP demo",
+        "type": "PAID",
+        "openTime": "{{openTime}}",
+        "closeTime": "{{retentionClose}}"
+      },
+      "capture": {
+        "retentionActivity": "/activityId"
+      }
+    },
+    {
+      "name": "Create retentionSession",
+      "method": "POST",
+      "path": "/publisher/activities/{{retentionActivity}}/sessions",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "startTime": "{{startTime}}",
+        "endTime": "{{endTime}}",
+        "capacity": 2,
+        "maxTicketsPerUser": 2,
+        "seatMode": "AUTO_ASSIGN"
+      },
+      "capture": {
+        "retentionSession": "/activitySessionId"
+      }
+    },
+    {
+      "name": "Create retentionZone",
+      "method": "POST",
+      "path": "/publisher/sessions/{{retentionSession}}/zones",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "retentionZone",
+        "zoneType": "PAID",
+        "price": 100,
+        "totalAmount": 2
+      },
+      "capture": {
+        "retentionZone": "/zoneId"
+      }
+    },
+    {
+      "name": "Create seats retentionZone",
+      "method": "POST",
+      "path": "/publisher/zones/{{retentionZone}}/seats",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "seats": [
+          {
+            "rowNo": 1,
+            "seatNo": 1,
+            "allocationPriority": 1
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 2,
+            "allocationPriority": 2
+          }
+        ]
+      },
+      "capture": {
+        "retentionZoneSeat1": "/seatIds/0",
+        "retentionZoneSeat2": "/seatIds/1"
+      }
+    },
+    {
+      "name": "Publish retentionActivity",
+      "method": "POST",
+      "path": "/publisher/activities/{{retentionActivity}}/publish",
+      "actor": "publisherA",
+      "expectedStatus": 204
+    },
+    {
+      "name": "Create retentionOrder",
+      "method": "POST",
+      "path": "/ticket-orders",
+      "actor": "buyerC",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-retentionOrder",
+        "sessionId": "{{retentionSession}}",
+        "items": [
+          {
+            "zoneId": "{{retentionZone}}",
+            "allocationMode": "AUTO_ASSIGN",
+            "quantity": 1,
+            "acceptNonAdjacent": true
+          }
+        ]
+      },
+      "capture": {
+        "retentionOrder": "/orderId"
+      }
+    },
+    {
+      "name": "Pay retentionOrder",
+      "method": "POST",
+      "path": "/ticket-orders/{{retentionOrder}}/pay",
+      "actor": "buyerC",
+      "expectedStatus": 200,
+      "capture": {
+        "retentionOrderTicket1": "/tickets/0/ticketId"
+      },
+      "check": {
+        "/status": "PAID"
+      }
+    },
+    {
+      "name": "Short reschedule window",
+      "method": "POST",
+      "path": "/publisher/sessions/{{retentionSession}}/reschedules",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-retain",
+        "newStartTime": "{{retentionStartOffset}}",
+        "newEndTime": "{{retentionEndOffset}}",
+        "reason": "Real automatic-retention deadline"
+      },
+      "capture": {
+        "retentionEvent": "/eventId"
+      }
+    },
+    {
+      "name": "Create activityA",
+      "method": "POST",
+      "path": "/publisher/activities",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "Demo activityA",
+        "description": "Release HTTP demo",
+        "type": "PAID",
+        "openTime": "{{openTime}}",
+        "closeTime": "{{closeTime}}"
+      },
+      "capture": {
+        "activityA": "/activityId"
+      }
+    },
+    {
+      "name": "Create selectSession",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/sessions",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "startTime": "{{startTime}}",
+        "endTime": "{{endTime}}",
+        "capacity": 6,
+        "maxTicketsPerUser": 4,
+        "seatMode": "SELECT_SEAT"
+      },
+      "capture": {
+        "selectSession": "/activitySessionId"
+      }
+    },
+    {
+      "name": "Create paidZone",
+      "method": "POST",
+      "path": "/publisher/sessions/{{selectSession}}/zones",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "paidZone",
+        "zoneType": "PAID",
+        "price": 100,
+        "totalAmount": 4
+      },
+      "capture": {
+        "paidZone": "/zoneId"
+      }
+    },
+    {
+      "name": "Create seats paidZone",
+      "method": "POST",
+      "path": "/publisher/zones/{{paidZone}}/seats",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "seats": [
+          {
+            "rowNo": 1,
+            "seatNo": 1,
+            "allocationPriority": 1
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 2,
+            "allocationPriority": 2
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 3,
+            "allocationPriority": 3
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 4,
+            "allocationPriority": 4
+          }
+        ]
+      },
+      "capture": {
+        "paidZoneSeat1": "/seatIds/0",
+        "paidZoneSeat2": "/seatIds/1",
+        "paidZoneSeat3": "/seatIds/2",
+        "paidZoneSeat4": "/seatIds/3"
+      }
+    },
+    {
+      "name": "Create giftZone",
+      "method": "POST",
+      "path": "/publisher/sessions/{{selectSession}}/zones",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "giftZone",
+        "zoneType": "GIFT",
+        "price": 0,
+        "totalAmount": 2
+      },
+      "capture": {
+        "giftZone": "/zoneId"
+      }
+    },
+    {
+      "name": "Create seats giftZone",
+      "method": "POST",
+      "path": "/publisher/zones/{{giftZone}}/seats",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "seats": [
+          {
+            "rowNo": 1,
+            "seatNo": 1,
+            "allocationPriority": 1
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 2,
+            "allocationPriority": 2
+          }
+        ]
+      },
+      "capture": {
+        "giftZoneSeat1": "/seatIds/0",
+        "giftZoneSeat2": "/seatIds/1"
+      }
+    },
+    {
+      "name": "Create autoSession",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/sessions",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "startTime": "{{startTime}}",
+        "endTime": "{{endTime}}",
+        "capacity": 4,
+        "maxTicketsPerUser": 4,
+        "seatMode": "AUTO_ASSIGN"
+      },
+      "capture": {
+        "autoSession": "/activitySessionId"
+      }
+    },
+    {
+      "name": "Create autoZone",
+      "method": "POST",
+      "path": "/publisher/sessions/{{autoSession}}/zones",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "autoZone",
+        "zoneType": "PAID",
+        "price": 100,
+        "totalAmount": 4
+      },
+      "capture": {
+        "autoZone": "/zoneId"
+      }
+    },
+    {
+      "name": "Create seats autoZone",
+      "method": "POST",
+      "path": "/publisher/zones/{{autoZone}}/seats",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "seats": [
+          {
+            "rowNo": 1,
+            "seatNo": 1,
+            "allocationPriority": 1
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 2,
+            "allocationPriority": 2
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 3,
+            "allocationPriority": 3
+          },
+          {
+            "rowNo": 1,
+            "seatNo": 4,
+            "allocationPriority": 4
+          }
+        ]
+      },
+      "capture": {
+        "autoZoneSeat1": "/seatIds/0",
+        "autoZoneSeat2": "/seatIds/1",
+        "autoZoneSeat3": "/seatIds/2",
+        "autoZoneSeat4": "/seatIds/3"
+      }
+    },
+    {
+      "name": "Publish activityA",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/publish",
+      "actor": "publisherA",
+      "expectedStatus": 204
+    },
+    {
+      "name": "Other publisher denied",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/sessions",
+      "actor": "publisherB",
+      "expectedStatus": 403,
+      "body": {
+        "startTime": "{{startTime}}",
+        "endTime": "{{endTime}}",
+        "capacity": 1,
+        "maxTicketsPerUser": 1,
+        "seatMode": "AUTO_ASSIGN"
+      }
+    },
+    {
+      "name": "Enable activity whitelist",
+      "method": "PUT",
+      "path": "/publisher/activities/{{activityA}}/whitelist",
+      "actor": "publisherA",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Whitelist buyerA",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/whitelist/members",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "userId": "{{buyerA_id}}"
+      }
+    },
+    {
+      "name": "Whitelist buyerB",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/whitelist/members",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "userId": "{{buyerB_id}}"
+      }
+    },
+    {
+      "name": "Whitelist buyerC",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/whitelist/members",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "userId": "{{buyerC_id}}"
+      }
+    },
+    {
+      "name": "Allocate GIFT seats",
+      "method": "POST",
+      "path": "/publisher/gift-zones/{{giftZone}}/allocations",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-gift",
+        "quantity": 1
+      },
+      "capture": {
+        "giftOperation": "/operationId"
+      }
+    },
+    {
+      "name": "Repeat GIFT allocation",
+      "method": "POST",
+      "path": "/publisher/gift-zones/{{giftZone}}/allocations",
+      "actor": "publisherA",
+      "expectedStatus": 200,
+      "body": {
+        "requestId": "{{prefix}}-gift",
+        "quantity": 1
+      },
+      "capture": {
+        "giftReplay": "/operationId"
+      }
+    },
+    {
+      "name": "Create selectedOrder",
+      "method": "POST",
+      "path": "/ticket-orders",
+      "actor": "buyerA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-selectedOrder",
+        "sessionId": "{{selectSession}}",
+        "items": [
+          {
+            "zoneId": "{{paidZone}}",
+            "allocationMode": "SELECT_SEAT",
+            "requestedSeatId": "{{paidZoneSeat1}}",
+            "quantity": 1,
+            "acceptNonAdjacent": false
+          },
+          {
+            "zoneId": "{{paidZone}}",
+            "allocationMode": "SELECT_SEAT",
+            "requestedSeatId": "{{paidZoneSeat2}}",
+            "quantity": 1,
+            "acceptNonAdjacent": false
+          }
+        ]
+      },
+      "capture": {
+        "selectedOrder": "/orderId"
+      }
+    },
+    {
+      "name": "Pay selectedOrder",
+      "method": "POST",
+      "path": "/ticket-orders/{{selectedOrder}}/pay",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "capture": {
+        "selectedOrderTicket1": "/tickets/0/ticketId",
+        "selectedOrderTicket2": "/tickets/1/ticketId"
+      },
+      "check": {
+        "/status": "PAID"
+      }
+    },
+    {
+      "name": "Payment replay on second instance",
+      "method": "POST",
+      "path": "/ticket-orders/{{selectedOrder}}/pay",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "check": {
+        "/status": "PAID"
+      },
+      "instance": "B"
+    },
+    {
+      "name": "Create autoOrder",
+      "method": "POST",
+      "path": "/ticket-orders",
+      "actor": "buyerB",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-autoOrder",
+        "sessionId": "{{autoSession}}",
+        "items": [
+          {
+            "zoneId": "{{autoZone}}",
+            "allocationMode": "AUTO_ASSIGN",
+            "quantity": 2,
+            "acceptNonAdjacent": true
+          }
+        ]
+      },
+      "capture": {
+        "autoOrder": "/orderId"
+      }
+    },
+    {
+      "name": "Pay autoOrder",
+      "method": "POST",
+      "path": "/ticket-orders/{{autoOrder}}/pay",
+      "actor": "buyerB",
+      "expectedStatus": 200,
+      "capture": {
+        "autoOrderTicket1": "/tickets/0/ticketId",
+        "autoOrderTicket2": "/tickets/1/ticketId"
+      },
+      "check": {
+        "/status": "PAID"
+      }
+    },
+    {
+      "name": "Create pendingOrder",
+      "method": "POST",
+      "path": "/ticket-orders",
+      "actor": "buyerB",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-pendingOrder",
+        "sessionId": "{{selectSession}}",
+        "items": [
+          {
+            "zoneId": "{{paidZone}}",
+            "allocationMode": "SELECT_SEAT",
+            "requestedSeatId": "{{paidZoneSeat3}}",
+            "quantity": 1,
+            "acceptNonAdjacent": false
+          }
+        ]
+      },
+      "capture": {
+        "pendingOrder": "/orderId"
+      }
+    },
+    {
+      "name": "Create activityB",
+      "method": "POST",
+      "path": "/publisher/activities",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "Demo activityB",
+        "description": "Release HTTP demo",
+        "type": "FREE",
+        "openTime": "{{openTime}}",
+        "closeTime": "{{closeTime}}"
+      },
+      "capture": {
+        "activityB": "/activityId"
+      }
+    },
+    {
+      "name": "Create freeSession",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityB}}/sessions",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "startTime": "{{startTime}}",
+        "endTime": "{{endTime}}",
+        "capacity": 2
+      },
+      "capture": {
+        "freeSession": "/activitySessionId"
+      }
+    },
+    {
+      "name": "Publish activityB",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityB}}/publish",
+      "actor": "publisherA",
+      "expectedStatus": 204
+    },
+    {
+      "name": "FREE reservation",
+      "method": "POST",
+      "path": "/sessions/{{freeSession}}/reservations",
+      "actor": "buyerA",
+      "expectedStatus": 201,
+      "capture": {
+        "freeReservation": "/reservationId"
+      }
+    },
+    {
+      "name": "Cancel FREE reservation",
+      "method": "POST",
+      "path": "/reservations/{{freeReservation}}/cancel",
+      "actor": "buyerA",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Rebook FREE reservation",
+      "method": "POST",
+      "path": "/sessions/{{freeSession}}/reservations",
+      "actor": "buyerA",
+      "expectedStatus": 201,
+      "capture": {
+        "freeReservation": "/reservationId"
+      }
+    },
+    {
+      "name": "Create publicProduct",
+      "method": "POST",
+      "path": "/publisher/products",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "activityId": "{{activityA}}",
+        "name": "publicProduct",
+        "qualificationType": "PUBLIC",
+        "purchaseLimit": 2,
+        "refundPolicy": "STANDARD_7D"
+      },
+      "capture": {
+        "publicProduct": "/productId"
+      }
+    },
+    {
+      "name": "Create SKU publicProductBlackM",
+      "method": "POST",
+      "path": "/publisher/products/{{publicProduct}}/skus",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "BlackM",
+        "price": 39.9,
+        "stock": 3
+      },
+      "capture": {
+        "publicProductBlackM": "/skuId"
+      }
+    },
+    {
+      "name": "Create SKU publicProductWhiteL",
+      "method": "POST",
+      "path": "/publisher/products/{{publicProduct}}/skus",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "WhiteL",
+        "price": 39.9,
+        "stock": 3
+      },
+      "capture": {
+        "publicProductWhiteL": "/skuId"
+      }
+    },
+    {
+      "name": "Publish publicProduct",
+      "method": "POST",
+      "path": "/publisher/products/{{publicProduct}}/publish",
+      "actor": "publisherA",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Create limitedProduct",
+      "method": "POST",
+      "path": "/publisher/products",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "activityId": "{{activityA}}",
+        "name": "limitedProduct",
+        "qualificationType": "TICKET_REQUIRED",
+        "purchaseLimit": 2,
+        "refundPolicy": "SPECIAL_NO_REASON_RETURN",
+        "qualificationScope": "SESSION",
+        "qualificationSessionId": "{{selectSession}}"
+      },
+      "capture": {
+        "limitedProduct": "/productId"
+      }
+    },
+    {
+      "name": "Create SKU limitedProductBlackM",
+      "method": "POST",
+      "path": "/publisher/products/{{limitedProduct}}/skus",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "BlackM",
+        "price": 39.9,
+        "stock": 0
+      },
+      "capture": {
+        "limitedProductBlackM": "/skuId"
+      }
+    },
+    {
+      "name": "Create SKU limitedProductWhiteL",
+      "method": "POST",
+      "path": "/publisher/products/{{limitedProduct}}/skus",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "name": "WhiteL",
+        "price": 39.9,
+        "stock": 3
+      },
+      "capture": {
+        "limitedProductWhiteL": "/skuId"
+      }
+    },
+    {
+      "name": "Publish limitedProduct",
+      "method": "POST",
+      "path": "/publisher/products/{{limitedProduct}}/publish",
+      "actor": "publisherA",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Out-of-stock SKU stays selected",
+      "method": "POST",
+      "path": "/product-orders/preview",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "body": {
+        "items": [
+          {
+            "skuId": "{{limitedProductBlackM}}",
+            "quantity": 1
+          }
+        ]
+      },
+      "check": {
+        "/available": false
+      }
+    },
+    {
+      "name": "Explicit adjusted mixed order",
+      "method": "POST",
+      "path": "/product-orders/confirm",
+      "actor": "buyerA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-mixed",
+        "items": [
+          {
+            "skuId": "{{publicProductBlackM}}",
+            "quantity": 1
+          },
+          {
+            "skuId": "{{publicProductWhiteL}}",
+            "quantity": 1
+          },
+          {
+            "skuId": "{{limitedProductWhiteL}}",
+            "quantity": 1,
+            "acknowledgeSpecialPolicy": true
+          }
+        ]
+      },
+      "capture": {
+        "mixedOrder": "/orderId"
+      }
+    },
+    {
+      "name": "Atomic multi-SKU payment",
+      "method": "POST",
+      "path": "/product-orders/{{mixedOrder}}/pay",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "capture": {
+        "publicLineA": "/items/0/orderItemId",
+        "publicLineB": "/items/1/orderItemId",
+        "limitedLine": "/items/2/orderItemId"
+      },
+      "check": {
+        "/status": "PAID"
+      }
+    },
+    {
+      "name": "Shared Product limit reached",
+      "method": "POST",
+      "path": "/product-orders/confirm",
+      "actor": "buyerA",
+      "expectedStatus": 409,
+      "body": {
+        "requestId": "{{prefix}}-over-limit",
+        "items": [
+          {
+            "skuId": "{{publicProductWhiteL}}",
+            "quantity": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ship one line",
+      "method": "POST",
+      "path": "/publisher/product-orders/{{mixedOrder}}/ship",
+      "actor": "publisherA",
+      "expectedStatus": 200,
+      "body": {
+        "orderItemId": "{{publicLineA}}",
+        "quantity": 1
+      }
+    },
+    {
+      "name": "Receive shipped line",
+      "method": "POST",
+      "path": "/product-orders/{{mixedOrder}}/receive",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "body": {
+        "orderItemId": "{{publicLineA}}",
+        "quantity": 1
+      }
+    },
+    {
+      "name": "Partial refund without illegal restock",
+      "method": "POST",
+      "path": "/product-after-sales",
+      "actor": "buyerA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-partial",
+        "orderId": "{{mixedOrder}}",
+        "items": [
+          {
+            "orderItemId": "{{publicLineA}}",
+            "quantity": 1,
+            "reason": "QUALITY_PROBLEM",
+            "simulateInspectionPassed": true,
+            "simulateResalable": false
+          }
+        ]
+      },
+      "check": {
+        "/status": "SUCCEEDED",
+        "/items/0/resalable": false
+      }
+    },
+    {
+      "name": "Non-resalable SKU stays deducted",
+      "sqlCheck": "SELECT remains_stock FROM sku WHERE sku_id={{publicProductBlackM}};",
+      "expected": "2",
+      "waitSeconds": 60
+    },
+    {
+      "name": "Apply firstRefund",
+      "method": "POST",
+      "path": "/ticket-refunds",
+      "actor": "buyerA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-firstRefund",
+        "orderId": "{{selectedOrder}}",
+        "ticketIds": [
+          "{{selectedOrderTicket1}}"
+        ],
+        "reason": "Release per-ticket refund"
+      },
+      "capture": {
+        "firstRefund": "/refundId"
+      }
+    },
+    {
+      "name": "Process firstRefund",
+      "method": "POST",
+      "path": "/ticket-refunds/{{firstRefund}}/process",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "check": {
+        "/status": "SUCCEEDED"
+      }
+    },
+    {
+      "name": "First qualification event consumed",
+      "sqlCheck": "SELECT COUNT(*) FROM outbox_event e JOIN consumer_process p ON p.event_id=e.event_id WHERE e.event_type='TICKET_QUALIFICATION_CHANGED' AND e.aggregate_id={{firstRefund}};",
+      "expected": "1",
+      "waitSeconds": 60
+    },
+    {
+      "name": "Another valid ticket prevents linked after-sale",
+      "sqlCheck": "SELECT COUNT(*) FROM ticket_qualification_after_sale_task WHERE product_order_item_id={{limitedLine}};",
+      "expected": "0",
+      "waitSeconds": 60
+    },
+    {
+      "name": "Apply lastRefund",
+      "method": "POST",
+      "path": "/ticket-refunds",
+      "actor": "buyerA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-lastRefund",
+        "orderId": "{{selectedOrder}}",
+        "ticketIds": [
+          "{{selectedOrderTicket2}}"
+        ],
+        "reason": "Release per-ticket refund"
+      },
+      "capture": {
+        "lastRefund": "/refundId"
+      }
+    },
+    {
+      "name": "Process lastRefund",
+      "method": "POST",
+      "path": "/ticket-refunds/{{lastRefund}}/process",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "check": {
+        "/status": "SUCCEEDED"
+      }
+    },
+    {
+      "name": "Last ticket triggers actual linked refund",
+      "sqlCheck": "SELECT COUNT(*) FROM ticket_qualification_after_sale_task WHERE product_order_item_id={{limitedLine}} AND status='SUCCEEDED';",
+      "expected": "1",
+      "waitSeconds": 120
+    },
+    {
+      "name": "Public line remains isolated",
+      "sqlCheck": "SELECT refunded_quantity FROM product_order_item WHERE order_item_id={{publicLineB}};",
+      "expected": "0",
+      "waitSeconds": 60
+    },
+    {
+      "name": "Reschedule paid auto session",
+      "method": "POST",
+      "path": "/publisher/sessions/{{autoSession}}/reschedules",
+      "actor": "publisherA",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-reschedule",
+        "newStartTime": "{{newStartOffset}}",
+        "newEndTime": "{{newEndOffset}}",
+        "reason": "Release venue change"
+      },
+      "capture": {
+        "rescheduleEvent": "/eventId"
+      }
+    },
+    {
+      "name": "Keep one ticket",
+      "method": "POST",
+      "path": "/reschedules/{{rescheduleEvent}}/confirm",
+      "actor": "buyerB",
+      "expectedStatus": 200,
+      "body": {
+        "ticketIds": [
+          "{{autoOrderTicket2}}"
+        ]
+      }
+    },
+    {
+      "name": "Special zero-fee refund",
+      "method": "POST",
+      "path": "/reschedules/{{rescheduleEvent}}/special-refunds",
+      "actor": "buyerB",
+      "expectedStatus": 201,
+      "body": {
+        "requestId": "{{prefix}}-special",
+        "ticketIds": [
+          "{{autoOrderTicket1}}"
+        ]
+      },
+      "capture": {
+        "specialRefund": "/refunds/0/refundId"
+      }
+    },
+    {
+      "name": "Process special refund",
+      "method": "POST",
+      "path": "/ticket-refunds/{{specialRefund}}/process",
+      "actor": "buyerB",
+      "expectedStatus": 200,
+      "check": {
+        "/items/0/feeRate": 0
+      }
+    },
+    {
+      "name": "Cancel selected session",
+      "method": "POST",
+      "path": "/publisher/sessions/{{selectSession}}/cancel",
+      "actor": "publisherA",
+      "expectedStatus": 202,
+      "body": {
+        "requestId": "{{prefix}}-cancel-session",
+        "reason": "Release session cancellation"
+      },
+      "capture": {
+        "sessionCancellation": "/eventId"
+      }
+    },
+    {
+      "name": "Cancelled session rejects pending payment",
+      "method": "POST",
+      "path": "/ticket-orders/{{pendingOrder}}/pay",
+      "actor": "buyerB",
+      "expectedStatus": 409
+    },
+    {
+      "name": "Wait selected-session batch",
+      "method": "GET",
+      "path": "/publisher/cancellations/{{sessionCancellation}}",
+      "actor": "publisherA",
+      "expectedStatus": 200,
+      "check": {
+        "/batch/status": "COMPLETED"
+      },
+      "waitSeconds": 150
+    },
+    {
+      "name": "Independent session ticket remains valid",
+      "sqlCheck": "SELECT COUNT(*) FROM ticket WHERE ticket_id={{autoOrderTicket2}} AND status='VALID';",
+      "expected": "1",
+      "waitSeconds": 60
+    },
+    {
+      "name": "Cancel FREE activity",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityB}}/cancel",
+      "actor": "publisherA",
+      "expectedStatus": 202,
+      "body": {
+        "requestId": "{{prefix}}-cancel-free",
+        "reason": "Release activity cancellation"
+      },
+      "capture": {
+        "freeCancellation": "/eventId"
+      }
+    },
+    {
+      "name": "Wait FREE batch",
+      "method": "GET",
+      "path": "/publisher/cancellations/{{freeCancellation}}",
+      "actor": "publisherA",
+      "expectedStatus": 200,
+      "check": {
+        "/batch/status": "COMPLETED"
+      },
+      "waitSeconds": 150
+    },
+    {
+      "name": "Reservation no longer effective",
+      "method": "GET",
+      "path": "/reservations/{{freeReservation}}/participation",
+      "actor": "buyerA",
+      "expectedStatus": 200,
+      "check": {
+        "/effective": false
+      }
+    },
+    {
+      "name": "Cancel remaining paid activity",
+      "method": "POST",
+      "path": "/publisher/activities/{{activityA}}/cancel",
+      "actor": "publisherA",
+      "expectedStatus": 202,
+      "body": {
+        "requestId": "{{prefix}}-cancel-paid",
+        "reason": "Release final cancellation"
+      },
+      "capture": {
+        "paidCancellation": "/eventId"
+      }
+    },
+    {
+      "name": "Wait remaining paid batch",
+      "method": "GET",
+      "path": "/publisher/cancellations/{{paidCancellation}}",
+      "actor": "publisherA",
+      "expectedStatus": 200,
+      "check": {
+        "/batch/status": "COMPLETED"
+      },
+      "waitSeconds": 150
+    },
+    {
+      "name": "Automatic retention after actual deadline",
+      "method": "GET",
+      "path": "/reschedules/{{retentionEvent}}",
+      "actor": "buyerC",
+      "expectedStatus": 200,
+      "check": {
+        "/tickets/0/status": "AUTO_RETAINED"
+      },
+      "waitSeconds": 200
+    },
+    {
+      "name": "Read real notifications",
+      "method": "GET",
+      "path": "/notifications",
+      "actor": "buyerA",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Cache first read",
+      "method": "GET",
+      "path": "/activities/{{retentionActivity}}",
+      "actor": "",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Cache repeated read",
+      "method": "GET",
+      "path": "/activities/{{retentionActivity}}",
+      "actor": "",
+      "expectedStatus": 200
+    }
+  ]
+}

@@ -56,6 +56,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {JwtTestTokens.SECRET_PROPERTY, "spring.flyway.enabled=false"})
 @AutoConfigureMockMvc
 class PublisherActivitySessionCreationTest {
+    // Persistence is mocked in this controller test, including cache side effects.
+    @MockitoBean private com.limitactivitysystem.cache.CacheInvalidationRecorder cacheInvalidations;
+    @MockitoBean private com.limitactivitysystem.cache.CacheInvalidationDelivery cacheDelivery;
 
     private static final String ENDPOINT = "/publisher/activities/10/sessions";
 

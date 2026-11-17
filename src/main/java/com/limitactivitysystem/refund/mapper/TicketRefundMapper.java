@@ -12,8 +12,22 @@ import java.util.List;
 @Mapper
 public interface TicketRefundMapper {
     @Select("""
-            SELECT refund_id, buyer_id, order_id, request_id, reason, requested_at, status, created_at,
-                   policy_version, open_time_snapshot, start_time_snapshot, processed_at, result
+        SELECT COUNT(*) FROM cancellation_scope c JOIN ticket_order o ON o.session_id=c.session_id
+        JOIN activity_session s ON s.activity_session_id=c.session_id
+        WHERE c.event_id=#{eventId} AND o.order_id=#{orderId} AND s.status='CANCELLED'
+        """)
+    int cancellationScope(long eventId,long orderId);
+    @Insert("""
+        INSERT INTO ticket_refund_request(buyer_id,order_id,request_id,reason,requested_at,status,open_time_snapshot,start_time_snapshot,
+            policy_version,refund_policy,source_event_id,accepted_at)
+        VALUES(#{buyerId},#{orderId},#{requestId},#{reason},#{requestedAt},'PENDING',#{openTimeSnapshot},#{startTimeSnapshot},
+            'CANCELLATION_V1','CANCELLATION_REFUND',#{sourceEventId},#{requestedAt})
+        """)
+    @Options(useGeneratedKeys=true,keyProperty="refundId",keyColumn="refund_id")
+    @Transactional(propagation=Propagation.MANDATORY)
+    int insertCancellationRequest(TicketRefundRequest request);
+    @Select("""
+            SELECT *
             FROM ticket_refund_request WHERE buyer_id = #{buyerId} AND request_id = #{requestId}
             """)
     @Results(id = "refundRequest", value = {
@@ -26,7 +40,10 @@ public interface TicketRefundMapper {
             @Result(column = "policy_version", property = "policyVersion"),
             @Result(column = "open_time_snapshot", property = "openTimeSnapshot"),
             @Result(column = "start_time_snapshot", property = "startTimeSnapshot"),
-            @Result(column = "processed_at", property = "processedAt")
+            @Result(column = "processed_at", property = "processedAt"),
+            @Result(column = "refund_policy", property = "refundPolicy"),
+            @Result(column = "source_event_id", property = "sourceEventId"),
+            @Result(column = "accepted_at", property = "acceptedAt")
     })
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     TicketRefundRequest findByRequest(@Param("buyerId") Long buyerId, @Param("requestId") String requestId);
@@ -122,6 +139,17 @@ public interface TicketRefundMapper {
     @Options(useGeneratedKeys = true, keyProperty = "refundId", keyColumn = "refund_id")
     @Transactional(propagation = Propagation.MANDATORY)
     int insertRequest(TicketRefundRequest request);
+
+    @Insert("""
+            INSERT INTO ticket_refund_request
+                (buyer_id,order_id,request_id,reason,requested_at,status,open_time_snapshot,start_time_snapshot,
+                 policy_version,refund_policy,source_event_id,accepted_at)
+            VALUES (#{buyerId},#{orderId},#{requestId},#{reason},#{requestedAt},'PENDING',#{openTimeSnapshot},#{startTimeSnapshot},
+                 'SESSION_RESCHEDULE_V1','SESSION_RESCHEDULE_REFUND',#{sourceEventId},#{requestedAt})
+            """)
+    @Options(useGeneratedKeys=true,keyProperty="refundId",keyColumn="refund_id")
+    @Transactional(propagation=Propagation.MANDATORY)
+    int insertRescheduleRequest(TicketRefundRequest request);
 
     @Insert("""
             INSERT INTO ticket_refund_item (refund_id, ticket_id, original_price, fee_rate, refund_amount, status)

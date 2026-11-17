@@ -1,0 +1,959 @@
+{
+  "artifacts": [
+    {
+      "bytes": 2299,
+      "sha256": "a61c8f5a1fed08c7676bd093010d9715a6ea9f1b24588adf4e8c0c0272931d65",
+      "path": "docs/verification/day26/20261113-121241-922096cb/dual-instance/business-results.json"
+    },
+    {
+      "bytes": 843,
+      "sha256": "6d16058d215bb4424969fd21a0934c888095c81d0a446244afb3b64da484c305",
+      "path": "docs/verification/day26/20261113-121241-922096cb/dual-instance/rabbit-consumers.json"
+    },
+    {
+      "bytes": 37,
+      "sha256": "21b099d96c2be6cf716786994a8b1993de6e3d902096b71bf39a2c145386281b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/dual-instance/relay-instances.json"
+    },
+    {
+      "bytes": 242,
+      "sha256": "6aea09719a6b97c1d8bf82029f1beecfe294379a02ce0d63323fb8b8a52568dd",
+      "path": "docs/verification/day26/20261113-121241-922096cb/final-environment-check.json"
+    },
+    {
+      "bytes": 3553141,
+      "sha256": "4cac6172c1eb4039cb84b2fe19430484c83dbd5796d9f4d74dcb0169624dd374",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-122413/maven.log"
+    },
+    {
+      "bytes": 650,
+      "sha256": "044d43847e9becdbe8498f0bbc4ccd9423a87945666baaec647337f4655e07c5",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-122413/summary.json"
+    },
+    {
+      "bytes": 1684,
+      "sha256": "4c50cbc6ae79c0c81b77c6ec7aeab19794641848e347a31d4dead91d9213a613",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/acceptance-summary.json"
+    },
+    {
+      "bytes": 13080,
+      "sha256": "1b606e010c3eb0c27af389cc5c91652662912fd1536d630da4aef48161588c9d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-01ac5d5b925a5ca6.json"
+    },
+    {
+      "bytes": 13078,
+      "sha256": "a1f7256c10a5a61a64f8448c74bc73615063b24d10b7b2a0dc586bcc62823a8f",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-1193bd7044fcb7a3.json"
+    },
+    {
+      "bytes": 13084,
+      "sha256": "4411dd5a0ec264f0a6c1fff02cf6da4a23f3647d1e7b013c5d756a82b2c148b9",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-1ddf154e4e3b222b.json"
+    },
+    {
+      "bytes": 13085,
+      "sha256": "0e425c6da76ec3472e4778e2f6c9b968bcf469b8066a0df6a26dc5686e3a2882",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-2b0932949282e610.json"
+    },
+    {
+      "bytes": 13086,
+      "sha256": "bfdcff89590decc2b1e128826e9e62ece819fddbb14d22d5dc8c9eac27de8f19",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-37c8a2a63c9d5bde.json"
+    },
+    {
+      "bytes": 13090,
+      "sha256": "0ddfa6ec21e3f0f26cf15619853ed40fc092c9958ce3d1d7adb15267833a17a4",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-415d42d71ff399a2.json"
+    },
+    {
+      "bytes": 13094,
+      "sha256": "48c89950d686a0a5119f3f3e385974f820e9b565513fcf1753e974bba9f6cc3b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-417d98af8c51cf59.json"
+    },
+    {
+      "bytes": 13078,
+      "sha256": "3e767a7ca447aa463122144b9e6e06178f6af89a3236db3299fadd8be4ac7255",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-431e101c71f9720c.json"
+    },
+    {
+      "bytes": 13093,
+      "sha256": "08b0800454b5049cefbef541c3611ae812a192405f2bfe3ca2a88875a4848244",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-57c716522411c5e3.json"
+    },
+    {
+      "bytes": 13081,
+      "sha256": "83d2a4192c6a2e52ac4d333f255792f009f979d669507aeb4261d084b3fb761b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-626163de0e9e0f16.json"
+    },
+    {
+      "bytes": 13083,
+      "sha256": "04848d2e5b526b221a1e6b32f8528677d3afb48d5a8b67643c2dcf4ea0030ad2",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-6e96b8f146d615ef.json"
+    },
+    {
+      "bytes": 13080,
+      "sha256": "64ab5d1283ff491c7d778e1376eb51a4e61a01880156ae31935a170e373f0174",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-7b4cce21915f91a8.json"
+    },
+    {
+      "bytes": 13080,
+      "sha256": "bfca2b7f80b8a11f94ee0081e40ba6e8e4fcd676e0707274e8e74e9139fc55f8",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-81c6418662a2ae6f.json"
+    },
+    {
+      "bytes": 13078,
+      "sha256": "64eed912c3d398b81ad90599cd7d2601f684dcd87e8c9a411c20d814fd5e550c",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-8e9a941eaa675dea.json"
+    },
+    {
+      "bytes": 13087,
+      "sha256": "83cdc732515243b46c12db64e6d67522c5e7bff2d3bf685c830349fe635605ae",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-8ef67b6dc329639b.json"
+    },
+    {
+      "bytes": 13085,
+      "sha256": "1cb96b711b870a23b67763dfb7a57b0a1b74f6c303b798283fb774dc73539099",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-9c31a94e2e67299a.json"
+    },
+    {
+      "bytes": 13077,
+      "sha256": "c599a58526e8954100141c151fe09ad8b0af44931a60d67b2900def790f0eb3f",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-a5318c8f7bd2b61d.json"
+    },
+    {
+      "bytes": 13086,
+      "sha256": "e356245f1a52fb8dd7e5d996e1d72658e0abd6af2119f066f71fe0ac3eb04f5d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-a81ce98f5e0ca744.json"
+    },
+    {
+      "bytes": 13084,
+      "sha256": "03528f11d4a7add9e3e43df933d40327178a9d0d34e8f15bcac37d81d321dd43",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-ae8c65036885f8fc.json"
+    },
+    {
+      "bytes": 13087,
+      "sha256": "0e45373428e9a71ab6fc171c198455c9060b6b92c020637143eed0dbe34db7b5",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-b21225dca2f87289.json"
+    },
+    {
+      "bytes": 13085,
+      "sha256": "952198437c21a474689a27669b09a648cf4a62e0012cd0e28cff90ff98df4ba5",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-ba56e22d9f7a4739.json"
+    },
+    {
+      "bytes": 13079,
+      "sha256": "d125475225a4e67dd1b09c36d595e3ecd838645945298119ac8afb68b13d8b5d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-c377421c527e8b18.json"
+    },
+    {
+      "bytes": 13085,
+      "sha256": "2bc21a302709adfdc50589732477122e00ba63b482d64a159abbe605f27dc0b1",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-c4ed3b8e7b3643e1.json"
+    },
+    {
+      "bytes": 13092,
+      "sha256": "34e652371d6c839654a6eb0a41b78e2a9b1ff66fa2648861eba1618918e632a2",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-e0c073b53689e0ae.json"
+    },
+    {
+      "bytes": 13076,
+      "sha256": "4b8593e885580e68ae331f78c65756046e718658c8765b4928a8fa7d907631ed",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-e5e031a54d129ca1.json"
+    },
+    {
+      "bytes": 13086,
+      "sha256": "7567da6faf3100e5493e37754427091edd7fa0dd22d877b6280c95cff25054bf",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-f25dc6313c880d09.json"
+    },
+    {
+      "bytes": 13009,
+      "sha256": "08c578eb5772ce8675b76dbcae51cc61c39211fc896b979d7f231f0e997c342e",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ActivityPublishingMySqlIntegrationTest-publishedActivityRejectsAdditionalSeatsInTheDatabase-fcacf7dbeb6de2bb.json"
+    },
+    {
+      "bytes": 53759,
+      "sha256": "a9a2e0982e9f6503bf0fe408c7f31cadc01de70eebcfebef32938c940eb93dcd",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/CancellationMySqlIntegrationTest-at19SessionCancellationClosesOnlyItsOrdersAndRefundsOnlyValidTickets-2fa2a69c8f435873.json"
+    },
+    {
+      "bytes": 33530,
+      "sha256": "34a6cfb88f8f1dbe817c3f0ff3996fa79312d2bd9c61f5500fbea09bf474be5f",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/CancellationMySqlIntegrationTest-at20OneRefundRollsBackAndOthersCommitThenOnlyTheFailedItemRetries-490715f7793ae96b.json"
+    },
+    {
+      "bytes": 33574,
+      "sha256": "da9f48d551131cb2e98ff19d1961f6950bead751c56bf2179af8a2ccb5202683",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/CancellationMySqlIntegrationTest-finiteFailuresRequireExplicitRetryAndRemainQueryable-a5f53cde7f5ac0d3.json"
+    },
+    {
+      "bytes": 23780,
+      "sha256": "4ba7811033baf95242755206f0a20c074ec16e780f5bb62a877f582ed9e78aad",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/CancellationMySqlIntegrationTest-freeReservationLosesParticipationBeforeWorkerAndRestoresQuotaOnce-2a59abb4de400182.json"
+    },
+    {
+      "bytes": 33578,
+      "sha256": "9c0d38e9df88f97c881f7141f1ef433e49442f9bb5a3e2b02baa96fe52676e57",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/CancellationMySqlIntegrationTest-scannerRepairsSummaryAfterBusinessCommitWithoutAckOrWorkerContinuation-2324159fe843c0aa.json"
+    },
+    {
+      "bytes": 6451,
+      "sha256": "7787a9f0fb690cc39bbe1860d488010555356bef5d32b67812032f37eb259023",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/FreeReservationMySqlIntegrationTest-at01ThreeSessionsAllowTwoBookingsButRejectDuplicateActiveReservations-40193c611fd84329.json"
+    },
+    {
+      "bytes": 6451,
+      "sha256": "4917c338a01c6c0684fe0d90584dc88375dcefd66cf70205c71408f0868bcc14",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/FreeReservationMySqlIntegrationTest-at01ThreeSessionsAllowTwoBookingsButRejectDuplicateActiveReservations-f1ba3011e4efdc3d.json"
+    },
+    {
+      "bytes": 8838,
+      "sha256": "c2feecb1e18692d9d1163f14aae8e6469e3290eeadd3fb6b857c5ab0ed51f605",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/FreeReservationMySqlIntegrationTest-at02TwentyDifferentAccountsPostingForTheLastSlotHaveExactlyOneWinner-b0bee5ad0f48bc88.json"
+    },
+    {
+      "bytes": 6317,
+      "sha256": "36e396fa1114da3b91776ea50da4ce7d99d75f07866e349d6813c9c9b9e6f24f",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/FreeReservationMySqlIntegrationTest-at03CancellationAndRebookingKeepHistoryAndAnOldCancelCannotReleaseTheNewQuota-86acdcfaae31f4e2.json"
+    },
+    {
+      "bytes": 6251,
+      "sha256": "dfa1f9d59c2ad9cd0a0ec3eb665352100cc560899d2385242d62a62b13621c95",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/FreeReservationMySqlIntegrationTest-at03ReleasedSlotIsOpenToBothFormerOwnerAndOtherAccount-29a20c7eabedcc85.json"
+    },
+    {
+      "bytes": 6251,
+      "sha256": "931e5d83b820811d99415d341dbfc38479d7b219b57026c293f212d255ee0296",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/FreeReservationMySqlIntegrationTest-at03ReleasedSlotIsOpenToBothFormerOwnerAndOtherAccount-589b8991e9bc64a2.json"
+    },
+    {
+      "bytes": 15012,
+      "sha256": "4e63e6d12f2dd00d28bfabb53917b472b0c227276588d5b41552d7cf60b3f08d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/GiftAllocationMySqlIntegrationTest-allocateFiveRestoresNoPaidResourcesAndPersistsExactSeatHistory-176df3e4207204ad.json"
+    },
+    {
+      "bytes": 14351,
+      "sha256": "12955021d8a68a22483b6b13417715c957128289b5343427528ed6570e4023f1",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/GiftAllocationMySqlIntegrationTest-at06RecordsOnlyTheOperatorAndRealSeatsWithoutReceiverAccountsOrTickets-48e32388f7b36f97.json"
+    },
+    {
+      "bytes": 33723,
+      "sha256": "35b5820f7b376bbeeb6efc1322cb4a06b56d2c79d9593e41ffef1192b09b12db",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-activityScopeUsesOtherSessionTicketWhileSessionScopeDoesNot-8959b29f5c928e7a.json"
+    },
+    {
+      "bytes": 17933,
+      "sha256": "3fc7e9e6e2e8c57fbc961b4854045ff200a43cde2a977e7069308ddaeb0ab051",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-at12DelayedShortageClosureCannotOverwriteACommittedPayment-992bf842dfa8a3cb.json"
+    },
+    {
+      "bytes": 20770,
+      "sha256": "c3e96fb07cf99d3bb4d0bc90fd3b16f0ee8dc2c302e5f57a26f599686b7687c5",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-at12RealCompetingSaleRollsBackEarlierSkuWithoutCorruptingTheLedger-d6e24199d40ecd9c.json"
+    },
+    {
+      "bytes": 22499,
+      "sha256": "74cf4f75e9097d650b0dbe2209c14a2edb9215bef716ff021920621e8593c9f5",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-at13OneOfEachSkuExhaustsTheSharedProductLimit-85913fb2332f9335.json"
+    },
+    {
+      "bytes": 34912,
+      "sha256": "12522fc2173836d667c786b38c4398891b91dc58bfefe850cf9d148a625beacd",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-at15LastTicketRefundUsesRabbitOutboxAndOnlyRefundsQualifiedLineInMixedOrder-7fbc2d6df1e8377f.json"
+    },
+    {
+      "bytes": 26462,
+      "sha256": "0e5568def1a13d4a56feb8804bcfee39d289948c031b1c21cb30146f2c1ff046",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-consumerFailureLeavesTicketRefundCommittedAndTerminalTaskCanBeQueriedAndReplayed-6812240369ca28f7.json"
+    },
+    {
+      "bytes": 27812,
+      "sha256": "6b2a2380d612c5761c9df5b12fa6d89700dc2f162812500d902bf7c6cccdc29f",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-delayedRefundEventRechecksEligibilityAfterAnotherTicketIsPurchased-4fc39e9ce8e2616d.json"
+    },
+    {
+      "bytes": 18094,
+      "sha256": "59756406f9cc6a2654d4d42642c79208e102236e49d8e8dba0f83c7a3f7b20ee",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-p04_previewReportsExactOutOfStockSkuAndDoesNotWriteResources-bd06c33b43deaed7.json"
+    },
+    {
+      "bytes": 19244,
+      "sha256": "878c2876ab4522ca5cc6adfe38a97eab3dc9a45c9b0aad4406eaded2f4492b0c",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-p16_outOfStockAfterAnEarlierSkuUpdateRollsBackQuotaAndStockThenClosesTheWholeOrder-7964bede2c4f0c88.json"
+    },
+    {
+      "bytes": 19694,
+      "sha256": "a2466f30120fd7ef4cf591958d2b2aef443af201f760e0d58a5f49ca37ad3273",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-p17_productQuotaIsSharedAcrossSkusUnderConcurrentPayment-459b8cea29c2a12f.json"
+    },
+    {
+      "bytes": 25597,
+      "sha256": "0d524862a1a9a787f03fba20a01bfc238d0adb839ef14677b4ad1a436e55a199",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-partialRefundWithAnotherValidTicketDoesNotStartQualificationAfterSale-912fbd59a01f1792.json"
+    },
+    {
+      "bytes": 16712,
+      "sha256": "efd9c041af392a19188f544aec5eb9e90e77602c2fc19da305d74be27cb34c5d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-publishAndReadBlackMZeroStockWithoutSubstitutingWhiteL-7ebef394de11db6d.json"
+    },
+    {
+      "bytes": 26265,
+      "sha256": "66a85494960869d4289d3a5bed5d3a1830d3ec9f4d4dd31ee74ffb436b3af234",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-shippedQualifiedItemWaitsForReturnReceiptBeforeRefundAndRestock-057f52f3434bfe6a.json"
+    },
+    {
+      "bytes": 20637,
+      "sha256": "4230834668a8fba2581e2a5645547e1853682464bc01632c1c47c33209608247",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/ProductCatalogMySqlIntegrationTest-specialTemplateBlocksOnlyNoReasonAndNonresalableReturnedGoodsDoNotRestoreStock-7e993fc9cbc27b28.json"
+    },
+    {
+      "bytes": 5742,
+      "sha256": "870a29f9f84b836730983a63bd9ea8056f9a0c6ddfdd71b0c30d6560f3bdca06",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-1623d9c167d700bd.json"
+    },
+    {
+      "bytes": 5579,
+      "sha256": "595a399a75597abb8f420b23477495178daeeeefae80200c83753f6a23a85fe3",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-48247fd4b0f11837.json"
+    },
+    {
+      "bytes": 5730,
+      "sha256": "d8d2495466a814fcc9eeccd1fc3a96ee658d7f15ae58d467a8e9a002e917fd89",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-4e15934a1598002d.json"
+    },
+    {
+      "bytes": 5360,
+      "sha256": "b45d6b562bda5cfc2937109413d52331a5b4b4578985849a1be436b5400cb27b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-55c1a6b0c12f4ea8.json"
+    },
+    {
+      "bytes": 5735,
+      "sha256": "3e6fc466c5c56432330f0f63ff12497e7b8194eebe845192ef284f4f69e2590f",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-58ef4541de1f758b.json"
+    },
+    {
+      "bytes": 4977,
+      "sha256": "19e9ef37328a4682074512cfe99f05ab87021cd00dc9482c01df86a98526cde8",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-6ac20827381f1b90.json"
+    },
+    {
+      "bytes": 5370,
+      "sha256": "dbae8fb8f4b726ad73411449c4a68e58be6a76a247c2b2c5877014110b44ab9d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-70411eae1e30d108.json"
+    },
+    {
+      "bytes": 5357,
+      "sha256": "0ad98b604aadbdd077cbef56dd09c33c7103dc4f5b8f15acf0b631566766e4bd",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-7a86ef557a5a2a2c.json"
+    },
+    {
+      "bytes": 5000,
+      "sha256": "7f2e3c321b3b8923d678b5ebabb714fc53f0b15c095bc9470545642a388d7feb",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-7f2bba5b60f7fc83.json"
+    },
+    {
+      "bytes": 5732,
+      "sha256": "fc0c9327c174cd1069b85a63b4f76745dfdab19ac08578f6555c0bff8b78b1f8",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-bebd80618dc16ab4.json"
+    },
+    {
+      "bytes": 5586,
+      "sha256": "8e647994741e45a4a2005ff06097bea7a13458ff8b99452f1b3296e3eadf3335",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-dbd0fc19ffd32571.json"
+    },
+    {
+      "bytes": 5373,
+      "sha256": "be44c2ddf7710135bb5adf1009d7e457e4581b51bf70d1f11656065475afd65c",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-e9cafdb8f098fe3f.json"
+    },
+    {
+      "bytes": 5170,
+      "sha256": "95d30eeb589b981c6a2ebf7ea36150dda0780fd12adbb44e91da17b9f892e5c8",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-emptySessionListRejectsAllConsumerRolesAndRemovingItRestoresInheritance-0dc63cab212da522.json"
+    },
+    {
+      "bytes": 5164,
+      "sha256": "0a7fbc9db3db6000a4299a47678bf4123837d66a50328b80f572a75eb01b3b0e",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/QualificationEntryPointMySqlIntegrationTest-emptySessionListRejectsAllConsumerRolesAndRemovingItRestoresInheritance-39eef9e68db30675.json"
+    },
+    {
+      "bytes": 19977,
+      "sha256": "d4abf94f0608a874dc26dd0fef2fccd91a127bc1566d7d6dd424385ca0451528",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-at16DedicatedApiPreservesTicketsSeatsAndFrozenConfiguration-eb1eee0127595f06.json"
+    },
+    {
+      "bytes": 20008,
+      "sha256": "67e692e74ca70751fdaf46a21599df2479c6243ba70003cd26df3b95434348a2",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-at17DatabaseAnnouncementUsesTheEarlierDeadline-3fa4df870735fdb5.json"
+    },
+    {
+      "bytes": 20009,
+      "sha256": "cad41d061a9954026b64ab135c87062e83b8d9eb2edbb3cf6e5206c131ed29d4",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-at17DatabaseAnnouncementUsesTheEarlierDeadline-d8ab3efd5da7f9ab.json"
+    },
+    {
+      "bytes": 23771,
+      "sha256": "56ec5f5dda8a236a665942ad82b7ae936e376f0f58a4f662846bb9f18f0536cc",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-at18T11AutoRetentionIsDistinctAndNeverReactivatesRefundedTickets-d9dd91d9931953d4.json"
+    },
+    {
+      "bytes": 21402,
+      "sha256": "e1892b64a13c0991dd0711a1b6c59218ba6dc6a43c0bfb5cc539988a7b91cbc7",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-realRabbitWindowMessageRetainsOnlyOnce-e6e679cf70800dd9.json"
+    },
+    {
+      "bytes": 19961,
+      "sha256": "91d9f69a534b86523b533712f2bde55820cf960f2c008dc93fd6bc3bb95189bd",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-t05T06ExclusiveDeadlineAcceptance-84b0dc97258eafe4.json"
+    },
+    {
+      "bytes": 19951,
+      "sha256": "1c68898d3326ff7ee44e23a5bec3268c98913b6cb196932fa7aa8eec94e0af43",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-t05T06ExclusiveDeadlineAcceptance-993ae9e943859b65.json"
+    },
+    {
+      "bytes": 21518,
+      "sha256": "0fbe3e0ce77e193f366e10443cba92d5d346a4714b47223231082356eba13c17",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-t05T06ExclusiveDeadlineAcceptance-a813b2a62b1d2c4c.json"
+    },
+    {
+      "bytes": 23995,
+      "sha256": "2ecf25657c2420b08fa1c48c6c60702be64f3c6c367b5716151d9846c8080ad5",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/SessionRescheduleMySqlIntegrationTest-t07T08ConfirmedTicketCanRefundAndAcceptedPolicySurvivesDelayedExecution-94d3de9d93a35aa2.json"
+    },
+    {
+      "bytes": 10507,
+      "sha256": "96fddfd6c348773ba2426db6d1e0f9b31e87e723b801f11e295e7ddee29b0304",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketPaymentMySqlIntegrationTest-aValidOrderCreatedBeforeCloseCanReachResourceAllocationAfterTicketSalesClose-a0a4e2699beff9b5.json"
+    },
+    {
+      "bytes": 12163,
+      "sha256": "4c6c5fb95522f7559fc4712310c17b25fa9c72837e5c528a2256e693fd215d68",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-470e9dde7dd5f952.json"
+    },
+    {
+      "bytes": 15075,
+      "sha256": "d860540743ec5227352cb5e6f843e070a3524ba3493745e50b458c611d7a8b1a",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-6f2a0d4588dcb8d3.json"
+    },
+    {
+      "bytes": 11629,
+      "sha256": "af9b0641298ed15b53c353d72bca6bd1c58353d8f19c7195315f4c150cd0b098",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-c02b5c6b6021b6ee.json"
+    },
+    {
+      "bytes": 10062,
+      "sha256": "cb2a37c74cf6ad953aedd48e830b287752a7c974543399f2d7bd3a42a98ec4e4",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-fbedb891e1f2ae8c.json"
+    },
+    {
+      "bytes": 9690,
+      "sha256": "71ab8fe8273c306d5b201ef0f66ead46891058df1451e051178ee2c1bea8cb1c",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketPaymentMySqlIntegrationTest-secondZoneStockFailureRollsBackTheFirstZoneAndQuotaBeforeAnIndependentClose-d8eab48711229b2b.json"
+    },
+    {
+      "bytes": 22097,
+      "sha256": "2a77f812629e91bd7518fa4396f17b914649f1c8fec600b53d7a19623111e90b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at09RefundOnlyBAndDAtTheirFourActualPaidPrices-f438cecf0efa0274.json"
+    },
+    {
+      "bytes": 14874,
+      "sha256": "e5a2646dbfd1602a6b6119ed1309f3d135880c770052a3bf91e5b57cb19e5934",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce-00b852fa44133672.json"
+    },
+    {
+      "bytes": 14866,
+      "sha256": "c29934f3b68b8c592852ef0570a7b512f7c36c6a99b48942c96dd95a6c87fa85",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce-b1be5b9c1b12c24d.json"
+    },
+    {
+      "bytes": 15904,
+      "sha256": "3f78a35a6b51e259a2ddc7999a8cfff4d8c7755864477d1247e99693d8dae810",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at10FailedRequestAndANewRequestForTheSameTicketCannotBothSucceed-7cc45c0864cd60ee.json"
+    },
+    {
+      "bytes": 47916,
+      "sha256": "2f83d89f088cce723e20887640552db86c88efaf2ade6b37c707cfaa52a78798",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/at-matrix-results.json"
+    },
+    {
+      "bytes": 3138503,
+      "sha256": "79dfbb9eca25baa1013788d9b7366f00db9f9b8d0ca0da4fef4e0539ade6020b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/maven.log"
+    },
+    {
+      "bytes": 17763,
+      "sha256": "74b4875d582e5fe6120b442c7a6e93033167b6d8192a4b78683cf0c0f43d68c2",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/risk-matrix-results.json"
+    },
+    {
+      "bytes": 89098,
+      "sha256": "bb7a303fb1ebd2f86b331d873fb614f61a72aba14658105c4db56ad770c71e99",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/source-after.json"
+    },
+    {
+      "bytes": 89098,
+      "sha256": "bb7a303fb1ebd2f86b331d873fb614f61a72aba14658105c4db56ad770c71e99",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/source-before.json"
+    },
+    {
+      "bytes": 649,
+      "sha256": "dc0295ef937d74b97d0977ade89d58556e0c74a2b3e2f1cce31f7add71933245",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/summary.json"
+    },
+    {
+      "bytes": 50037,
+      "sha256": "3b6ad23c6f9d6094a2754199dc5e28aa09b5caca6b97fc2a62d651fb65ae639b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.controller.ActivityQueryMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 54398,
+      "sha256": "fc7ee5bf8fc0394270c8b68fc18de57619558f1cfd9ab58ed39ad97f726ac4eb",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.controller.ActivityQueryTest.xml"
+    },
+    {
+      "bytes": 57017,
+      "sha256": "2e73691c978a4bec06691aa583aa8e1f4b683f6169080918510558dba5a64bb3",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.controller.PublisherActivityCreationTest.xml"
+    },
+    {
+      "bytes": 88590,
+      "sha256": "cca57d00384717645861acdd3a682beda46453ad13aafeac2a9896065f650f2d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.controller.PublisherActivityPublishTest.xml"
+    },
+    {
+      "bytes": 69898,
+      "sha256": "21372f217b949606baea6889afabe5505adf84a8dd32d88eb8c346eba5a24d30",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.controller.PublisherActivitySessionCreationTest.xml"
+    },
+    {
+      "bytes": 68626,
+      "sha256": "0c9052ad221f4675469082f5c6b3a3775604c69d9831c463f8d9724b8d863c6e",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.controller.PublisherSessionZoneCreationTest.xml"
+    },
+    {
+      "bytes": 73256,
+      "sha256": "f25ae0dc61f83edd75c4dc2d661ae6d0c5bd5c8e9ee9a7e0873250d9f13d6136",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.controller.PublisherZoneSeatCreationTest.xml"
+    },
+    {
+      "bytes": 48233,
+      "sha256": "1ae30607e62bb359c013eb8a6d88c43468888707e0717c990aec843f3ec0c8ed",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.ActivityOwnershipMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 46793,
+      "sha256": "6b0e4e363f9e9bba64b2139a34969708ae65b81537af630eda69f38b099b47bb",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.ActivityPublicationConcurrencyMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 85172,
+      "sha256": "431bac078328f81574a0deb9f2a700339350f52a57ed6fbd17835cea6f05d02a",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 80408,
+      "sha256": "a05620a198477819940705d1a0b8aa701a6a0de93e14f656ab0f856e19a899d3",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.ActivityResourceReferenceMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 360505,
+      "sha256": "f5fc5da130840c8ed3b43fdabdcdf87a420c9b00e95fc1dbe2b42a63c3b49727",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 100446,
+      "sha256": "a944890837748cdd570145c16280b25cc10d8daec6f2edc12a00cce1343d70bf",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 65008,
+      "sha256": "3995cdf3342b664cdf8f09627ab58f3c256f78b01516e2e6d313d399b7f653c0",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.FreeReservationSchemaMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 191414,
+      "sha256": "4a7d23c7644787647d637bf317373f5e90dffe8425755c57bba888fd52b8aafc",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 82155,
+      "sha256": "b4f17670bc68599f67c3f64d7af644c408076c9736b71138d5a351517a63e350",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.GiftInventorySchemaMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 51661,
+      "sha256": "5f8301813ff238d23601c7000805a9cf33412645eccdb643e85141c95cd40017",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.PaymentRetryMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 307923,
+      "sha256": "80ecd28a779d19f647652e40c5f42e43d8e3123a44d41be0a439c9f6dcb45c43",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.Phase1JourneyMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 583351,
+      "sha256": "05110570e3f47391f626bc3d5791825f29354f9ded8e010e942f363451922387",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 75170,
+      "sha256": "cd0e2a62f0554c1379aa8b32535505894c9080651e27f45331b44a329821ba70",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 49382,
+      "sha256": "80b8bc7890a300d77eaf670bffe314c9dfd210b0fb5f83fd865be5bbe25f53d5",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 192412,
+      "sha256": "e0730f8fde260b02149e90d5f8aafd00203068ef6360e55dad1a141729633393",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 80264,
+      "sha256": "f050c827d2b90708fa8266f27a956bc2d551df4930353da0909cd1b6e4ce7375",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketOrderClosingMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 155120,
+      "sha256": "a72bdb6e98c107c75094f6a57d1abf14673d8a2c3631f222d24b5e326ccfb8d9",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketOrderCreationMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 56048,
+      "sha256": "df0b868be571ea125f4013f9a56ffbf914907041d28fdf6eea13053c7c24b5de",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketOrderIdempotencyConcurrencyMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 49558,
+      "sha256": "0fb4390c278085c813789e5b51f9e2c03d68b026c529283b1d3144b8454b3425",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketOrderMapperMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 192059,
+      "sha256": "0cdf99431c36e10c6259b2ed52ec34eeb814a712751c912a2cdca13b55ad77d3",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketOrderSmallConcurrencyMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 214206,
+      "sha256": "5abe83ba9aac912af56abca3296994e1b472db54e9401fb6a4fcae07c204df14",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 50865,
+      "sha256": "74cab5ae43ab74ef375ce544e0964cce10a740075dae4a588006264c59b6f103",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentResourceMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 236625,
+      "sha256": "fd786aa1f9a9a617d290648b8bbdbe3eb8bb4194a535babeba73fa2655ccdcb1",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketRefundApplicationMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 391666,
+      "sha256": "c9fa4ce5e40c721821b01edcfc02e5489fa99470dda6ac7cc94493bf13b5d694",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 114705,
+      "sha256": "b9b48ff71c1ece0a42c7dadfffbba7658c6405b0d0eb46086bebce8c558fcb10",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.WhitelistChangeMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 48658,
+      "sha256": "5960875c3853571be59df7d2d7cab42ac5abde2228c9a52120698515958859b0",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.WhitelistQualificationConcurrencyMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 42531,
+      "sha256": "80f53f4ceebee440ef4691b76f061da3068dc21b2f21e661b0e9e2fc0309dc30",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.cache.CacheMetricsTest.xml"
+    },
+    {
+      "bytes": 42208,
+      "sha256": "114da4b2958de7ba68f0173be59ff77cb87bcf61de01e2f3ba9c12e327b8f88b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.cache.RedisFailureFallbackTest.xml"
+    },
+    {
+      "bytes": 42055,
+      "sha256": "79935a99097b169e9019f800c38ac14f98f0ef744209bdcc1451b35f067f5e88",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.deployment.ContainerEntrypointTest.xml"
+    },
+    {
+      "bytes": 49301,
+      "sha256": "b01f7a51ec457e1e58db5c0276535a08c26f1b1efa8c2261e1af1bc5cfed40df",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.identity.controller.AuthLoginTest.xml"
+    },
+    {
+      "bytes": 62701,
+      "sha256": "8b73022e874e69e6d9cfe804744fb78af685a0fc7e500a83c59d0adca0aabad3",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.identity.controller.AuthRegistrationTest.xml"
+    },
+    {
+      "bytes": 45608,
+      "sha256": "adef5c3a769fa1de137ed0b459558bfbed68bbb9269a6e77b3a6139eed3940cb",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.identity.controller.UsersMeMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 42137,
+      "sha256": "a5e5798b7b396ff8fc482c9c7a01d4d6d727c015519381e6f7df9331ff2aa4ff",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.messaging.integration.Day21ReconciliationMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 82359,
+      "sha256": "1537ede939be78ad27f89414fd489002ac40c078791c0fcd5efea4507d48c7e6",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 41936,
+      "sha256": "5f52ba5d399d58beb6e3875841653db8f951dc9c9f0a3c95b66eb3baa388378e",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.messaging.RabbitMqTopologyTest.xml"
+    },
+    {
+      "bytes": 44910,
+      "sha256": "1017babc1c99547a95388e7730eff38fa041e51cb6308b871886bc13df819dc1",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.observability.BusinessTelemetryTest.xml"
+    },
+    {
+      "bytes": 92063,
+      "sha256": "e4206cf6889791d82be8f9cbb3fe7bf2eb712529c4cc0c3b31e49f0429e32003",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.observability.ObservabilityTest.xml"
+    },
+    {
+      "bytes": 52795,
+      "sha256": "eb32d723b0e7329c2a88be4b3e0a69e8690cd57604619983307ae5f9e39006c2",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.observability.PaymentTelemetryTest.xml"
+    },
+    {
+      "bytes": 55103,
+      "sha256": "bdb7336ce42c76df54d57fc845c46f7bcc0e6fcd78b8f2b1daf889d4df8a1890",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.observability.RefundTelemetryTest.xml"
+    },
+    {
+      "bytes": 41811,
+      "sha256": "cb822192845111dfc6f858b860353d671e56dbaebe8a4f923dadf79616540efe",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.product.service.ProductAfterSalePolicyTest.xml"
+    },
+    {
+      "bytes": 42149,
+      "sha256": "27101ad7c687f30c15d7c476ae41e190c07adfe0f61ec1d79e83228321cd31d9",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.refund.config.TicketRefundTimeConfigurationTest.xml"
+    },
+    {
+      "bytes": 46837,
+      "sha256": "53326e87528f93136e93f5160889e68079d6dcfa2f5e4143542e5dd8f79b1ec7",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest.xml"
+    },
+    {
+      "bytes": 42701,
+      "sha256": "9459f557dc72b9eaeb606d712600601ad95031a7641595705567a3a6c84fdceb",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.reschedule.ReschedulePolicyTest.xml"
+    },
+    {
+      "bytes": 80852,
+      "sha256": "ab74b8ef28c40bbb43aec63d4eaaa06e60f0fdef51fcc2d623b6d7a5b8bc6563",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.reservation.controller.ReservationRequestContractTest.xml"
+    },
+    {
+      "bytes": 44122,
+      "sha256": "26184616603af9b3a8f4b33b68514976adde6ee190a4fd06db1c060430b12ade",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.security.CurrentUserProviderTest.xml"
+    },
+    {
+      "bytes": 44960,
+      "sha256": "39f44dbee9ce9dffcafc87e7dd2e7110e8674ebbd1981290cf27b540acb8d7a6",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.security.JwtConfigTest.xml"
+    },
+    {
+      "bytes": 68867,
+      "sha256": "1076967e08fd67e77b2b521919178a606dd1ce69a8cbf37848d0a0036c767ef4",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.security.SecurityAccessTest.xml"
+    },
+    {
+      "bytes": 42091,
+      "sha256": "f2acb0edc9c67c40a7b19d4efb483d4d49bdc5545abff52aae1df6c761a35311",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.support.RabbitMqTestPrerequisitesTest.xml"
+    },
+    {
+      "bytes": 41927,
+      "sha256": "bd4dcf8c125172d9032f9d90f15d6996cb5bba4d52c8b28771dad0b433365313",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.support.RabbitTestMessagesTest.xml"
+    },
+    {
+      "bytes": 43212,
+      "sha256": "2af20f473d1ff5159c37a6a517662cef907e7cdf5225fbe6e192da6cefe0f20c",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.support.RequiresEnvironmentVariableConditionTest.xml"
+    },
+    {
+      "bytes": 59869,
+      "sha256": "ccde462aa12cb3034dd88a0e9f24549963f2930a6feda917f566c03eb7fd485a",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.controller.TicketOrderCancellationRequestContractTest.xml"
+    },
+    {
+      "bytes": 104307,
+      "sha256": "d6814155b9ecd9ea61a030b9e74ee15230420f5b23c772d51b0fe0dd70c4c536",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.controller.TicketOrderRequestContractTest.xml"
+    },
+    {
+      "bytes": 74341,
+      "sha256": "1e76dfcfd4d728d2a87b300395310db9c85bd70c0c5f76220ba5d8bf64018ccb",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.controller.TicketPaymentRequestContractTest.xml"
+    },
+    {
+      "bytes": 42354,
+      "sha256": "7d866a4d0d3f85cff59144764dc8783eab30193d8123c1c1cceefdc99d7aefe3",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.schedule.TicketOrderExpirationConfigurationTest.xml"
+    },
+    {
+      "bytes": 54147,
+      "sha256": "b786a739601645337a14416eae6f21d40a119e9e610d99f52967ebcb2baf7723",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.schedule.TicketOrderExpirationJobTest.xml"
+    },
+    {
+      "bytes": 43786,
+      "sha256": "a7930cf6b7f8e784472cb05731ac93fd1265a1971430a430e6a5b0764bdaf1f8",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.service.AutoSeatAllocatorTest.xml"
+    },
+    {
+      "bytes": 48949,
+      "sha256": "fc80616696a465d545748c91d54461281dc036305e3a1b6052d0a35090c6d47d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.service.PaymentRetryExecutorTest.xml"
+    },
+    {
+      "bytes": 47591,
+      "sha256": "43a4277541d0f018b783699f4cf7ccce8994bfe15d65257a8570e4c48f9ead9f",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.service.TicketOrderCreationTimeTest.xml"
+    },
+    {
+      "bytes": 43661,
+      "sha256": "d25127f78f4f7137f7ec588051b629a9b79a2f500d428f9be40b5c244fd45b67",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.ticketorder.service.TicketPaymentTimeValidationTest.xml"
+    },
+    {
+      "bytes": 157915,
+      "sha256": "befbe3fe7ae37e618d6cec418e0f5e6166b8c38dcbdfc4bf2cb63f0d5870fea8",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.whitelist.integration.WhitelistManagementMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 55099,
+      "sha256": "4765fe9b6966df649f559a4cb3dc8ba7424aad99b27c119eba9f47ebb5ffa94c",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.whitelist.integration.WhitelistSchemaMySqlIntegrationTest.xml"
+    },
+    {
+      "bytes": 46114,
+      "sha256": "2ec78666c92ca85812b630c712fabfb0bcbfd200b02a2a83ccbabd05358b228a",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.whitelist.service.QualificationServiceTest.xml"
+    },
+    {
+      "bytes": 413,
+      "sha256": "48b0b891268d7dcb79bfe3e981d16f190e30eb144c0cde2e28ef1c11fe2303ce",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/verification/day16-product-out-of-stock-rollback.json"
+    },
+    {
+      "bytes": 495,
+      "sha256": "386f64fd75c553ddac6af7a8e06876883004e81bde72f8cc8e4f282e505b44ed",
+      "path": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/verification/payment-stock-failure-independent-close.json"
+    },
+    {
+      "bytes": 1426,
+      "sha256": "a31e709e97f548d1d48954cda6272be34ba8fb4178ca9b8045eea880be33c7f7",
+      "path": "docs/verification/day26/20261113-121241-922096cb/reconciliation.json"
+    },
+    {
+      "bytes": 7001,
+      "sha256": "dd80fdf88311edf6e28812cdf5a68ff7d46c64650f38c48770f61e3d926d8c18",
+      "path": "docs/verification/day26/20261113-121241-922096cb/reconciliation.txt"
+    },
+    {
+      "bytes": 817888,
+      "sha256": "3b21d36ecebc96ee474bc26b59bd3aecc02026eded524ef6bca7f66c681eb46d",
+      "path": "docs/verification/day26/20261113-121241-922096cb/specialist-121418/maven.log"
+    },
+    {
+      "bytes": 4004,
+      "sha256": "472815e9377484563e9c67aeccf07cfe7b7a84907720ecffaa6978a21c6bc084",
+      "path": "docs/verification/day26/20261113-121241-922096cb/specialist-121418/summary.json"
+    },
+    {
+      "bytes": 384754,
+      "sha256": "e9236e92e310b807885ac4e2dc2b7bd0c29728fd5e9cc15f93efc103fc2997c0",
+      "path": "docs/verification/day26/20261113-121241-922096cb/specialist-122106/maven.log"
+    },
+    {
+      "bytes": 4003,
+      "sha256": "dfe768ffb377dcb9c017e64958660a3f2c540c6f6e9b2c85b64f753fd4d53e0a",
+      "path": "docs/verification/day26/20261113-121241-922096cb/specialist-122106/summary.json"
+    },
+    {
+      "bytes": 433874,
+      "sha256": "d47bc23a9195ef6e716d550394ebaa1035654ce08693b9594549a454315199d9",
+      "path": "docs/verification/day26/20261113-121241-922096cb/specialist-123634/maven.log"
+    },
+    {
+      "bytes": 4257,
+      "sha256": "473695ae532c26cf6147e1e98720cf447beb2d5350fbd81971073fd14ec7225b",
+      "path": "docs/verification/day26/20261113-121241-922096cb/specialist-123634/summary.json"
+    },
+    {
+      "bytes": 1278,
+      "sha256": "c60ddcd51770df52a29911191d7d5ed274bb4d885cdff4591228eab64bcc7425",
+      "path": "docs/verification/day26/20261113-121241-922096cb/versions.json"
+    },
+    {
+      "bytes": 57025,
+      "sha256": "872e9b6b8c23178334ca04d2f5cd9a94df38aab1c6d57f40327e45a200eacf5a",
+      "path": "docs/verification/day26/freeze-manifest.json"
+    },
+    {
+      "bytes": 219,
+      "sha256": "d98af60eafeb04a31964477fdf902c31ab1338e028c52c8780f2b30fe12f13c8",
+      "path": "docs/verification/day26/source-content-verification.json"
+    },
+    {
+      "bytes": 274,
+      "sha256": "1685853af1b9538be5bbe93d6ccc4d35e593a9e4da9d1648aedca0960cad3abd",
+      "path": "docs/verification/day26/source-snapshot-final.json"
+    }
+  ],
+  "note": "原始日志与数据库快照保存在本地 docs/verification/day26，未提交私密环境文件；此索引用 SHA-256 固定本轮证据。",
+  "sourceCommit": "96c4216dfd0cd22f9b03921aa3a85d40a2e08081",
+  "acceptance": {
+    "counts": {
+      "errors": 0,
+      "skipped": 3,
+      "tests": 1780,
+      "failures": 0
+    },
+    "sourceCommit": "96c4216dfd0cd22f9b03921aa3a85d40a2e08081",
+    "atPassed": 20,
+    "sourceUnchanged": true,
+    "atTotal": 20,
+    "dualInstancePassed": 8,
+    "exitCode": 0,
+    "riskPassed": 8,
+    "dualInstanceScenarios": 8,
+    "skipped": [
+      {
+        "xml": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml",
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "result": "SKIPPED",
+        "name": "realRedisStopPreservesTradesAndRecoveryDrainsDurableInvalidation"
+      },
+      {
+        "xml": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.messaging.integration.Day21ReconciliationMySqlIntegrationTest.xml",
+        "class": "com.limitactivitysystem.messaging.integration.Day21ReconciliationMySqlIntegrationTest",
+        "result": "SKIPPED",
+        "name": "allSqlScriptsUseOneReadOnlySnapshotAndSaveEveryResultSet"
+      },
+      {
+        "xml": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958/surefire/TEST-com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest.xml",
+        "class": "com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest",
+        "result": "SKIPPED",
+        "name": "realBrokerStopRetainsCommittedOutboxAndRecoveryDeliversIt"
+      }
+    ],
+    "riskTotal": 8,
+    "phase": "docs/verification/day26/20261113-121241-922096cb/fullsuite-123958"
+  }
+}

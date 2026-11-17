@@ -50,6 +50,14 @@ abstract class PaymentResourceTestSupport extends ActivityMySqlTestSupport {
         gates.forEach(CountDownLatch::countDown);
         workers.shutdownNow();
         assertThat(workers.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT DATABASE()", String.class)).matches("qual_it_[a-f0-9]{32}");
+        // These committed derivatives must leave with their source fixtures, before the next invocation.
+        // Historical V4/V7 schema tests intentionally predate messaging; do not change their migration targets.
+        var tables = jdbc.queryForList("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()", String.class);
+        for (String table : List.of("ticket_qualification_after_sale_task", "notification", "consumer_failure",
+                "consumer_process", "outbox_event")) {
+            if (tables.contains(table)) { jdbc.update("DELETE FROM " + table); }
+        }
         jdbc.update("DELETE FROM ticket");
         jdbc.update("DELETE FROM ticket_order_item");
         jdbc.update("DELETE FROM ticket_order");

@@ -54,7 +54,7 @@
 
 名单管理不会修改已有 Ticket、预约或订单。完整支付和免费预约创建已在各自事务中接入当前资格检查；取消免费预约不要求重新通过白名单。
 
-[名单管理测试](../src/test/java/com/limitactivitysystem/whitelist/integration/WhitelistManagementMySqlIntegrationTest.java)覆盖两级白名单在 `DRAFT`、`PUBLISHED` 下的完整维护，以及 `CANCELLED`、`FINISHED` 下四种操作被拒绝且数据不变。[名单并发测试](../src/test/java/com/limitactivitysystem/activity/integration/WhitelistQualificationConcurrencyMySqlIntegrationTest.java)使用独立连接，验证取消先提交时名单操作拒绝新状态，以及名单修改先持锁时取消等待外层事务结束。取消状态变更由测试事务模拟，尚未提供取消业务接口。
+[名单管理测试](../src/test/java/com/limitactivitysystem/whitelist/integration/WhitelistManagementMySqlIntegrationTest.java)覆盖两级白名单在 `DRAFT`、`PUBLISHED` 下的完整维护，以及 `CANCELLED`、`FINISHED` 下四种操作被拒绝且数据不变。[名单并发测试](../src/test/java/com/limitactivitysystem/activity/integration/WhitelistQualificationConcurrencyMySqlIntegrationTest.java)使用独立连接，验证取消先提交时名单操作拒绝新状态，以及名单修改先持锁时取消等待外层事务结束。该历史切片以测试事务模拟取消；Day 23 已提供取消业务接口及真实竞争验收，见 F12。
 
 ## Qualification reads
 
@@ -276,7 +276,7 @@ Zone 先全部锁定、Seat 再全单升序，避免输入为相反区域顺序�
 
 测试在限购初始化、额度增加、库存扣减、占座、Ticket 插入与 PAID 更新前后注入故障，确认主订单和全部资源无局部提交。最终条件更新前或之后跨过订单期限、场次开始边界，也回滚全部写入。
 
-七个指定故障点还逐一记录事务内已发生的计数、库存、座位、Ticket 和订单状态，证明异常发生在真实写入之后。回滚后执行 [payment_invariants.sql](../tests/sql/payment_invariants.sql)，要求没有任何违规行。四组核心并发、缺货关闭竞争和锁等待跨期实验都在工作线程事务结束后自动执行这份 SQL。矩阵、指标及验证范围见[支付对账与可观测性](payment-verification.md)。
+七个指定故障点还逐一记录事务内已发生的计数、库存、座位、Ticket 和订单状态，证明异常发生在真实写入之后。回滚后执行 [payment_invariants.sql](../tests/sql/payment_invariants.sql)，要求没有任何违规行。四组核心并发、缺货关闭竞争和锁等待跨期实验都在工作线程事务结束后自动执行这份 SQL。矩阵、指标及验证范围见[支付对账与可观测性](../qa/reports/payment-verification.md)。
 
 ### Database time and failure closure
 
@@ -298,7 +298,7 @@ quota 使用独立行，避免资格已持 Session 共享锁后再更新 Session
 
 支付的死锁与锁等待超时由 `PaymentRetryExecutor` 在事务外协调。`TicketPaymentService.pay` 和重试入口均使用 `NOT_SUPPORTED`，每次调用 `TicketPaymentTransactionService.pay` 的 `REQUIRES_NEW` 代理。失败必须先退出代理并完成整笔回滚，再执行短退避；最多三次总尝试。缺货关闭仍在重试入口外处理，不能把业务缺货转换为技术重试。
 
-同层主键升序是所有路径需要共同遵守的协议，不能据此假定系统不会再发生死锁。新增写入口、其他表或索引锁、外部事务仍可能引入等待环。MySQL 建议保持统一访问顺序，同时准备在死锁后重新执行事务；参见 [InnoDB 死锁处理](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks-handling.html)。本项目的实际双订单死锁、升序对照和支付重试记录见[支付重试验证](payment-retry-verification.md)。
+同层主键升序是所有路径需要共同遵守的协议，不能据此假定系统不会再发生死锁。新增写入口、其他表或索引锁、外部事务仍可能引入等待环。MySQL 建议保持统一访问顺序，同时准备在死锁后重新执行事务；参见 [InnoDB 死锁处理](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks-handling.html)。本项目的实际双订单死锁、升序对照和支付重试记录见[支付重试验证](../qa/reports/payment-retry-verification.md)。
 
 ## Ticket order idempotency
 
@@ -367,7 +367,7 @@ Ticket、OrderItem、Order 的普通关联查询仅用于发现要锁定的 Zone
 
 原事务回滚后、失败记录前的间隙允许另一个处理成功，这正是重新读取状态的原因。失败记录自身出错也完整回滚，原始技术异常继续抛出，记录异常作为 suppressed exception 保留。技术失败可使用原 `refundId` 重试并重新竞争同票唯一键。已受理申请的时间和金额始终不重新计算。
 
-真实并发实验在支付先持锁、退款先持锁两种情况下观察 `user_session_purchase.PRIMARY` 等待，解除持有者后双方成功。SQL 追踪核对双方均先 Quota、再全部 Zone、再 Seat，同层按 ID 升序。AT-09、AT-10 与故障矩阵见 [退款验收](day11-refund-verification.md)。
+真实并发实验在支付先持锁、退款先持锁两种情况下观察 `user_session_purchase.PRIMARY` 等待，解除持有者后双方成功。SQL 追踪核对双方均先 Quota、再全部 Zone、再 Seat，同层按 ID 升序。AT-09、AT-10 与故障矩阵见 [退款验收](../qa/reports/day11-refund-verification.md)。
 
 InnoDB 锁保持到事务提交或回滚；统一顺序降低死锁概率，无法排除其他路径和索引锁引起的死锁。依据：[MySQL 死锁处理](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks-handling.html)。运行时异常触发 Spring 默认整笔回滚，依据：[Spring 声明式事务回滚](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/rolling-back.html)。
 
@@ -400,17 +400,17 @@ InnoDB 锁保持到事务提交或回滚；统一顺序降低死锁概率，无�
 
 分配在修改资源及写历史前必须取得同一 Zone 排他锁，查询在结束前持有 Zone 共享锁，因此同次查询不会读到应用分配事务尚未提交的半组操作或明细。账号与父资源共享锁同时协调当前权限变更。历史读取不检查新分配的时间窗口或生命周期。
 
-真实 MySQL 实验在历史查询持有 Zone 共享锁时启动分配，观察 `session_zone` 的锁等待；查询完成释放后分配成功，前后操作历史与容量对账一致。证据见 [Day 12 完成验收](day12-completion.md)。固定顺序降低死锁风险，支付已有的整事务重试继续保留；GIFT 技术失败后使用原 requestId 重试完整事务。
+真实 MySQL 实验在历史查询持有 Zone 共享锁时启动分配，观察 `session_zone` 的锁等待；查询完成释放后分配成功，前后操作历史与容量对账一致。证据见 [Day 12 完成验收](../qa/reports/day12-completion.md)。固定顺序降低死锁风险，支付已有的整事务重试继续保留；GIFT 技术失败后使用原 requestId 重试完整事务。
 
 ## Day 13 code and SQL audit
 
 [Phase1JourneyMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/Phase1JourneyMySqlIntegrationTest.java) 记录实际 Mapper ID、SQL 及 Zone/Seat ID。主链断言 Payment 和 Refund 的 Order、Quota、Zone、Seat、Ticket 顺序，GIFT 的 Zone、Seat、Operation 顺序，以及 Reservation 的 Quota、Reservation 顺序。多个 Zone 必须全部先于首个 Seat，同层实际 ID 必须升序。
 
-数据库追踪与上述文档一致，未发现先持 Seat 再获取新 Zone 的业务路径。共同资源等待与整笔回滚同时由支付/退款、预约和 GIFT 原有真实并发测试复核。退款新增数据库时间查询发生在业务锁之前，只取一次时间，不改变行锁顺序。实际 SQL 证据与源码对照见 [Phase 1 锁审计](reports/test-report.md#lock-order-audit)。
+数据库追踪与上述文档一致，未发现先持 Seat 再获取新 Zone 的业务路径。共同资源等待与整笔回滚同时由支付/退款、预约和 GIFT 原有真实并发测试复核。退款新增数据库时间查询发生在业务锁之前，只取一次时间，不改变行锁顺序。实际 SQL 证据与源码对照见 [Phase 1 锁审计](../qa/reports/test-report.md#lock-order-audit)。
 
 ## Product qualification and payment design
 
-V10、商品支付、票务支付和票务退款现已共同使用账号 × 活动资格 Guard。Guard 只负责把有效 Ticket 的读取与写入串行化；它不缓存资格真值，也不替代商品支付中的当前 Ticket 查询。退款后自动处理限定商品售后仍属于 Day 20，不在本次范围内。详见 [ADR-011/012](decisions.md#adr-011商品域资格限购与订单边界)。
+V10、商品支付、票务支付和票务退款共同使用账号 × 活动资格 Guard。Guard 只负责把有效 Ticket 的读取与写入串行化；它不缓存资格真值，也不替代商品支付中的当前 Ticket 查询。Day 20 的联动售后通过 Outbox 和独立消费者处理，具体锁顺序见下文。详见 [ADR-011/012](decisions.md#adr-011商品域资格限购与订单边界)。
 
 ### 共同锁层级
 
@@ -477,9 +477,21 @@ V10 的 Guard 迁移与以上出票、退款、商品支付路径同步接入。
 
 ### 最后有效票的可靠交接
 
-退款先取得 Guard，再更新 Ticket 和版本。商品先提交时，退款随后提交仍保留商品订单、明细和 Guard 版本快照，便于 Day 20 售后消费者识别；本轮不生成售后事件，也不自动关闭或退款商品订单。未来资格变化 Outbox 必须与 Ticket/Guard 同事务保存。不得在门票退款事务中反向锁 `product_order`；消费者应在独立事务中重查资格并锁商品订单。
+商品支付、票务退款和联动售后三条路径通过同一 `(buyer_id, activity_id)` Guard 排他行协调。Guard 在读取有效 Ticket 前取得；SESSION 商品在该 Guard 下按指定场次检查，ACTIVITY 商品检查该活动下所有场次。
 
-商品支付与退款先后次序的真实 MySQL 并发用例位于 [ProductCatalogMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/ProductCatalogMySqlIntegrationTest.java)。固定锁顺序可降低死锁概率，但不能消除死锁；商品支付在事务完全回滚后，对明确的 InnoDB 死锁/锁等待超时最多重试三次。MySQL 8.4 指引：[减少与处理死锁](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks.html)、[InnoDB 错误处理](https://dev.mysql.com/doc/refman/8.4/en/innodb-error-handling.html)。Spring 默认代理模式下自调用不会触发事务代理，因此每次尝试由独立 `ProductPaymentTransactionService` Bean 执行：[Spring 声明式事务代理模式](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)。
+| 事务 | 锁顺序摘要 | Guard 后的资格与写入 |
+|---|---|---|
+| 商品支付 | `ProductOrder X → buyer Account S → Activity/Session/Product S → Guard X (activityId ASC)` | 读取当前有效 Ticket；之后 `user_product_purchase (productId ASC) → SKU (skuId ASC) → PAID` |
+| Ticket 退款 | `TicketOrder X → Refund/RefundItem → buyer Account S → Activity/Session S → Guard X → Quota/Zone/Seat/Ticket` | 退票、资源返还、Guard version 和 `TICKET_QUALIFICATION_CHANGED` Outbox 同事务提交 |
+| 消费者登记任务 | `ProductOrder X (orderId ASC) → 全部 OrderItem X (orderItemId ASC) → Product S → Guard X` | 从 Ticket / TicketOrderItem / TicketOrder / Session 关系按 ACTIVITY 或 SESSION 范围重查当前有效票，再写唯一 OrderItem 任务 |
+| 联动售后处理 | `ProductOrder X → task X → 全部 OrderItem X (orderItemId ASC) → Product S → Guard X` | 再查当前有效票；仍有资格则跳过，否则复用 Day 17 的明细售后、Product quota 和 SKU 路径 |
+| 发货/收货 | `ProductOrder X → 操作者 Account S → 全部 OrderItem X (orderItemId ASC)` | 与消费及售后竞争同一个订单根锁和明细锁；发货先完成时售后任务等待退回，售后预留先完成时发货条件更新被拒 |
+
+商品支付先提交时，持票退款随后取得 Guard 并提交；已成交的订单及明细保留，事务内写资格变化事件。退票先提交时，商品支付随后取得同一 Guard 并用当前 Ticket 状态拒绝资格已失效的支付。不存在“读取旧资格后无协调扣 SKU”的窗口。
+
+Ticket 退款不取得 `product_order` 锁。它只提交本业务域的 Ticket、资源、Guard version、退款结果和 Outbox；消费者收到事件后在独立事务中锁商品订单并重查资格。这样避免票务事务跨域持有商品订单锁，也避免商品支付已持有商品订单后等待 Guard、而退款反向等待该订单形成循环。售后失败仅更新联动任务的失败与重试状态，不能回滚已提交的 Ticket 退款。
+
+商品支付与票务退款的两个 Guard 竞争先后用例位于 [ProductCatalogMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/ProductCatalogMySqlIntegrationTest.java)。Day 20 消费及发货竞态在同一测试类中使用真实 MySQL 事务和 RabbitMQ 队列验证。固定锁顺序可降低死锁概率，但不能消除死锁；商品支付在事务完全回滚后，对明确的 InnoDB 死锁/锁等待超时最多重试三次。MySQL 8.4 指引：[减少与处理死锁](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks.html)、[InnoDB 错误处理](https://dev.mysql.com/doc/refman/8.4/en/innodb-error-handling.html)。
 
 ## Product catalog implementation (V8)
 
@@ -493,10 +505,36 @@ V10 的 Guard 迁移与以上出票、退款、商品支付路径同步接入。
 | 公开展示 | 普通发现关系 → Activity/Session S → Product S → SKU 普通查询；只返回可见商品和 ACTIVE SKU。 |
 | 当前资格 | 当前目标账号 S → Activity/Session S → Product S → 独立成员查询或真实 Ticket COUNT。 |
 
-名单查询在 Product S 持有期间读取，因此 Product X 同时协调存在成员和空成员两种情况。真实实验暂停资格读者、启动成员删除，performance_schema 观察到 product.PRIMARY 的 X 锁等待；读者结束后删除完成，再次查询资格拒绝，见 [Day 14 验证](day14-products.md)。
+名单查询在 Product S 持有期间读取，因此 Product X 同时协调存在成员和空成员两种情况。真实实验暂停资格读者、启动成员删除，performance_schema 观察到 product.PRIMARY 的 X 锁等待；读者结束后删除完成，再次查询资格拒绝，见 [Day 14 验证](../qa/reports/day14-products.md)。
 
 只读资格 preview 中的 Ticket COUNT 是 READ_COMMITTED 的一次读取；preview 不锁票单或 Guard，也不保证返回后资格不变。内部 check 可独立建立事务或加入已有 RC 事务，明确拒绝加入 RR；商品支付在独立付款事务中取得 Guard 后重新查询。目录查询、订单创建或资格预览都不能直接作为支付授权。
 
 SKU 配置写入只匹配从未上架的 DRAFT，Product X 与查询 Product S 协调，条件 SQL 再次校验状态。任何写入失败整笔回滚，没有资格计数、SKU 支付扣减或商品订单副作用。
 
-Day 14 第 19～24 项只补目录验收与决策，没有提前激活 guard、Product quota 或 SKU 交易写锁。跨发布者的拒绝在任何 SKU 写入前完成，并验证拒绝前后资源快照不变；同一 Publisher 的 Product 路径也不能用于修改其他 Product 或其他发布者的 SKU。上节 Order → guard → Product quota ASC → Product ASC → SKU ASC 仍是 Day 16 的真实事务验收门槛，当前不能计为已执行链路。
+目录拒绝发生在 SKU 写入前，同一 Publisher 的 Product 路径也不能修改其他 Product 的 SKU。商品支付已执行 Order → Guard → Product quota ASC → Product ASC → SKU ASC，整单回滚及跨域资格竞争由商品集成测试验证，见 Day 26/28 报告。
+
+## F11 改期与票务生命周期
+
+公告使用 REQUIRES_NEW / READ_COMMITTED，取锁为 Publisher Account S → Activity S → Session X。同一事务保存事件、已支付有效票快照、PENDING 响应、场次新时间、缓存失效任务及 Outbox。快照读取不逐单加 Order 锁。
+
+支付和退款执行已有 Session S：先取得共享锁并完成的交易在公告取得 X 后可见；等待公告释放 X 的支付属于公告后的新购票。退款先提交时，已退票不进入快照；公告先提交时，快照保留当时有效票事实，之后的退款不删除历史。真实等待证据按 waitingConnectionId、blockingConnectionId、表及锁模式保存。
+
+特殊退款受理先按 ID 升序锁齐所选订单，再按 Account S → Activity S → Session S → Ticket ID ASC X 取锁。全部票的归属、快照、状态和已有退款占用检查通过后，读取数据库 Clock 决定本次受理。批次、逐订单申请、逐票报价一次提交；任何票冲突整批回滚。执行仍沿用原 Order → Refund → Account → Activity/Session → Guard → 限购 → Zone → Seat → Ticket 协议。
+
+确认和自动保留不修改订单、库存或座位。先取得 Activity S、Session S 和全部所选 Ticket S，再对 Response 条件更新；MQ 的最多 100 张票也先锁齐 Ticket，避免持有前一 Response 时再等待后一 Ticket。退款占用在 Ticket 锁保护下重新检查，已退款或已受理退款的票不能被自动保留。截止后已受理申请的执行不依赖本次窗口。
+
+取消入口应先更新生命周期门禁，提交后再处理订单批次，不能持 Activity/Session X 逐单取得 Order X。Day 22 测试用受控取消门禁事务验证改期等待与拒绝，没有提前实现 Day 23 取消批次。
+
+## F12 取消入口与分项退款
+
+取消入口：Publisher Account S → Activity X → Session X（整体取消为范围内 Session 更新）。单场次取消也取 Activity X，以协调只持 Activity S 的活动范围持票商品支付。短事务内写事件、Session 范围、CANCELLED、空批次、Outbox 和缓存失效任务；不获取 Order、Ticket、Zone 或 Seat 写锁。
+
+任务认领：Item X / SKIP LOCKED → 保存新令牌、30 秒租约并提交。执行在新事务中锁 Item X 并校验令牌及租约，再按业务锁序处理。票务为 Order X → Buyer Account S → Activity S → Session S → 退款申请/明细 → Qualification Guard → 场次限购 → Zone ASC → Seat ASC → Ticket ASC。内部退款执行加入当前任务事务，退款效果与 Item SUCCEEDED 一次提交。普通退款和取消退款共享 Order 锁及唯一 Ticket claim。
+
+免费预约为 Account S → Activity S → Session S → Quota X → Reservation X；赠票为 Activity S → Session S → Zone X → Seat X → 分配明细更新。业务事务仅在自有 Item 锁后执行这些序列，其他业务不反向获取该 Item。
+
+分页生成只锁 Batch，不锁业务 Order；处理事务不更新 Batch。汇总在处理事务返回后另开事务，避免 Batch → Item 与 Item → Batch 环路。扫描器同时修复最后一项提交后、汇总前的崩溃。租约仅用于恢复，实际并发互斥由行锁与令牌共同保证。
+
+Day 23 的并发验收实际读取 performance_schema.data_lock_waits，保存等待与持有连接、主键和 S/X 模式；不通过增加 innodb_lock_wait_timeout 掩盖阻塞。
+
+场次名单维护在 Activity X 后重新读取 Session S，要求 SCHEDULED；不能复用获取 Activity 根锁前发现的场次状态。Day 23 覆盖名单编辑等待取消根锁后被拒绝，且对启用、添加、移除、禁用四种操作保持同一规则。

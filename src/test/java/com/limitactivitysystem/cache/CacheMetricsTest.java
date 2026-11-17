@@ -45,7 +45,7 @@ class CacheMetricsTest {
         assertThat(registry.get("cache.miss").tag("cache", "activity").counter().count()).isEqualTo(1);
         assertThat(registry.get("cache.db_fallback").tag("cache", "activity").counter().count()).isEqualTo(1);
         assertThat(registry.get("cache.hit").tag("cache", "activity").counter().count()).isEqualTo(1);
-        assertThat(registry.get("cache.hit").counter().getId().getTags())
+        assertThat(registry.get("cache.hit").tag("cache", "activity").counter().getId().getTags())
                 .containsExactly(Tag.of("cache", "activity"));
     }
 
@@ -63,8 +63,18 @@ class CacheMetricsTest {
 
         assertThat(registry.get("cache.miss").tag("cache", "product").counter().count()).isEqualTo(1);
         assertThat(registry.get("cache.db_fallback").tag("cache", "product").counter().count()).isEqualTo(1);
-        assertThat(registry.get("cache.db_fallback").counter().getId().getTags())
+        assertThat(registry.get("cache.db_fallback").tag("cache", "product").counter().getId().getTags())
                 .containsExactly(Tag.of("cache", "product"));
+        assertThat(registry.get("cache.redis_error").tags("operation","READ","reason","CONNECTION").counter().count()).isEqualTo(1);
+    }
+
+    @Test void commandTimeoutHasABoundedReasonAndDoesNotCountAsConnectionFailure() {
+        var registry=new SimpleMeterRegistry();var metrics=new CacheMetrics(registry);
+        metrics.redisFailure(CacheMetrics.RedisOperation.READ,new org.springframework.dao.QueryTimeoutException("key/user must not become labels"));
+        assertThat(registry.get("cache.redis_error").tags("operation","READ","reason","TIMEOUT").counter().count()).isEqualTo(1);
+        assertThat(registry.get("cache.redis_error").tags("operation","READ","reason","CONNECTION").counter().count()).isZero();
+        assertThat(registry.get("cache.redis_error").tags("operation","READ","reason","TIMEOUT").counter().getId().getTags())
+                .containsExactly(Tag.of("operation","READ"),Tag.of("reason","TIMEOUT"));
     }
 
     @Test
@@ -107,7 +117,7 @@ class CacheMetricsTest {
         delivery.retryPending();
 
         assertThat(registry.get("cache.invalidation_failure").tag("cache", "product").counter().count()).isEqualTo(1);
-        assertThat(registry.get("cache.invalidation_failure").counter().getId().getTags())
+        assertThat(registry.get("cache.invalidation_failure").tag("cache", "product").counter().getId().getTags())
                 .containsExactly(Tag.of("cache", "product"));
         verify(redis).invalidate("las:product:8321", 9L);
     }

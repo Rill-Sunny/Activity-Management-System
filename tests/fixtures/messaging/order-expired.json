@@ -1,0 +1,10 @@
+{
+  "eventId": "44444444-4444-4444-8444-444444444444",
+  "eventType": "ORDER_EXPIRED",
+  "aggregateId": 84002,
+  "payload": {
+    "eventId": "44444444-4444-4444-8444-444444444444",
+    "orderId": 84002,
+    "expiresAt": "2026-11-07T12:00:00"
+  }
+}

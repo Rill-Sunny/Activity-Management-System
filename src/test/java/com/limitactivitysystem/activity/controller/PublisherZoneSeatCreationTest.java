@@ -61,6 +61,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {JwtTestTokens.SECRET_PROPERTY, "spring.flyway.enabled=false"})
 @AutoConfigureMockMvc
 class PublisherZoneSeatCreationTest {
+    @MockitoBean private com.limitactivitysystem.cache.CacheInvalidationRecorder cacheInvalidations;
+    @MockitoBean private com.limitactivitysystem.cache.CacheInvalidationDelivery cacheDelivery;
 
     private static final String ENDPOINT = "/publisher/zones/200/seats";
 

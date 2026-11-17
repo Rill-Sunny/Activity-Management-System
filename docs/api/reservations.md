@@ -61,4 +61,4 @@ A 取消并提交后，名额回到公共池。A 与 B 都需重新通过当前�
 
 真实 MySQL 测试分别让 A 与 B 先取得名额，确认两种结果都合法：旧预约保持 CANCELLED，新预约为另一个 ID，失败方不产生记录或额外扣减。实现与证据见[免费预约事务验证](../free-reservations.md#api-与事务验证)。
 
-AT-01～AT-03、完整必测矩阵、对账 SQL 和交付清单见 [Day 9 免费预约验收](../day9-concurrency.md)。状态仅为 [ACTIVE → CANCELLED](../state-machines.md#免费预约状态机)。
+AT-01～AT-03、完整必测矩阵、对账 SQL 和交付清单见 [Day 9 免费预约验收](../../qa/guides/day9-concurrency.md)。状态仅为 [ACTIVE → CANCELLED](../state-machines.md#免费预约状态机)。

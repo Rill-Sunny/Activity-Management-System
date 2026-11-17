@@ -46,11 +46,17 @@ class ActivityQueryTest {
     @Autowired private JwtEncoder jwtEncoder;
     @MockitoBean private ActivityMapper activityMapper;
     @MockitoBean private AppUserMapper userMapper;
+    @MockitoBean private com.limitactivitysystem.cache.CacheAsideService cache;
 
     private Activity activity;
 
     @BeforeEach
     void setUp() {
+        // This MVC test exercises the real query mapping through a cache miss.
+        given(cache.get(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(com.limitactivitysystem.activity.dto.ActivityResponse.class),
+                org.mockito.ArgumentMatchers.any())).willAnswer(call ->
+                call.<java.util.function.Supplier<com.limitactivitysystem.activity.dto.ActivityResponse>>getArgument(2).get());
         activity = new Activity();
         activity.setActivityId(10L);
         activity.setPublisherId(2L);

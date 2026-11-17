@@ -594,10 +594,7 @@ class FreeReservationMySqlIntegrationTest extends PaymentResourceTestSupport {
     @TestConfiguration(proxyBeanMethods = false)
     static class DatabaseConfiguration {
         @Bean IsolatedQualificationMySqlDataSource dataSource(DataSourceProperties properties) throws Exception {
-            var source = new IsolatedQualificationMySqlDataSource(properties, 22);
-            try (var connection = source.getConnection()) {
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V4__create_free_reservation_tables.sql")); return source;
-            } catch (Exception failure) { source.close(); throw failure; }
+            return new IsolatedQualificationMySqlDataSource(properties, 22);
         }
         @Bean ReservationObservation reservationObservation(JdbcTemplate jdbc) { return new ReservationObservation(jdbc); }
     }

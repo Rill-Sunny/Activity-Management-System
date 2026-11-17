@@ -1,8 +1,41 @@
 # 当前架构与阶段验收
 
-Day 14 已实现 [Product/SKU 发布与资格切片](api/products.md)：V8 新增目录与独立商品名单，支持 ACTIVITY/SESSION 有效票查询。商品订单、支付和资格保护行仍未接入；商品订单跨活动、销售后核心规则版本的历史选择仍待确认。当前查询不构成商品支付与退票联动保证。
+## Day 24 部署结构（2026-11-12）
 
-本页记录已实现的身份、活动配置、白名单管理、资格查询、票单创建、本人详情、模拟支付，以及免费预约创建和取消。专用改期流程随对应阶段实现。
+Day 22 改期与 Day 23 取消已经完成业务回归。Day 24 将应用与中间件放入同一 Compose 网络，双实例使用同一 JAR 镜像和共享数据库。下面早期阶段说明保留历史背景；最新部署入口见 [部署手册](deployment.md)，实测状态见 [Day 24 报告](../qa/reports/day24-deployment-test.md)。
+
+```mermaid
+flowchart TD
+    Client[本机客户端] --> A[app-a :8081]
+    Client --> B[app-b :8082]
+    Migrate[独立 Flyway 迁移] --> DB[(MySQL 8.4.11)]
+    Migrate -. 成功后启动 .-> A
+    Migrate -. 成功后启动 .-> B
+    A --> DB
+    B --> DB
+    A --> Redis[(共享 Redis)]
+    B --> Redis
+    A --> MQ[RabbitMQ]
+    B --> MQ
+    Prom[Prometheus] -->|认证采集 :9091| A
+    Prom -->|认证采集 :9091| B
+    A -->|OTLP| Tempo[Tempo]
+    B -->|OTLP| Tempo
+    Grafana[Grafana] --> Prom
+    Grafana --> Tempo
+```
+
+`core` 有两个应用、MySQL、Redis、RabbitMQ 和一次性迁移任务；`observability` 有 Prometheus、Grafana 和 Tempo。两个应用均运行 Outbox Relay、消费者及数据库补偿扫描。跨实例正确性由 MySQL 事务锁、唯一约束、任务租约与共享 Redis 原子操作协调；没有新增依赖进程内锁的交易保障。
+
+取消接口的立即门禁与分批善后沿用 Day 23 实现。应用使用非 root 用户、只读根文件系统和独立临时目录。业务中间件的持久化卷按 Compose 项目隔离；固定 RabbitMQ 节点名保证重建容器后继续使用原数据目录。
+
+迁移进程不启动 Web、消费者或定时任务。应用等待迁移成功，Docker profile 的 Flyway 自动启动关闭，避免双实例启动时争抢迁移。版本升级先停止写入、备份并运行迁移，再启动同版本两个实例。
+
+## 业务模块与演进记录
+
+[Product/SKU](api/products.md) 支持独立商品名单及 ACTIVITY/SESSION 有效票资格。商品下单、支付、履约、部分售后和资格变化联动均已接入；支付与退票通过资格保护行协调，支付事务重新检查当前资格。商品单允许同一发布者跨活动合单、拒绝跨发布者合单，规则与成交价格保存在订单明细中。响应提供 `orderItemId`，客户端可直接继续发货、收货与售后。
+
+本页记录身份、活动配置、名单、票务、预约、商品及异步基础设施。场次改期和取消已完成，分别见 [改期设计](day22-reschedule-design.md) 和 [取消设计](day23-cancellation-design.md)。下述 Day 编号表示最初实现阶段，不是当前功能边界。
 
 Day 5 的 [票单 API](ticket-orders.md)已接通生产端点与业务事务，资格判断、创建窗口、资源归属、价格快照、只读预检查、按原明细比较的幂等重放及本人订单详情已实现。
 
@@ -10,11 +43,11 @@ Day 6 的[支付资源组件](payment-resources.md)已接入 Day 7 [模拟支付
 
 Day 9 的[免费预约 API](api/reservations.md)直接生成 ACTIVE 记录并占用一份独立名额。取消在场次开始前条件生效、只返还一次；重新预约新建记录并重新检查当前资格。
 
-Day 11 的[普通门票退款](ticket-refunds.md#day-11-原子退款处理)使用受理时的逐票报价，原子恢复资源并更新订单汇总。Day 12 的 [GIFT 分配](gift-inventory.md)使用 V7 保存发布者操作与实际座位历史，已接入权限、独立资源事务、幂等、PAID/GIFT 隔离、历史列表与详情；当前资源操作仅提供 ALLOCATE。三类容量巡检和最终矩阵见 [Day 12 完成验收](day12-completion.md)。
+Day 11 的[普通门票退款](ticket-refunds.md#day-11-原子退款处理)使用受理时的逐票报价，原子恢复资源并更新订单汇总。Day 12 的 [GIFT 分配](gift-inventory.md)使用 V7 保存发布者操作与实际座位历史，已接入权限、独立资源事务、幂等、PAID/GIFT 隔离、历史列表与详情；当前资源操作仅提供 ALLOCATE。三类容量巡检和最终矩阵见 [Day 12 完成验收](../qa/reports/day12-completion.md)。
 
 ## 请求与可信身份
 
-Day 13 已完成固定 fixture 的跨模块阶段回归，修复退款申请时间与出票时间不同源导致的偶发误拒绝，并补全统一不变量和孤儿巡检。最终 1529 项测试全部通过，环境、AT-01～AT-10/AT-16 映射及缺陷记录见 [阶段测试报告](reports/test-report.md)。
+Day 13 已完成固定 fixture 的跨模块阶段回归，修复退款申请时间与出票时间不同源导致的偶发误拒绝，并补全统一不变量和孤儿巡检。最终 1529 项测试全部通过，环境、AT-01～AT-10/AT-16 映射及缺陷记录见 [阶段测试报告](../qa/reports/test-report.md)。
 
 HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Controller 调用 Service。MyBatis Mapper 通过 DataSource 访问 MySQL。MockMvc 验收启用真实 Security 过滤链。
 
@@ -68,9 +101,9 @@ HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Con
 
 名单管理取得 Activity 排他锁，资格查询取得共享锁，并使用锁定读查询当前账号、作用域、配置及成员。锁保持到外层事务提交或回滚。配置不存在的状态也由 Activity 根记录协调，具体顺序见 [locking.md](locking.md)。
 
-名单维护只改变配置和成员，不撤销既有交易。未来业务在每次新增资格行为及待支付订单支付时复查当前名单。D12 已完成活动与场次名单的 A–D 回归，见 [名单变化验收](day12-whitelist-regression.md)。
+名单维护只改变配置和成员，不撤销既有交易。每次新增资格行为及待支付订单支付时复查当前名单。D12 已完成活动与场次名单的 A–D 回归，见 [名单变化验收](../qa/reports/day12-whitelist-regression.md)。
 
-创建请求重放仅返回既有订单，不是新增资格行为，不重跑销售窗口、名单与库存预检查，也不更新价格或有效期。调用者仍须为有效账号，未来支付继续复查当前资格。订单创建独立提交，不能作为外围事务的可回滚子步骤。幂等载荷及事务决策见 [ADR-003](decisions.md#adr-003创建票单按原明细实现请求幂等)。
+创建请求重放仅返回既有订单，不是新增资格行为，不重跑销售窗口、名单与库存预检查，也不更新价格或有效期。调用者仍须为有效账号，支付继续复查当前资格。订单创建独立提交，不能作为外围事务的可回滚子步骤。幂等载荷及事务决策见 [ADR-003](decisions.md#adr-003创建票单按原明细实现请求幂等)。
 
 ## AT-04 与 AT-16 的阶段验收
 
@@ -86,7 +119,7 @@ HTTP 请求经过 Spring Security Resource Server 验证 Bearer JWT，再由 Con
 
 AT-04 的资格业务入口由测试专用消费者调用，验证真实 JWT、Security、Service 事务、MyBatis 和 MySQL。测试消费者不提供预约或支付功能。
 
-AT-16 当前没有通用核心资源 PUT、PATCH、DELETE 编辑入口，相应请求返回 `404` 或 `405`。这证明当前普通 HTTP 请求无法修改已发布数据，尚不代表完整编辑功能已经实现。后续增加普通编辑入口时，仍须在 Activity 根记录锁内检查 `DRAFT`。专用改期 API、变更历史及相关退款规则留到 Day 22。
+AT-16 当前没有通用核心资源 PUT、PATCH、DELETE 编辑入口，相应请求返回 `404` 或 `405`。这证明当前普通 HTTP 请求无法修改已发布数据，尚不代表完整编辑功能已经实现。后续增加普通编辑入口时，仍须在 Activity 根记录锁内检查 `DRAFT`。专用改期 API、变更历史、特殊退款与自动保留已经实现，并保持原座位和成交价快照。
 
 项目根目录中，在已配置 MySQL 连接、`DB_PASSWORD` 且 `mvn` 可用的 PowerShell 进程中执行：
 
@@ -105,3 +138,13 @@ mvn '-Dtest=QualificationEntryPointMySqlIntegrationTest,ActivityPublishingMySqlI
 `CacheInvalidationRecorder` 在业务事务内递增 MySQL generation 并写入失效任务。`CacheInvalidationListener` 在提交后立即删除 Redis Key。后台扫描器重试未完成任务。回填与失效使用 Redis Lua 脚本比较版本，正缓存从回源开始计算 TTL，最长保留 35 秒。
 
 商品库存和座位可售状态不由缓存决定。支付、退款、资格、限购、订单状态与库存仍由 MySQL 事务保护。Redis 去重只抑制短时间内重复请求，MySQL 幂等和业务状态仍决定交易结果。指标与 Key 约束见 [缓存参考](cache.md)。
+
+## 事务 Outbox 与 RabbitMQ
+
+订单创建、支付与退款在各自的 MySQL 业务事务内写入 `outbox_event`。业务记录与事件记录一起提交或回滚。下单仍不预占库存；订单过期事件只安排异步检查。
+
+Outbox Relay 在短事务里通过 `FOR UPDATE SKIP LOCKED` 领取到期记录并设置带 token 的租约，提交后才访问 RabbitMQ。只有 Publisher Confirm 为 ACK 且没有 Publisher Return 时才把记录改为 `SENT`。租约过期后其他 Worker 可以接手，发布重试继续使用原 `event_id`。
+
+消费者在一个独立 MySQL 事务内写入 `consumer_process` 并完成业务效果；事务 Service 返回、提交完成后 Listener 才发送 RabbitMQ ACK。重复投递由 `(consumer_name, event_id)` 唯一键和业务状态条件更新拦截。订单超时以 MySQL `expires_at` 为准；RabbitMQ TTL/DLX 用于唤醒消费者，Day 8 的扫描作业继续补偿延迟或丢失的触发。拓扑、重试与故障边界见 [消息处理说明](messaging.md)。
+
+Ticket 退款成功时在原事务追加 `TICKET_QUALIFICATION_CHANGED`。RabbitMQ Consumer 按订单明细登记 `ticket_qualification_after_sale_task`，持有 Day 14 资格 Guard 并重读当前 Ticket；任务随后在独立商品事务中复用 Day 17 `ProductAfterSaleService`。Ticket 退款与商品售后允许分别提交：售后失败只留下可查询、可重试的任务，不回滚门票退款。明细唯一约束确保不同消息也不会重复退款、返还 SKU 或恢复商品限购。指标、重试和 AT-15 对账见 [Day 20 报告](../qa/reports/day20-linkage-test.md)。

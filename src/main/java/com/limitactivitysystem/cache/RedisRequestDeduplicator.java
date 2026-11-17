@@ -42,6 +42,7 @@ public class RedisRequestDeduplicator {
             if (!Boolean.TRUE.equals(acquired)) metrics.dedupeRejected();
             return Boolean.TRUE.equals(acquired) ? new Lease(key, owner, false) : new Lease(key, owner, true);
         } catch (DataAccessException unavailable) {
+            metrics.redisFailure(CacheMetrics.RedisOperation.DEDUPE_ACQUIRE, unavailable);
             LOG.debug("Redis payment de-duplication unavailable orderId={} cause={}", orderId,
                     unavailable.getClass().getSimpleName());
             return new Lease(null, null, false);
@@ -69,6 +70,7 @@ public class RedisRequestDeduplicator {
             try {
                 redis.execute(RELEASE_IF_OWNER, List.of(key), owner);
             } catch (DataAccessException unavailable) {
+                metrics.redisFailure(CacheMetrics.RedisOperation.DEDUPE_RELEASE, unavailable);
                 LOG.debug("Redis payment de-duplication release deferred key={} cause={}", key,
                         unavailable.getClass().getSimpleName());
             }

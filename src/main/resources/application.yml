@@ -17,6 +17,28 @@ spring:
       connect-timeout: 300ms
       timeout: 500ms
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD}
+    connection-timeout: 3s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      # The durable Outbox W3C carrier owns propagation; automatic template spans would replace its parent.
+      observation-enabled: false
+    listener:
+      simple:
+        acknowledge-mode: manual
+        # BusinessTelemetry extracts traceparent and creates mq.consume around the complete delivery/ACK.
+        observation-enabled: false
+        default-requeue-rejected: false
+        prefetch: 20
+        concurrency: 1
+        max-concurrency: 4
+
   # Flyway 数据库版本管理
   flyway:
     enabled: true
@@ -42,7 +64,26 @@ ticket-order:
     scan-delay-ms: 5000
     initial-delay-ms: 5000
 
+outbox:
+  relay:
+    batch-size: 50
+    max-attempts: 8
+    lease-seconds: 60
+    scan-delay-ms: 1000
+    initial-delay-ms: 1000
+  publisher-confirm-timeout-ms: 10000
+
+messaging:
+  consumer:
+    max-attempts: 3
+
 management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
   endpoints:
     web:
       exposure:
@@ -57,5 +98,4 @@ management:
 
 logging:
   pattern:
-    # traceId is reserved for future tracing; no synthetic trace IDs are created.
-    level: "%5p [requestId=%X{requestId:-} traceId=%X{traceId:-}]"
+    level: "%5p [requestId=%X{requestId:-} traceId=%X{traceId:-} spanId=%X{spanId:-}]"

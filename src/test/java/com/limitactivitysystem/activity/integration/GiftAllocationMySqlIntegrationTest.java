@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {JwtTestTokens.SECRET_PROPERTY, "spring.flyway.enabled=false"})
 @AutoConfigureMockMvc
-@Import({GiftInventorySchemaMySqlIntegrationTest.DatabaseConfiguration.class, GiftAllocationMySqlIntegrationTest.ProbeConfiguration.class})
+@Import({CurrentSchemaTestConfiguration.class, GiftAllocationMySqlIntegrationTest.ProbeConfiguration.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIfEnvironmentVariable(named = "DB_PASSWORD", matches = ".+")
 class GiftAllocationMySqlIntegrationTest extends PaymentResourceTestSupport {

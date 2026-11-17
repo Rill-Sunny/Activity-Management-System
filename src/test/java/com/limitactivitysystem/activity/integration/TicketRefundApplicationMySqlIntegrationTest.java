@@ -438,7 +438,7 @@ class TicketRefundApplicationMySqlIntegrationTest extends PaymentResourceTestSup
 
     @Test void schemaGuardsStatesAmountsAndHasNoPhysicalForeignKeys() throws Exception {
         var accepted = accept(body("schema", orderId, List.of(sold.get(0).getTicketId())), buyer);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'", Integer.class)).isEqualTo(15);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'", Integer.class)).isEqualTo(42);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_schema = DATABASE() AND constraint_type = 'FOREIGN KEY'", Integer.class)).isZero();
         assertThatThrownBy(() -> jdbc.update("UPDATE ticket_refund_request SET status = 'PAID' WHERE refund_id = ?", accepted.refundId()))
                 .isInstanceOf(DataAccessException.class).hasMessageContaining("chk_refund_request_status");
@@ -525,13 +525,7 @@ class TicketRefundApplicationMySqlIntegrationTest extends PaymentResourceTestSup
     @TestConfiguration(proxyBeanMethods = false)
     static class DatabaseConfiguration {
         @Bean IsolatedQualificationMySqlDataSource dataSource(DataSourceProperties properties) throws Exception {
-            var source = new IsolatedQualificationMySqlDataSource(properties);
-            try (var connection = source.getConnection()) {
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V4__create_free_reservation_tables.sql"));
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V5__create_ticket_refund_tables.sql"));
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/V6__add_refund_processing_results.sql"));
-                return source;
-            } catch (Exception failure) { source.close(); throw failure; }
+            return new IsolatedQualificationMySqlDataSource(properties);
         }
         @Bean FailureObservation refundFailureObservation() { return new FailureObservation(); }
     }

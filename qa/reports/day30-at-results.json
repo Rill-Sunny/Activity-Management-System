@@ -1,0 +1,1165 @@
+{
+  "at": [
+    {
+      "rule": "同活动不同场次可分别免费预约；同场次最多一笔有效预约",
+      "fixture": "FreeReservationMySqlIntegrationTest#publishOpenFreeScope：三个 FREE 场次、USER/PUBLISHER 两种参与身份",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/FreeReservationMySqlIntegrationTest-at01ThreeSessionsAllowTwoBookingsButRejectDuplicateActiveReservations-40193c611fd84329.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/FreeReservationMySqlIntegrationTest-at01ThreeSessionsAllowTwoBookingsButRejectDuplicateActiveReservations-f1ba3011e4efdc3d.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at01ThreeSessionsAllowTwoBookingsButRejectDuplicateActiveReservations",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 2,
+          "invocations": 2
+        }
+      ],
+      "id": "AT-01",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "最后一个免费名额最多一个成功",
+      "fixture": "20 个不同账号、容量 1、同步起跑和真实提交",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/FreeReservationMySqlIntegrationTest-at02TwentyDifferentAccountsPostingForTheLastSlotHaveExactlyOneWinner-b0bee5ad0f48bc88.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at02TwentyDifferentAccountsPostingForTheLastSlotHaveExactlyOneWinner",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-02",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "取消释放名额；重新预约不享有优先权",
+      "fixture": "原预约者与其他账号分别先取得数据库门锁，保留取消历史",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/FreeReservationMySqlIntegrationTest-at03CancellationAndRebookingKeepHistoryAndAnOldCancelCannotReleaseTheNewQuota-86acdcfaae31f4e2.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at03CancellationAndRebookingKeepHistoryAndAnOldCancelCannotReleaseTheNewQuota",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/FreeReservationMySqlIntegrationTest-at03ReleasedSlotIsOpenToBothFormerOwnerAndOtherAccount-29a20c7eabedcc85.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/FreeReservationMySqlIntegrationTest-at03ReleasedSlotIsOpenToBothFormerOwnerAndOtherAccount-589b8991e9bc64a2.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at03ReleasedSlotIsOpenToBothFormerOwnerAndOtherAccount",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 2,
+          "invocations": 2
+        }
+      ],
+      "id": "AT-03",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "显式空白名单拒绝；未配置执行继承或公开规则",
+      "fixture": "活动级名单、场次级空名单、移除配置与六种资格规则",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-emptySessionListRejectsAllConsumerRolesAndRemovingItRestoresInheritance-0dc63cab212da522.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-emptySessionListRejectsAllConsumerRolesAndRemovingItRestoresInheritance-39eef9e68db30675.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "emptySessionListRejectsAllConsumerRolesAndRemovingItRestoresInheritance",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 2,
+          "invocations": 2
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-1623d9c167d700bd.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-48247fd4b0f11837.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-4e15934a1598002d.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-55c1a6b0c12f4ea8.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-58ef4541de1f758b.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-6ac20827381f1b90.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-70411eae1e30d108.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-7a86ef557a5a2a2c.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-7f2bba5b60f7fc83.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-bebd80618dc16ab4.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-dbd0fc19ffd32571.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/QualificationEntryPointMySqlIntegrationTest-bothBusinessEntriesUseTheSixQualificationRules-e9cafdb8f098fe3f.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "bothBusinessEntriesUseTheSixQualificationRules",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 12,
+          "invocations": 12
+        }
+      ],
+      "id": "AT-04",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "同账号两笔各 3 张订单竞争场次限购 4，不超限",
+      "fixture": "PURCHASE_LIMIT_FROM_ZERO 分支：配额 0、两单各 3 张、限购 4；独立连接与 CyclicBarrier",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-470e9dde7dd5f952.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-6f2a0d4588dcb8d3.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-c02b5c6b6021b6ee.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-fbedb891e1f2ae8c.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 4,
+          "invocations": 4
+        }
+      ],
+      "id": "AT-05",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "GIFT 独立库存且不绑定平台买家",
+      "fixture": "PAID/GIFT 两个区，赠票操作记录发布者和实体座位",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/GiftAllocationMySqlIntegrationTest-at06RecordsOnlyTheOperatorAndRealSeatsWithoutReceiverAccountsOrTickets-48e32388f7b36f97.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at06RecordsOnlyTheOperatorAndRealSeatsWithoutReceiverAccountsOrTickets",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/GiftAllocationMySqlIntegrationTest-allocateFiveRestoresNoPaidResourcesAndPersistsExactSeatHistory-176df3e4207204ad.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "allocateFiveRestoresNoPaidResourcesAndPersistsExactSeatHistory",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-06",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "最后一张付费票仅一个成交，失败事务无局部扣减",
+      "fixture": "LAST_STOCK/SAME_SELECTED_SEAT 分支、两个账号；另有后一区缺货回滚",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-470e9dde7dd5f952.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-6f2a0d4588dcb8d3.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-c02b5c6b6021b6ee.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice-fbedb891e1f2ae8c.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 4,
+          "invocations": 4
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-secondZoneStockFailureRollsBackTheFirstZoneAndQuotaBeforeAnIndependentClose-d8eab48711229b2b.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "secondZoneStockFailureRollsBackTheFirstZoneAndQuotaBeforeAnIndependentClose",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-07",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "停售阻止新建票单，未过期旧单仍可支付",
+      "fixture": "使用数据库相对时间：创建早于停售、支付晚于停售且早于 15 分钟到期点",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketPaymentMySqlIntegrationTest-aValidOrderCreatedBeforeCloseCanReachResourceAllocationAfterTicketSalesClose-a0a4e2699beff9b5.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "aValidOrderCreatedBeforeCloseCanReachResourceAllocationAfterTicketSalesClose",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-08",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "仅退指定 Ticket，使用原成交价和冻结政策",
+      "fixture": "四张实际成交价不同的票，只退 B/D，核对余票与资源",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at09RefundOnlyBAndDAtTheirFourActualPaidPrices-f438cecf0efa0274.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at09RefundOnlyBAndDAtTheirFourActualPaidPrices",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-09",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "并发退款同一票只生效一次",
+      "fixture": "并发受理/执行同一张票，另测失败请求与新请求竞争",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce-00b852fa44133672.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce-b1be5b9c1b12c24d.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 2,
+          "invocations": 2
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/TicketRefundProcessingMySqlIntegrationTest-at10FailedRequestAndANewRequestForTheSameTicketCannotBothSucceed-7cc45c0864cd60ee.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at10FailedRequestAndANewRequestForTheSameTicketCannotBothSucceed",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-10",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "黑 M 缺货不替换白 L，调整清单需再次确认",
+      "fixture": "黑 M 库存 0、白 L 有货，预览/确认及新购买清单",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-publishAndReadBlackMZeroStockWithoutSubstitutingWhiteL-7ebef394de11db6d.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "publishAndReadBlackMZeroStockWithoutSubstitutingWhiteL",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-p04_previewReportsExactOutOfStockSkuAndDoesNotWriteResources-bd06c33b43deaed7.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "p04_previewReportsExactOutOfStockSkuAndDoesNotWriteResources",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-11",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "多 SKU 缺货整单回滚，回滚后安全关闭旧单",
+      "fixture": "SKU A×2、B×1；竞争者真实成交；迟到关闭与并发已付款竞争；p16 受控异常恢复",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-at12RealCompetingSaleRollsBackEarlierSkuWithoutCorruptingTheLedger-d6e24199d40ecd9c.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at12RealCompetingSaleRollsBackEarlierSkuWithoutCorruptingTheLedger",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-at12DelayedShortageClosureCannotOverwriteACommittedPayment-992bf842dfa8a3cb.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at12DelayedShortageClosureCannotOverwriteACommittedPayment",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-p16_outOfStockAfterAnEarlierSkuUpdateRollsBackQuotaAndStockThenClosesTheWholeOrder-7964bede2c4f0c88.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "p16_outOfStockAfterAnEarlierSkuUpdateRollsBackQuotaAndStockThenClosesTheWholeOrder",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-12",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "同 Product 两 SKU 共享限购 2",
+      "fixture": "A/B 各购买 1 后再买拒绝，并发支付累计限购",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-at13OneOfEachSkuExhaustsTheSharedProductLimit-85913fb2332f9335.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at13OneOfEachSkuExhaustsTheSharedProductLimit",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-p17_productQuotaIsSharedAcrossSkusUnderConcurrentPayment-459b8cea29c2a12f.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "p17_productQuotaIsSharedAcrossSkusUnderConcurrentPayment",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-13",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "已发货部分售后，验收后仅可再售部分回库",
+      "fixture": "已发货 3 件特殊模板商品，质量退款、验收失败、通过但不可再售、可再售；重复验收",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-specialTemplateBlocksOnlyNoReasonAndNonresalableReturnedGoodsDoNotRestoreStock-7e993fc9cbc27b28.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "specialTemplateBlocksOnlyNoReasonAndNonresalableReturnedGoodsDoNotRestoreStock",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-shippedQualifiedItemWaitsForReturnReceiptBeforeRefundAndRestock-057f52f3434bfe6a.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "shippedQualifiedItemWaitsForReturnReceiptBeforeRefundAndRestock",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-orderResponseItemIdsEnableFulfillmentAndAfterSaleWithoutDatabaseLookup-15f57dddb0657800.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "orderResponseItemIdsEnableFulfillmentAndAfterSaleWithoutDatabaseLookup",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-14",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "最后有效票退款经 Outbox/RabbitMQ 仅联动失去资格的商品行",
+      "fixture": "普通商品/本场限定/其他场限定混单；剩余票、重获资格、已发货、重复事件和失败任务恢复",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-at15LastTicketRefundUsesRabbitOutboxAndOnlyRefundsQualifiedLineInMixedOrder-7fbc2d6df1e8377f.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at15LastTicketRefundUsesRabbitOutboxAndOnlyRefundsQualifiedLineInMixedOrder",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-partialRefundWithAnotherValidTicketDoesNotStartQualificationAfterSale-912fbd59a01f1792.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "partialRefundWithAnotherValidTicketDoesNotStartQualificationAfterSale",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-delayedRefundEventRechecksEligibilityAfterAnotherTicketIsPurchased-4fc39e9ce8e2616d.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "delayedRefundEventRechecksEligibilityAfterAnotherTicketIsPurchased",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-activityScopeUsesOtherSessionTicketWhileSessionScopeDoesNot-8959b29f5c928e7a.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "activityScopeUsesOtherSessionTicketWhileSessionScopeDoesNot",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ProductCatalogMySqlIntegrationTest-consumerFailureLeavesTicketRefundCommittedAndTerminalTaskCanBeQueriedAndReplayed-6812240369ca28f7.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "consumerFailureLeavesTicketRefundCommittedAndTerminalTaskCanBeQueriedAndReplayed",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-15",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "发布后配置冻结，时间变更仅走专用改期 API",
+      "fixture": "发布票价/容量/座位等核心字段的普通编辑矩阵；专用改期保持 Ticket/Seat",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-01ac5d5b925a5ca6.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-1193bd7044fcb7a3.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-1ddf154e4e3b222b.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-2b0932949282e610.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-37c8a2a63c9d5bde.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-415d42d71ff399a2.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-417d98af8c51cf59.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-431e101c71f9720c.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-57c716522411c5e3.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-626163de0e9e0f16.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-6e96b8f146d615ef.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-7b4cce21915f91a8.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-81c6418662a2ae6f.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-8e9a941eaa675dea.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-8ef67b6dc329639b.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-9c31a94e2e67299a.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-a5318c8f7bd2b61d.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-a81ce98f5e0ca744.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-ae8c65036885f8fc.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-b21225dca2f87289.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-ba56e22d9f7a4739.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-c377421c527e8b18.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-c4ed3b8e7b3643e1.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-e0c073b53689e0ae.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-e5e031a54d129ca1.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged-f25dc6313c880d09.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 26,
+          "invocations": 26
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/ActivityPublishingMySqlIntegrationTest-publishedActivityRejectsAdditionalSeatsInTheDatabase-fcacf7dbeb6de2bb.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "publishedActivityRejectsAdditionalSeatsInTheDatabase",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-at16DedicatedApiPreservesTicketsSeatsAndFrozenConfiguration-eb1eee0127595f06.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at16DedicatedApiPreservesTicketsSeatsAndFrozenConfiguration",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-16",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "特殊退款截止 min(公告+7天,新开始)，零手续费且已受理申请不失效",
+      "fixture": "新开始 2/30 天；deadline -1ms、=、+1ms；先受理后跨截止执行",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-at17DatabaseAnnouncementUsesTheEarlierDeadline-3fa4df870735fdb5.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-at17DatabaseAnnouncementUsesTheEarlierDeadline-d8ab3efd5da7f9ab.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at17DatabaseAnnouncementUsesTheEarlierDeadline",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 2,
+          "invocations": 2
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-t05T06ExclusiveDeadlineAcceptance-84b0dc97258eafe4.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-t05T06ExclusiveDeadlineAcceptance-993ae9e943859b65.json",
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-t05T06ExclusiveDeadlineAcceptance-a813b2a62b1d2c4c.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "t05T06ExclusiveDeadlineAcceptance",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 3,
+          "invocations": 3
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-t07T08ConfirmedTicketCanRefundAndAcceptedPolicySurvivesDelayedExecution-94d3de9d93a35aa2.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "t07T08ConfirmedTicketCanRefundAndAcceptedPolicySurvivesDelayedExecution",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-17",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "到期未响应自动保留，不写为用户主动确认",
+      "fixture": "短窗口及真实扫描/消息，退款票不能重新有效",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-at18T11AutoRetentionIsDistinctAndNeverReactivatesRefundedTickets-d9dd91d9931953d4.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at18T11AutoRetentionIsDistinctAndNeverReactivatesRefundedTickets",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/SessionRescheduleMySqlIntegrationTest-realRabbitWindowMessageRetainsOnlyOnce-e6e679cf70800dd9.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "realRabbitWindowMessageRetainsOnlyOnce",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-18",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "取消场次立即停止交易，其他场次隔离",
+      "fixture": "A 场次待支付单/有效票/已退票/GIFT，B 场次不变；FREE 按实际模型另设活动",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/CancellationMySqlIntegrationTest-at19SessionCancellationClosesOnlyItsOrdersAndRefundsOnlyValidTickets-2fa2a69c8f435873.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at19SessionCancellationClosesOnlyItsOrdersAndRefundsOnlyValidTickets",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/CancellationMySqlIntegrationTest-freeReservationLosesParticipationBeforeWorkerAndRestoresQuotaOnce-2a59abb4de400182.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "freeReservationLosesParticipationBeforeWorkerAndRestoresQuotaOnce",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-19",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    },
+    {
+      "rule": "取消退款单项失败可查可重试，成功项不重复执行且不能重新销售",
+      "fixture": "A/C 成功、B 写后注入异常，B 独立回滚；解除失败只补 B，有限重试和显式恢复",
+      "result": "PASS",
+      "tests": [
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/CancellationMySqlIntegrationTest-at20OneRefundRollsBackAndOthersCommitThenOnlyTheFailedItemRetries-490715f7793ae96b.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "at20OneRefundRollsBackAndOthersCommitThenOnlyTheFailedItemRetries",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/CancellationMySqlIntegrationTest-finiteFailuresRequireExplicitRetryAndRemainQueryable-a5f53cde7f5ac0d3.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "finiteFailuresRequireExplicitRetryAndRemainQueryable",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        },
+        {
+          "evidence": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/at-evidence/CancellationMySqlIntegrationTest-scannerRepairsSummaryAfterBusinessCommitWithoutAckOrWorkerContinuation-2324159fe843c0aa.json"
+          ],
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "result": "PASS",
+          "method": "scannerRepairsSummaryAfterBusinessCommitWithoutAckOrWorkerContinuation",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ],
+          "sqlSnapshots": 1,
+          "invocations": 1
+        }
+      ],
+      "id": "AT-20",
+      "sourceCommit": "6aa8e757519ff1a6313c1e5c9007b107c7b45603"
+    }
+  ],
+  "risks": [
+    {
+      "tests": [
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+          "method": "publisherCannotConfigureOrPublishAnotherPublishersActivity",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "method": "anotherBuyerCannotDiscoverPaymentStateByAttemptingToPayTheOrder",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "p13_forgedBuyerIdCannotChangeTheAuthenticatedBuyer",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "p14_forgedTotalAmountCannotOverrideTheServerCalculatedAmount",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 2,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "serviceRechecksRoleAndAccountAfterAuthentication",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.security.SecurityAccessTest",
+          "method": "rejectsRolesThatDoNotMatchCurrentUser",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.security.SecurityAccessTest.xml"
+          ]
+        }
+      ],
+      "rule": "跨账号订单、跨 Publisher、禁用账号、伪造角色/金额；真实过滤器和数据库所有权检查",
+      "id": "RISK-SECURITY",
+      "result": "PASS"
+    },
+    {
+      "tests": [
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest",
+          "method": "selectedAllocationLocksAllZonesThenOccupiesAllSeatsInGlobalIdOrder",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest",
+          "method": "automaticAllocationUsesPriorityForCandidatesButIdOrderForActualWrites",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 2,
+          "class": "com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest",
+          "method": "nonAdjacentSeatsAreUsedOnlyWhenTheSavedOrderAcceptsThem",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 4,
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "method": "independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ]
+        }
+      ],
+      "rule": "自主选座、自动配座、连座优先、非连座确认、同座竞争",
+      "id": "RISK-SEATS",
+      "result": "PASS"
+    },
+    {
+      "tests": [
+        {
+          "invocations": 8,
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "method": "lockWaitsAndFinalUpdatesCannotCrossDatabasePaymentDeadlines",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "method": "aValidOrderCreatedBeforeCloseCanReachResourceAllocationAfterTicketSalesClose",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "p07_p08_p09_p10_p11_orderCreationIsIdempotentAndPreservesSnapshotsAndResources",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        }
+      ],
+      "rule": "创建不占资源、支付占用、停售不等于到期、锁等待跨到期边界",
+      "id": "RISK-PAYMENT-TIME",
+      "result": "PASS"
+    },
+    {
+      "tests": [
+        {
+          "invocations": 12,
+          "class": "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+          "method": "exactDayBoundariesUseTheApplicationTime",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest.xml"
+          ]
+        },
+        {
+          "invocations": 3,
+          "class": "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+          "method": "theFreeWindowEndsExactlyFortyEightHoursAfterActivityOpening",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest.xml"
+          ]
+        },
+        {
+          "invocations": 7,
+          "class": "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+          "method": "moneyIsRoundedHalfUpForEachTicket",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+          "method": "at09RefundOnlyBAndDAtTheirFourActualPaidPrices",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest.xml"
+          ]
+        }
+      ],
+      "rule": "48h 优先、30/14/10 天的 ±1ms、每张票 HALF_UP 舍入和原成交价",
+      "id": "RISK-REFUND-AMOUNTS",
+      "result": "PASS"
+    },
+    {
+      "tests": [
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "standardNoReasonUsesServerRecordedReceiptTime",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "specialTemplateBlocksOnlyNoReasonAndNonresalableReturnedGoodsDoNotRestoreStock",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "shippingAndUnshippedRefundCannotBothSucceed",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "concurrentAfterSaleRequestsCannotRefundMoreThanPurchased",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "productShipmentAndQualificationAfterSaleSerializeOnProductOrder",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        }
+      ],
+      "rule": "七日模板、特殊模板与质量问题、重复验收和发货竞态",
+      "id": "RISK-AFTERSALE",
+      "result": "PASS"
+    },
+    {
+      "tests": [
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "activityScopeUsesOtherSessionTicketWhileSessionScopeDoesNot",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "ticketRefundThatGetsTheGuardFirstMakesLaterProductPaymentRecheckAndReject",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "productPaymentThatGetsTheGuardFirstLeavesTraceableSaleForLaterTicketRefund",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 2,
+          "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+          "method": "qualificationAtCreationDoesNotAuthorizePaymentAfterAWhitelistChange",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest.xml"
+          ]
+        }
+      ],
+      "rule": "ACTIVITY/SESSION 范围、名单变更、商品支付与最后票退款争用",
+      "id": "RISK-QUALIFICATION",
+      "result": "PASS"
+    },
+    {
+      "tests": [
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+          "method": "t10EachRescheduleHasIndependentHistoryResponsesAndEligibility",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "method": "activityCancellationPreservesFinishedHistoryAndCoversRemainingSessions",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "method": "activityAfterSessionCancellationDoesNotDuplicateItsRefunds",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 2,
+          "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+          "method": "cancellationAndPaymentSerializeAtActualDatabaseGate",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest.xml"
+          ]
+        }
+      ],
+      "rule": "多次改期与独立窗口、取消整个活动、历史场次隔离、并发取消与支付",
+      "id": "RISK-LIFECYCLE",
+      "result": "PASS"
+    },
+    {
+      "tests": [
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest",
+          "method": "repeatedConsumerFailuresAreBoundedAndDeadLetteredWithQueryableReason",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "qualificationOutboxSurvivesUnavailableRabbitEndpointAndPublishesAfterRecovery",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+          "method": "delayedRefundEventRechecksEligibilityAfterAnotherTicketIsPurchased",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest",
+          "method": "confirmedPublishLeaseExpiryAndConsumerRedeliveryKeepOneBusinessEffect",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest.xml"
+          ]
+        },
+        {
+          "invocations": 1,
+          "class": "com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest",
+          "method": "publisherCanReplayFailedEventWithOriginalIdAndCannotReplayCommittedEffect",
+          "result": "PASS",
+          "junit": [
+            "docs/verification/day30/20261115-202331-cada828e/native-20261115-202456/surefire/TEST-com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest.xml"
+          ]
+        }
+      ],
+      "rule": "Outbox 补发、已提交未 ACK 的重投、毒消息/DLQ、重放和资格事件乱序",
+      "id": "RISK-MESSAGING",
+      "result": "PASS"
+    }
+  ]
+}

@@ -197,7 +197,7 @@ Content-Type: application/json
 
 预期 400，code=GIFT_ZONE_NOT_PURCHASABLE，不创建新订单或 Ticket，不改变任何资源。再把 requestedSeatId 换成同 GIFT Zone 尚未分配的另一席，使用另一 requestId，仍然返回相同错误。公开不可购买的原因是 GIFT 资源池隔离，不能只依赖当前 Seat 是否已经被占用。
 
-本轮最终有四张普通 Ticket，其中两张 VALID、两张 REFUNDED；GIFT 一席已分配、一席可用，账号数保持不变。AUTO_ASSIGN 的独立隔离回归见 [Day 12 验收](day12-completion.md)。
+本轮最终有四张普通 Ticket，其中两张 VALID、两张 REFUNDED；GIFT 一席已分配、一席可用，账号数保持不变。AUTO_ASSIGN 的独立隔离回归见 [Day 12 验收](../qa/reports/day12-completion.md)。
 
 ## 核对数据库终态
 
@@ -239,9 +239,9 @@ WHERE z.zone_id = @demo_gift_zone_id ORDER BY s.seat_id;
 	mvn '-Dtest=Phase1JourneyMySqlIntegrationTest#demoABCRunsPaidFreeAndGiftContinuouslyAgainstCommittedDatabaseState' test
 ```
 
-测试先重建固定世界，再按 A → B → C 连续调用现有入口；没有通过直接改业务表来制造支付、退款、预约或 GIFT 成功。每步核对响应字段、影响的数据库状态与资源不变量。专用证据见 [Demo 执行目录](verification/phase1-demo)，阶段全量回归另见 [Phase 1 Test Report](reports/test-report.md)。
+测试先重建固定世界，再按 A → B → C 连续调用现有入口；没有通过直接改业务表来制造支付、退款、预约或 GIFT 成功。每步核对响应字段、影响的数据库状态与资源不变量。专用证据见 [Demo 执行目录](../qa/verification/phase1-demo)，阶段全量回归另见 [Phase 1 Test Report](../qa/reports/test-report.md)。
 
-2026-11-01 本次专用测试 **1 项通过，失败 0、错误 0、跳过 0**，三条演示连续完成。包含 fixture 就绪与最终检查共九次对账，每次执行五组脚本，均零异常行。结果见 [执行汇总](verification/phase1-demo/run-summary.json) 与 [逐步业务证据](verification/phase1-demo/day13-demo-abc.json)。该结果与之前 1529 项全量回归分开记录，本次没有重新运行整套测试。
+2026-11-01 本次专用测试 **1 项通过，失败 0、错误 0、跳过 0**，三条演示连续完成。包含 fixture 就绪与最终检查共九次对账，每次执行五组脚本，均零异常行。结果见 [执行汇总](../qa/verification/phase1-demo/run-summary.json) 与 [逐步业务证据](../qa/verification/phase1-demo/day13-demo-abc.json)。该结果与之前 1529 项全量回归分开记录，本次没有重新运行整套测试。
 
 本次使用的工具和作用如下：
 

@@ -1,0 +1,167 @@
+{
+  "scope": "S06 Product shared purchase-limit burst; not sustained read throughput",
+  "rounds": [
+    {
+      "technicalErrors": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 20
+      },
+      "rps": 21.158560329915108,
+      "effectiveTps": 10.579280164957554,
+      "accepted": 10,
+      "successLatency": {
+        "p(50)": 483.3048245,
+        "p(95)": 483.6286466,
+        "p(99)": 483.70790852000005,
+        "max": 483.727724,
+        "count": 10,
+        "avg": 483.36015560000004,
+        "min": 483.156799,
+        "med": 483.3048245
+      },
+      "lastSlot": false,
+      "smoke": false,
+      "phase": "release-product",
+      "scenario": "S06",
+      "startedAt": "2026-11-15T12:20:02.6897056+00:00",
+      "latency": {
+        "p(99)": 939.11538792,
+        "max": 939.139391,
+        "count": 20,
+        "avg": 711.0396638000001,
+        "min": 483.156799,
+        "med": 711.0847185,
+        "p(50)": 711.0847185,
+        "p(95)": 939.0193756
+      },
+      "cold": false,
+      "vus": 10,
+      "httpFinishedAt": "2026-11-15T12:20:05.2568405+00:00",
+      "assertionFailure": null,
+      "convergenceSeconds": 4.900256,
+      "finishedAt": "2026-11-15T12:20:07.5899616+00:00",
+      "sourceCommit": "8668ed9a431cd528734e5c8a7fb18f63aab7492f",
+      "requests": 20,
+      "exitCode": 0,
+      "expectedRefusals": 10,
+      "databaseDifferences": 0.0,
+      "businessChecks": {
+        "rate": 1,
+        "passes": 20,
+        "fails": 0
+      },
+      "durationSeconds": 0.9452438959999999,
+      "newBusinessEffects": 10,
+      "imageId": "sha256:ca581577910cb7207db12cb97d36bf372e8c01028bad9ff6b19a6b2e365cb3aa"
+    },
+    {
+      "technicalErrors": {
+        "fails": 100,
+        "rate": 0,
+        "passes": 0
+      },
+      "rps": 35.159377551613815,
+      "effectiveTps": 17.579688775806908,
+      "accepted": 50,
+      "successLatency": {
+        "count": 50,
+        "avg": 1115.1792870799998,
+        "min": 931.793906,
+        "med": 1054.8208435000001,
+        "p(50)": 1054.8208435000001,
+        "p(95)": 1384.6189009999998,
+        "p(99)": 1449.83529421,
+        "max": 1453.791148
+      },
+      "lastSlot": false,
+      "smoke": false,
+      "phase": "release-product",
+      "scenario": "S06",
+      "startedAt": "2026-11-15T12:20:34.4924691+00:00",
+      "latency": {
+        "count": 100,
+        "avg": 1936.6740298200002,
+        "min": 931.793906,
+        "med": 2080.888943,
+        "p(50)": 2080.888943,
+        "p(95)": 2836.97579885,
+        "p(99)": 2838.98953011,
+        "max": 2839.666206
+      },
+      "cold": false,
+      "vus": 50,
+      "httpFinishedAt": "2026-11-15T12:20:39.1377806+00:00",
+      "assertionFailure": null,
+      "convergenceSeconds": 6.7533984,
+      "finishedAt": "2026-11-15T12:20:41.2458675+00:00",
+      "sourceCommit": "8668ed9a431cd528734e5c8a7fb18f63aab7492f",
+      "requests": 100,
+      "exitCode": 0,
+      "expectedRefusals": 50,
+      "databaseDifferences": 0.0,
+      "businessChecks": {
+        "passes": 100,
+        "fails": 0,
+        "rate": 1
+      },
+      "durationSeconds": 2.844191421,
+      "newBusinessEffects": 50,
+      "imageId": "sha256:ca581577910cb7207db12cb97d36bf372e8c01028bad9ff6b19a6b2e365cb3aa"
+    },
+    {
+      "technicalErrors": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 200
+      },
+      "rps": 42.017963699677765,
+      "effectiveTps": 21.008981849838882,
+      "accepted": 100,
+      "successLatency": {
+        "med": 1723.4410870000002,
+        "p(50)": 1723.4410870000002,
+        "p(95)": 2268.3004078,
+        "p(99)": 2451.1544743900045,
+        "max": 3324.737245,
+        "count": 100,
+        "avg": 1700.0559487999997,
+        "min": 1118.424436
+      },
+      "lastSlot": false,
+      "smoke": false,
+      "phase": "release-product",
+      "scenario": "S06",
+      "startedAt": "2026-11-15T12:21:15.0401091+00:00",
+      "latency": {
+        "avg": 2728.5180473000014,
+        "min": 1118.424436,
+        "med": 2752.4111955,
+        "p(50)": 2752.4111955,
+        "p(95)": 4563.4760465499985,
+        "p(99)": 4723.72422708,
+        "max": 4756.982879,
+        "count": 200
+      },
+      "cold": false,
+      "vus": 100,
+      "httpFinishedAt": "2026-11-15T12:21:21.4640774+00:00",
+      "assertionFailure": null,
+      "convergenceSeconds": 8.5746119,
+      "finishedAt": "2026-11-15T12:21:23.6147210+00:00",
+      "sourceCommit": "8668ed9a431cd528734e5c8a7fb18f63aab7492f",
+      "requests": 200,
+      "exitCode": 0,
+      "expectedRefusals": 100,
+      "databaseDifferences": 0.0,
+      "businessChecks": {
+        "rate": 1,
+        "passes": 200,
+        "fails": 0
+      },
+      "durationSeconds": 4.759868932000001,
+      "newBusinessEffects": 100,
+      "imageId": "sha256:ca581577910cb7207db12cb97d36bf372e8c01028bad9ff6b19a6b2e365cb3aa"
+    }
+  ]
+}

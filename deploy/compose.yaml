@@ -1,64 +1,192 @@
 name: limited-activities-system
 
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+x-app-env: &app-env
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:?set MYSQL_DATABASE}?connectionTimeZone=Asia/Shanghai&forceConnectionTimeZoneToSession=true&connectTimeout=3000&socketTimeout=10000&allowPublicKeyRetrieval=true&useSSL=false
+  SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:?set MYSQL_USER}
+  SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
+  RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
+  JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?set JWT_SECRET_BASE64}
+  METRICS_PASSWORD: ${METRICS_PASSWORD:?set METRICS_PASSWORD}
+  TRACING_ENABLED: ${TRACING_ENABLED:-false}
+  TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:InitialRAMPercentage=20 -Duser.timezone=Asia/Shanghai
+x-app: &app
+  image: ${APP_IMAGE:-las-backend:1.0.0}
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+    args:
+      JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:23.0.2_7-jre-noble@sha256:482448f7d10c123f7453a2ef54035a315399547fdfc8339c37b69995845b8738}
+  profiles: [core]
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: ["/tmp:size=128m,mode=1777"]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  mem_limit: 1g
+  cpus: 1.5
+  stop_grace_period: 35s
+  logging: *logging
+  networks: [backend]
+  depends_on:
+    mysql: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    rabbitmq: {condition: service_healthy}
+    migrate: {condition: service_completed_successfully}
+  healthcheck:
+    test: [CMD, java, "-Dloader.main=com.limitactivitysystem.deployment.ContainerEntrypoint", -cp, /app/app.jar, org.springframework.boot.loader.launch.PropertiesLauncher, health]
+    interval: 20s
+    timeout: 8s
+    retries: 12
+    start_period: 60s
+
 services:
   mysql:
-    image: mysql:8.4.11
+    image: ${MYSQL_IMAGE:-mysql:8.4.11@sha256:0f51e63e537a1f176423fa03ef559aabe6fa4372a53160a44bc7e75da7d15364}
+    profiles: [core]
     restart: unless-stopped
-
     environment:
-      TZ: UTC
-      MYSQL_DATABASE: limit_activity_system
-      MYSQL_USER: app_user
-      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?missing}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?missing}
-
-    command:
-      - "--default-time-zone=+00:00"
-
-    ports:
-      - "127.0.0.1:3307:3306"
-
-    volumes:
-      - mysql_data:/var/lib/mysql
-
+      TZ: Asia/Shanghai
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?set MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER:?set MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+    command: ["--default-time-zone=+08:00", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    volumes: [mysql-data:/var/lib/mysql]
+    networks: [backend]
+    mem_limit: 1g
+    logging: *logging
     healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          MYSQL_PWD="$$MYSQL_PASSWORD"
-          mysql --protocol=TCP -h 127.0.0.1
-          -u "$$MYSQL_USER" "$$MYSQL_DATABASE"
-          -e "SELECT 1" >/dev/null 2>&1
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql --protocol=TCP -h 127.0.0.1 -u "$$MYSQL_USER" "$$MYSQL_DATABASE" -e "SELECT 1" >/dev/null 2>&1']
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 40s
-
+      retries: 30
+      start_period: 45s
   redis:
-    image: redis:8.10.3
+    image: ${REDIS_IMAGE:-redis:8.10.3@sha256:1f88291b4c57bdf249f02eb085a8669889b2d2954e91d4de5118a5da6b78dd53}
+    profiles: [core]
     restart: unless-stopped
-
-    command:
-      - redis-server
-      - --appendonly
-      - "yes"
-      - --save
-      - "60"
-      - "1"
-
-    ports:
-      - "127.0.0.1:6379:6379"
-
-    volumes:
-      - redis_data:/data
-
+    command: [redis-server, --appendonly, "yes", --appendfsync, everysec, --save, "60", "1", --maxmemory, 192mb, --maxmemory-policy, allkeys-lru]
+    volumes: [redis-data:/data]
+    networks: [backend]
+    mem_limit: 256m
+    logging: *logging
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 2s
+      test: [CMD, redis-cli, ping]
+      interval: 5s
       timeout: 3s
       retries: 20
-      start_period: 5s
+  rabbitmq:
+    image: ${RABBITMQ_IMAGE:-rabbitmq:4.4.0-management@sha256:7ddb7fd4630026bc84f72760f33629e8c1ef3bb106360fb385fae0dd4ef886f3}
+    profiles: [core]
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./observability/rabbitmq-enabled-plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./observability/rabbitmq.conf:/etc/rabbitmq/conf.d/20-observability.conf:ro
+    networks: [backend]
+    mem_limit: 768m
+    logging: *logging
+    healthcheck:
+      test: [CMD-SHELL, 'rabbitmq-diagnostics -q ping && rabbitmq-diagnostics -q check_port_connectivity']
+      interval: 10s
+      timeout: 8s
+      retries: 20
+      start_period: 30s
+  migrate:
+    image: ${APP_IMAGE:-las-backend:1.0.0}
+    profiles: [core]
+    command: [migrate]
+    environment: *app-env
+    restart: "no"
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [backend]
+    logging: *logging
+    depends_on:
+      mysql: {condition: service_healthy}
+  app-a:
+    <<: *app
+    environment:
+      <<: *app-env
+      INSTANCE_ID: app-a
+    ports: ["127.0.0.1:${APP_A_PORT:-8081}:8080"]
+  app-b:
+    <<: *app
+    environment:
+      <<: *app-env
+      INSTANCE_ID: app-b
+    ports: ["127.0.0.1:${APP_B_PORT:-8082}:8080"]
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996}
+    profiles: [observability]
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=7d"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    secrets: [metrics-password]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
+    networks: [backend]
+    logging: *logging
+    mem_limit: 384m
+  grafana:
+    image: ${GRAFANA_IMAGE:-grafana/grafana:12.1.1@sha256:a1701c2180249361737a99a01bc770db39381640e4d631825d38ff4535efa47d}
+    profiles: [observability]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?set GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3000}:3000"]
+    networks: [backend]
+    logging: *logging
+    mem_limit: 384m
+  tempo:
+    image: ${TEMPO_IMAGE:-grafana/tempo:2.8.2@sha256:0ef775495967cd5d7a6b2e146b6ea695d624803c8db8349fb8ce4164f719f9b7}
+    profiles: [observability]
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports: ["127.0.0.1:${TEMPO_PORT:-3200}:3200"]
+    environment:
+      GOMAXPROCS: "2"
+      GOMEMLIMIT: 1536MiB
+    networks: [backend]
+    logging: *logging
+    cpus: 2.0
+    mem_limit: 2g
 
+networks:
+  backend:
+    driver: bridge
 volumes:
-  mysql_data:
-  redis_data:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  prometheus-data:
+  grafana-data:
+  tempo-data:
+secrets:
+  metrics-password:
+    environment: METRICS_PASSWORD

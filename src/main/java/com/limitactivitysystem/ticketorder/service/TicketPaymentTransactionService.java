@@ -15,10 +15,12 @@ import com.limitactivitysystem.ticketorder.mapper.TicketOrderItemMapper;
 import com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper;
 import com.limitactivitysystem.ticketorder.model.TicketOrder;
 import com.limitactivitysystem.ticketorder.model.TicketOrderItem;
+import com.limitactivitysystem.outbox.OutboxEventWriter;
 import com.limitactivitysystem.whitelist.service.QualificationService;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static com.limitactivitysystem.ticketorder.exception.TicketOrderErrorCode.*;
 
@@ -44,17 +47,29 @@ public class TicketPaymentTransactionService {
     private final SeatAllocator seats;
     private final TicketIssuanceService issuance;
     private final QualificationGuardService qualificationGuards;
+    private final OutboxEventWriter outbox;
+
+    @Autowired
+    public TicketPaymentTransactionService(TicketOrderMapper orders, TicketOrderItemMapper items, CurrentUserProvider currentUser,
+                                AppUserMapper users, ActivityMapper activities, ActivitySessionMapper sessions,
+                                QualificationService qualification, DatabaseTimeMapper databaseTime,
+                                TicketPaymentResourceService resources, SeatAllocator seats, TicketIssuanceService issuance,
+                                QualificationGuardService qualificationGuards, OutboxEventWriter outbox) {
+        this.orders = orders; this.items = items; this.currentUser = currentUser; this.users = users;
+        this.activities = activities; this.sessions = sessions; this.qualification = qualification;
+        this.databaseTime = databaseTime; this.resources = resources; this.seats = seats;
+        this.issuance = issuance;
+        this.qualificationGuards = qualificationGuards;
+        this.outbox = outbox;
+    }
 
     public TicketPaymentTransactionService(TicketOrderMapper orders, TicketOrderItemMapper items, CurrentUserProvider currentUser,
                                 AppUserMapper users, ActivityMapper activities, ActivitySessionMapper sessions,
                                 QualificationService qualification, DatabaseTimeMapper databaseTime,
                                 TicketPaymentResourceService resources, SeatAllocator seats, TicketIssuanceService issuance,
                                 QualificationGuardService qualificationGuards) {
-        this.orders = orders; this.items = items; this.currentUser = currentUser; this.users = users;
-        this.activities = activities; this.sessions = sessions; this.qualification = qualification;
-        this.databaseTime = databaseTime; this.resources = resources; this.seats = seats;
-        this.issuance = issuance;
-        this.qualificationGuards = qualificationGuards;
+        this(orders, items, currentUser, users, activities, sessions, qualification, databaseTime,
+                resources, seats, issuance, qualificationGuards, null);
     }
 
     /** Conflict recovery runs only after this transaction proxy has finished rollback. */
@@ -95,6 +110,12 @@ public class TicketPaymentTransactionService {
         LocalDateTime afterUpdate = databaseTime.currentTime();
         validatePendingOrder(order, afterUpdate);
         validateTradableScope(scope.activity(), scope.session(), afterUpdate);
+        if (outbox != null) {
+            outbox.append("PAYMENT_SUCCEEDED", order.getOrderId(), Map.of(
+                    "orderId", order.getOrderId(),
+                    "userId", order.getBuyerId(),
+                    "content", "订单 " + order.getOrderId() + " 支付成功"));
+        }
     }
 
     private TicketOrder lockAndValidateOrder(Long orderId) {

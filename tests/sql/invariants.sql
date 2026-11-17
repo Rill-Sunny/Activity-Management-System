@@ -1,5 +1,6 @@
 -- Phase 1 cross-domain checks. Run with orphans, reservation, refund and gift scripts
 -- in one read-only REPEATABLE READ snapshot after all worker transactions finish.
+
 SELECT 'DUPLICATE_VALID_SEAT' AS violation, CAST(seat_id AS CHAR) AS resource_id
 FROM ticket WHERE status = 'VALID' GROUP BY seat_id HAVING COUNT(*) > 1;
 
@@ -37,3 +38,9 @@ SELECT 'UNPAID_ORDER_TICKET' AS violation, CAST(t.ticket_id AS CHAR) AS resource
 FROM ticket t JOIN ticket_order_item i ON i.order_item_id = t.order_item_id
 JOIN ticket_order o ON o.order_id = i.order_id
 WHERE o.status IN ('PENDING_PAYMENT', 'CLOSED');
+
+-- Orders past their database deadline must not remain pending after the expiry scan finishes.
+SELECT 'OVERDUE_PENDING_ORDER' AS violation, CAST(order_id AS CHAR) AS resource_id,
+       expires_at AS expected_value, status AS actual_value
+FROM ticket_order
+WHERE status = 'PENDING_PAYMENT' AND expires_at <= CURRENT_TIMESTAMP(3);

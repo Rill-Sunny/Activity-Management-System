@@ -51,15 +51,28 @@ public class ProductAfterSaleTransactionService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public ProductAfterSaleResponse apply(@NotNull @Valid CreateProductAfterSaleRequest request, @NotNull @Positive Long buyerId) {
+        return applyCore(request, buyerId, true);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY, isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
+    public ProductAfterSaleResponse applyForQualification(@NotNull @Valid CreateProductAfterSaleRequest request,
+                                                           @NotNull @Positive Long buyerId) {
+        return applyCore(request, buyerId, false);
+    }
+
+    private ProductAfterSaleResponse applyCore(CreateProductAfterSaleRequest request, Long buyerId,
+                                                boolean requireCurrentBuyer) {
         validateRequestShape(request);
-        if (!buyerId.equals(currentUser.getAuthenticatedUserId())) {
+        if (requireCurrentBuyer && !buyerId.equals(currentUser.getAuthenticatedUserId())) {
             throw failure(PRODUCT_ORDER_ACCESS_DENIED, "Authenticated buyer changed during after-sale processing");
         }
         ProductOrder order = orders.findByIdForUpdate(request.orderId());
         if (order == null) { throw failure(PRODUCT_ORDER_NOT_FOUND, "Product order not found"); }
         if (!buyerId.equals(order.getBuyerId())) { throw failure(PRODUCT_ORDER_ACCESS_DENIED, "Only the order buyer can request after-sales"); }
         var buyer = users.findByIdForShare(buyerId);
-        if (buyer == null || !"ACTIVE".equals(buyer.getStatus()) || !"USER".equals(buyer.getRole())) {
+        if (buyer == null || !"ACTIVE".equals(buyer.getStatus())
+                || (requireCurrentBuyer && !"USER".equals(buyer.getRole()))
+                || (!requireCurrentBuyer && !List.of("USER", "PUBLISHER").contains(buyer.getRole()))) {
             throw failure(PRODUCT_USER_DISABLED, "Current buyer account is not active");
         }
         ProductAfterSaleRequest existing = afterSales.findByBuyerAndRequestId(buyerId, request.requestId());

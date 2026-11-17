@@ -55,11 +55,14 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET, "/activities", "/activities/{id}",
                                 "/products/{productId}", "/products/{productId}/skus/{skuId}", "/activities/{activityId}/products",
-                                "/sessions/{sessionId}/seat-layout"
+                                "/sessions/{sessionId}/seat-layout", "/sessions/{sessionId}/cancellation", "/activities/{activityId}/cancellation"
                         ).permitAll()
 
                         // 管理端点除公开健康检查外均要求认证。
                         .requestMatchers("/actuator/**").authenticated()
+
+                        // Outbox replay can resend durable business events and is limited to administrators.
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
 
                         // 所有发布者管理接口均要求发布者角色
                         .requestMatchers("/publisher/**").hasRole("PUBLISHER")

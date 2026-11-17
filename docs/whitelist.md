@@ -39,7 +39,7 @@
 
 `TicketOrderService.createOrder` 协调幂等重放与首次创建，首次创建由 `TicketOrderCreationService` 在创建事务中调用 `QualificationService.check(activityId, sessionId)`。该入口从 `CurrentUserProvider` 取得可信账号并使用同一套名单规则。`canParticipate` 保留为内部布尔查询，后续 `ReservationService` 复用业务资格入口。调用方另行校验发布状态、场次状态、开放窗口、限购和库存，资格通过不代表已取得可售资源。
 
-每次业务动作在自己的事务中重新调用本服务。创建订单时通过资格检查，不能代替该订单未来支付时的检查；已支付门票和已成功预约也不会因后来名单修改而自动撤销。Day 12 已通过包含真实订单、Ticket、退款和预约的 [A–D 完整回归](day12-whitelist-regression.md)。
+每次业务动作在自己的事务中重新调用本服务。创建订单时通过资格检查，不能代替该订单未来支付时的检查；已支付门票和已成功预约也不会因后来名单修改而自动撤销。Day 12 已通过包含真实订单、Ticket、退款和预约的 [A–D 完整回归](../qa/reports/day12-whitelist-regression.md)。
 
 相同创建请求的幂等重放只读取原订单，不新增参与行为，因此名单改变后仍可返回匹配的原单；账号仍须有效，也不能以重放结果代替未来支付时的资格复查。
 

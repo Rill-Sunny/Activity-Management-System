@@ -88,7 +88,7 @@ public class ProductOrderCreationService {
     static ProductOrderResponse response(ProductOrder order, List<ProductOrderItem> items) {
         return new ProductOrderResponse(order.getOrderId(), order.getRequestId(), order.getPublisherId(),
                 order.getTotalAmount(), order.getStatus(), order.getCreatedAt(), order.getExpiresAt(), order.getPaidAt(), order.getClosedReason(),
-                items.stream().map(item -> new ProductOrderResponse.Item(item.getProductId(), item.getSkuId(),
+                items.stream().map(item -> new ProductOrderResponse.Item(item.getOrderItemId(), item.getProductId(), item.getSkuId(),
                         item.getProductNameSnapshot(), item.getSkuNameSnapshot(), item.getQuantity(),
                         item.getUnitPrice(), item.getUnitPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity())),
                         item.getActivityIdSnapshot(), item.getQualificationTypeSnapshot(),

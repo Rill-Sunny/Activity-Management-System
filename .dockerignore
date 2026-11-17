@@ -1,0 +1,5 @@
+**
+!target/
+!target/limited-activities-system-1.0-SNAPSHOT.jar
+!deploy/
+!deploy/Dockerfile

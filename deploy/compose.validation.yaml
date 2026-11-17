@@ -1,0 +1,13 @@
+# Used only with the separately named Day 27/28 validation projects.
+services:
+  prometheus:
+    volumes:
+      - ./observability/prometheus.validation.yml:/etc/prometheus/prometheus.yml:ro
+  mysql:
+    command: ["--default-time-zone=+08:00", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--slow-query-log=ON", "--long-query-time=0.05", "--log-output=TABLE", "--performance-schema=ON"]
+  app-a:
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx640m -XX:+UseG1GC -Duser.timezone=Asia/Shanghai
+  app-b:
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx640m -XX:+UseG1GC -Duser.timezone=Asia/Shanghai

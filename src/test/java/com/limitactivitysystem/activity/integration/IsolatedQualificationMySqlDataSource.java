@@ -25,7 +25,15 @@ final class IsolatedQualificationMySqlDataSource extends HikariDataSource {
     }
 
     IsolatedQualificationMySqlDataSource(DataSourceProperties properties, int maximumPoolSize) throws Exception {
-        this(properties, maximumPoolSize, List.of("db/migration/V1__create_schema.sql", "db/migration/V3__create_whitelist_tables.sql"));
+        this(properties, maximumPoolSize, List.of(
+                "V1__create_schema.sql", "V3__create_whitelist_tables.sql", "V4__create_free_reservation_tables.sql",
+                "V5__create_ticket_refund_tables.sql", "V6__add_refund_processing_results.sql", "V7__add_gift_inventory_operations.sql",
+                "V8__create_product_catalog.sql", "V9__create_product_orders.sql", "V10__add_qualification_guard_and_order_version.sql",
+                "V11__freeze_product_after_sales.sql", "V12__separate_after_sale_inspection_and_resalability.sql",
+                "V13__create_cache_invalidation_tasks.sql", "V14__add_transactional_outbox_and_notification_processing.sql",
+                "V15__add_admin_role_for_outbox_replay.sql", "V16__add_ticket_qualification_after_sale_tasks.sql",
+                "V17__add_session_reschedule_history.sql", "V18__add_cancellation_batches.sql")
+                .stream().map(name -> "db/migration/" + name).toList());
     }
 
     /** Empty bootstrap lets migration tests create the schema through Flyway itself. */

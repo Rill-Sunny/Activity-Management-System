@@ -56,6 +56,7 @@ public class CacheInvalidationDelivery {
         try {
             redis.invalidate(task.cacheIdentity(), task.generation());
         } catch (DataAccessException failure) {
+            metrics.redisFailure(CacheMetrics.RedisOperation.INVALIDATE, failure);
             metrics.invalidationFailure(task.cacheIdentity());
             LOG.warn("Cache invalidation remains pending taskId={} cause={}", task.taskId(),
                     failure.getClass().getSimpleName());

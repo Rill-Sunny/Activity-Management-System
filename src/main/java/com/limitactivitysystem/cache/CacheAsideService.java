@@ -87,6 +87,9 @@ public class CacheAsideService {
                         cache.writeIfGenerationMatches(cacheIdentity, currentGeneration, serialized,
                                 fillStartedAt + ttl.toMillis());
                     } catch (DataAccessException | JsonProcessingException failure) {
+                        if (failure instanceof DataAccessException redisFailure) {
+                            metrics.redisFailure(CacheMetrics.RedisOperation.FILL, redisFailure);
+                        }
                         LOG.debug("Skipping Redis cache fill identity={} type={}", cacheIdentity,
                                 failure.getClass().getSimpleName());
                     }
@@ -108,6 +111,7 @@ public class CacheAsideService {
             if (value == null || value.isNull()) return CacheRead.miss();
             return CacheRead.hit(mapper.treeToValue(value, valueType));
         } catch (DataAccessException failure) {
+            metrics.redisFailure(CacheMetrics.RedisOperation.READ, failure);
             LOG.debug("Redis cache read unavailable identity={} type={}", cacheIdentity,
                     failure.getClass().getSimpleName());
             return CacheRead.unavailable();

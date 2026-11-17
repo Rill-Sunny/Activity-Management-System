@@ -51,6 +51,18 @@ public interface ActivitySessionMapper {
     @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
     ActivitySession findByIdForShare(@Param("id") Long id);
 
+    @Select("SELECT * FROM activity_session WHERE activity_session_id = #{id} FOR UPDATE")
+    @ResultMap("activitySessionResultMap")
+    @Options(useCache = false, flushCache = Options.FlushCachePolicy.TRUE)
+    ActivitySession findByIdForUpdate(@Param("id") Long id);
+
+    @org.apache.ibatis.annotations.Update("""
+            UPDATE activity_session SET start_time=#{start}, end_time=#{end}
+            WHERE activity_session_id=#{id} AND status='SCHEDULED'
+            """)
+    int reschedule(@Param("id") Long id, @Param("start") java.time.LocalDateTime start,
+                   @Param("end") java.time.LocalDateTime end);
+
     @Select("""
             SELECT activity_session_id, activity_id, start_time, end_time, capacity, status,
                    max_tickets_per_user, seat_mode

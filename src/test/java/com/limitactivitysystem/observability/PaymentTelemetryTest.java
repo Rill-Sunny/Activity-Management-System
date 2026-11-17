@@ -78,7 +78,8 @@ class PaymentTelemetryTest {
                     "paymentResult=SUCCESS", "failureReason=NONE", "durationMs=");
             assertThat(event.getThrowableProxy()).isNull();
         });
-        assertThat(registry.getMeters()).allSatisfy(meter -> assertThat(meter.getId().getTags()).allSatisfy(tag -> assertThat(tag.getKey()).isEqualTo("reason")));
+        assertThat(registry.getMeters().stream().filter(meter -> meter.getId().getName().startsWith("payment.")))
+                .allSatisfy(meter -> assertThat(meter.getId().getTags()).allSatisfy(tag -> assertThat(tag.getKey()).isEqualTo("reason")));
     }
 
     @ParameterizedTest @CsvSource({"ORDER_EXPIRED,ORDER_EXPIRED", "PURCHASE_LIMIT_EXCEEDED,PURCHASE_LIMIT",

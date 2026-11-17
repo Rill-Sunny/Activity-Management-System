@@ -1,0 +1,190 @@
+[
+  {
+    "id": "RISK-SECURITY",
+    "rule": "跨账号订单、跨 Publisher、禁用账号、伪造角色/金额；真实过滤器和数据库所有权检查",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+        "method": "publisherCannotConfigureOrPublishAnotherPublishersActivity"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "anotherBuyerCannotDiscoverPaymentStateByAttemptingToPayTheOrder"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "p13_forgedBuyerIdCannotChangeTheAuthenticatedBuyer"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "p14_forgedTotalAmountCannotOverrideTheServerCalculatedAmount"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "serviceRechecksRoleAndAccountAfterAuthentication"
+      },
+      {
+        "class": "com.limitactivitysystem.security.SecurityAccessTest",
+        "method": "rejectsRolesThatDoNotMatchCurrentUser"
+      }
+    ]
+  },
+  {
+    "id": "RISK-SEATS",
+    "rule": "自主选座、自动配座、连座优先、非连座确认、同座竞争",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest",
+        "method": "selectedAllocationLocksAllZonesThenOccupiesAllSeatsInGlobalIdOrder"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest",
+        "method": "automaticAllocationUsesPriorityForCandidatesButIdOrderForActualWrites"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.SeatAllocationMySqlIntegrationTest",
+        "method": "nonAdjacentSeatsAreUsedOnlyWhenTheSavedOrderAcceptsThem"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice"
+      }
+    ]
+  },
+  {
+    "id": "RISK-PAYMENT-TIME",
+    "rule": "创建不占资源、支付占用、停售不等于到期、锁等待跨到期边界",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "lockWaitsAndFinalUpdatesCannotCrossDatabasePaymentDeadlines"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "aValidOrderCreatedBeforeCloseCanReachResourceAllocationAfterTicketSalesClose"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "p07_p08_p09_p10_p11_orderCreationIsIdempotentAndPreservesSnapshotsAndResources"
+      }
+    ]
+  },
+  {
+    "id": "RISK-REFUND-AMOUNTS",
+    "rule": "48h 优先、30/14/10 天的 ±1ms、每张票 HALF_UP 舍入和原成交价",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+        "method": "exactDayBoundariesUseTheApplicationTime"
+      },
+      {
+        "class": "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+        "method": "theFreeWindowEndsExactlyFortyEightHoursAfterActivityOpening"
+      },
+      {
+        "class": "com.limitactivitysystem.refund.service.OrdinaryTicketRefundPolicyTest",
+        "method": "moneyIsRoundedHalfUpForEachTicket"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+        "method": "at09RefundOnlyBAndDAtTheirFourActualPaidPrices"
+      }
+    ]
+  },
+  {
+    "id": "RISK-AFTERSALE",
+    "rule": "七日模板、特殊模板与质量问题、重复验收和发货竞态",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "standardNoReasonUsesServerRecordedReceiptTime"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "specialTemplateBlocksOnlyNoReasonAndNonresalableReturnedGoodsDoNotRestoreStock"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "shippingAndUnshippedRefundCannotBothSucceed"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "concurrentAfterSaleRequestsCannotRefundMoreThanPurchased"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "productShipmentAndQualificationAfterSaleSerializeOnProductOrder"
+      }
+    ]
+  },
+  {
+    "id": "RISK-QUALIFICATION",
+    "rule": "ACTIVITY/SESSION 范围、名单变更、商品支付与最后票退款争用",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "activityScopeUsesOtherSessionTicketWhileSessionScopeDoesNot"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "ticketRefundThatGetsTheGuardFirstMakesLaterProductPaymentRecheckAndReject"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "productPaymentThatGetsTheGuardFirstLeavesTraceableSaleForLaterTicketRefund"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "qualificationAtCreationDoesNotAuthorizePaymentAfterAWhitelistChange"
+      }
+    ]
+  },
+  {
+    "id": "RISK-LIFECYCLE",
+    "rule": "多次改期与独立窗口、取消整个活动、历史场次隔离、并发取消与支付",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+        "method": "t10EachRescheduleHasIndependentHistoryResponsesAndEligibility"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "activityCancellationPreservesFinishedHistoryAndCoversRemainingSessions"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "activityAfterSessionCancellationDoesNotDuplicateItsRefunds"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "cancellationAndPaymentSerializeAtActualDatabaseGate"
+      }
+    ]
+  },
+  {
+    "id": "RISK-MESSAGING",
+    "rule": "Outbox 补发、已提交未 ACK 的重投、毒消息/DLQ、重放和资格事件乱序",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest",
+        "method": "repeatedConsumerFailuresAreBoundedAndDeadLetteredWithQueryableReason"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "qualificationOutboxSurvivesUnavailableRabbitEndpointAndPublishesAfterRecovery"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "delayedRefundEventRechecksEligibilityAfterAnotherTicketIsPurchased"
+      },
+      {
+        "class": "com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest",
+        "method": "confirmedPublishLeaseExpiryAndConsumerRedeliveryKeepOneBusinessEffect"
+      },
+      {
+        "class": "com.limitactivitysystem.messaging.integration.RabbitMqOutboxReliabilityMySqlIntegrationTest",
+        "method": "publisherCanReplayFailedEventWithOriginalIdAndCannotReplayCommittedEffect"
+      }
+    ]
+  }
+]

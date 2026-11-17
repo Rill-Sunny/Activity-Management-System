@@ -83,14 +83,33 @@ public class TicketRefundApplicationService {
         request.setBuyerId(buyerId); request.setOrderId(order.getOrderId()); request.setRequestId(input.getRequestId());
         request.setReason(input.getReason()); request.setRequestedAt(requestedAt);
         request.setOpenTimeSnapshot(activity.getOpenTime()); request.setStartTimeSnapshot(session.getStartTime());
-        if (refunds.insertRequest(request) != 1) { throw new IllegalStateException("Refund application could not be saved"); }
+        return persist(request, quoted);
+    }
+
+    /** Caller has locked and validated all orders, lifecycle rows and tickets in one acceptance transaction. */
+    @Transactional(propagation=Propagation.MANDATORY)
+    public TicketRefundResponse saveRescheduleQuote(Long buyerId, Long orderId, String requestId, Long eventId,
+            LocalDateTime acceptedAt, LocalDateTime openTime, LocalDateTime startTime, List<Ticket> selected) {
+        var request=new TicketRefundRequest();
+        request.setBuyerId(buyerId); request.setOrderId(orderId); request.setRequestId(requestId);
+        request.setReason("SESSION_RESCHEDULE_REFUND:"+eventId); request.setSourceEventId(eventId);
+        request.setRequestedAt(acceptedAt); request.setOpenTimeSnapshot(openTime); request.setStartTimeSnapshot(startTime);
+        var quoted=selected.stream().map(ticket -> new QuotedTicket(ticket,
+                new TicketRefundDecision(true,java.math.BigDecimal.ZERO.setScale(4),java.math.BigDecimal.ONE.setScale(4),
+                        java.math.BigDecimal.ZERO.setScale(2),ticket.getPaidPrice(),null))).toList();
+        return persist(request,quoted);
+    }
+
+    private TicketRefundResponse persist(TicketRefundRequest request, List<QuotedTicket> quoted) {
+        int inserted=request.getSourceEventId()==null ? refunds.insertRequest(request) : refunds.insertRescheduleRequest(request);
+        if (inserted != 1) { throw new IllegalStateException("Refund application could not be saved"); }
         for (var quote : quoted) {
             if (refunds.insertItem(request.getRefundId(), quote.ticket().getTicketId(), quote.ticket().getPaidPrice(),
                     quote.decision().feeRate(), quote.decision().refundAmount()) != 1) {
                 throw new IllegalStateException("Refund item could not be saved");
             }
         }
-        return response(refunds.findByRequest(buyerId, input.getRequestId()));
+        return response(refunds.findByRequest(request.getBuyerId(), request.getRequestId()));
     }
 
     private void requireOwnership(Long ticketId, Long orderId, Long buyerId) {
@@ -103,7 +122,7 @@ public class TicketRefundApplicationService {
 
     private TicketRefundResponse replay(TicketRefundRequest saved, CreateTicketRefundRequest input) {
         var items = refunds.findItems(saved.getRefundId());
-        if (!saved.getOrderId().equals(input.getOrderId()) || !saved.getReason().equals(input.getReason())
+        if (saved.getSourceEventId()!=null || !saved.getOrderId().equals(input.getOrderId()) || !saved.getReason().equals(input.getReason())
                 || !items.stream().map(TicketRefundItemResponse::ticketId).toList().equals(input.getTicketIds().stream().sorted().toList())) {
             throw new TicketRefundException(REFUND_IDEMPOTENCY_CONFLICT, "Refund requestId is already used for different content");
         }

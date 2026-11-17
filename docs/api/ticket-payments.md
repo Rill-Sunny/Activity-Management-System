@@ -71,6 +71,6 @@ Authorization: Bearer <JWT>
 
 支付只对明确的 MySQL 并发错误重试：死锁 `1213 / 40001`，以及锁等待超时 `1205 / HY000` 或连接器返回的 `1205 / 40001`。最多三次总尝试，重试前分别等待 50–75ms、100–125ms。每次失败事务结束后，下一次尝试重新锁订单、复查资格、占限购、扣库存、分座并出票。业务拒绝、断连、SQL 语法错误与未知异常不重试。
 
-重试耗尽响应包含 `code`、`reason`（`DEADLOCK` 或 `LOCK_WAIT_TIMEOUT`）和 `attempts: 3`，不包含 SQL 或异常栈。主动取消与数据库分批过期扫描已接入；支付本身的过期拒绝不执行关闭，扫描独立关闭到期的待支付订单。锁与事务设计见 [locking.md](../locking.md#ticket-payment-resources)，实验证据见[支付重试验证](../payment-retry-verification.md)。
+重试耗尽响应包含 `code`、`reason`（`DEADLOCK` 或 `LOCK_WAIT_TIMEOUT`）和 `attempts: 3`，不包含 SQL 或异常栈。主动取消与数据库分批过期扫描已接入；支付本身的过期拒绝不执行关闭，扫描独立关闭到期的待支付订单。锁与事务设计见 [locking.md](../locking.md#ticket-payment-resources)，实验证据见[支付重试验证](../../qa/reports/payment-retry-verification.md)。
 
-支付尝试产生 `payment.success`、按固定原因分类的 `payment.failure` 和 `payment.duration`。已认证管理端点可读取这些指标。它们统计 Service 请求结果，包含重复支付成功读取；不等于新增成交订单数。日志字段及自动对账范围见[支付对账与可观测性](../payment-verification.md)。
+支付尝试产生 `payment.success`、按固定原因分类的 `payment.failure` 和 `payment.duration`。已认证管理端点可读取这些指标。它们统计 Service 请求结果，包含重复支付成功读取；不等于新增成交订单数。日志字段及自动对账范围见[支付对账与可观测性](../../qa/reports/payment-verification.md)。

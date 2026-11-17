@@ -1,0 +1,11 @@
+# Historical Day 24 configuration. Current Compose uses observability/prometheus.yml.
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: las-backend
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password_file: /run/secrets/metrics-password
+    static_configs:
+      - targets: [app-a:9091, app-b:9091]

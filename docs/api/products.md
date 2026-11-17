@@ -1,6 +1,6 @@
 # Product、SKU 与购买资格 API
 
-本文记录商品目录、管理、展示及资格查询接口。商品订单预览和确认见[商品订单 API](product-orders.md)。支付库存竞争、售后及资格联动尚未实现。库存直接读取 MySQL，没有 Redis。
+本文记录商品目录、管理、展示及资格查询接口。商品订单预览和确认见[商品订单 API](product-orders.md)。商品支付、部分售后和持票资格联动已实现。详情使用 Redis Cache-Aside，交易库存及资格始终以 MySQL 为准。
 
 ## 发布者管理
 
@@ -115,7 +115,7 @@ ALLOWED 表示本次资格通过；名单不足为 PRODUCT_WHITELIST_REQUIRED，
 
 内部 `ProductQualificationService.check(userId, productId)` 的 userId 必须来自可信调用者；独立调用建立 READ_COMMITTED 事务，加入业务事务时也要求 READ_COMMITTED，避免重用旧 RR 快照。对外始终调用 previewCurrent，从 CurrentUserProvider 决定账号。
 
-当前是只读资格查询，不是商品支付授权令牌。Day 16 商品支付会在持有账号 × Activity Guard 后重新检查资格；出票和实际退款也会取得同一 Guard。Day 20 售后 Outbox 和限定商品联动仍未接入，不能仅凭本次 `allowed=true` 结果成交。
+当前是只读资格查询，不是商品支付授权令牌。商品支付在持有账号 × Activity Guard 后重新检查资格；出票和实际退款也取得同一 Guard。票务退款提交后通过 Outbox、RabbitMQ 触发限定商品联动，消费者再次读取当前资格，不能仅凭本次 `allowed=true` 结果成交。
 
 ## 错误、锁与验证
 
@@ -133,4 +133,4 @@ ALLOWED 表示本次资格通过；名单不足为 PRODUCT_WHITELIST_REQUIRED，
 | 活跃目标成员不存在 | 404 PRODUCT_MEMBER_NOT_FOUND |
 | 数据库技术失败 | 500 或 503 PRODUCT_TECHNICAL_FAILURE |
 
-管理路径 Account S → Activity S → 可选 Session S → Product X → SKU/Member；查询使用 Product S。名单变更的 Product X 与资格查询的 Product S 互斥，空名单也有稳定协调对象。SQL 成功后异常会回滚整个创建、SKU 写入或上架事务。真实事务和迁移证据见 [Day 14 验证](../day14-products.md)。
+管理路径 Account S → Activity S → 可选 Session S → Product X → SKU/Member；查询使用 Product S。名单变更的 Product X 与资格查询的 Product S 互斥，空名单也有稳定协调对象。SQL 成功后异常会回滚整个创建、SKU 写入或上架事务。真实事务和迁移证据见 [Day 14 验证](../../qa/reports/day14-products.md)。

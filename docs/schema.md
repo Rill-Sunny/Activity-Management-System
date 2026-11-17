@@ -1,12 +1,12 @@
 # 限量活动预约与订单系统 — schema.md
 
-> **版本：V2.11（独立记录售后验收与可再售结果）**
+> **版本：V2.14（场次/活动取消与持久化处理批次）**
 >
 > **数据库：MySQL 8.4 / InnoDB**  
 > **需求基线：requirements.md Version 1.1（业务规则不变）**  
-> **当前状态：26 张业务表：包含商品订单、Product 共享限购计数、账号 × Activity 资格保护行与售后记录**
+> **当前状态：42 张应用表：36 张业务表及 6 张缓存、消息基础设施表，包含改期历史及取消事件、范围、批次和明细**
 >
-> **核心决策：全部 26 张表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
+> **核心决策：全部 42 张应用表不声明物理 FOREIGN KEY；保留逻辑关联、必要索引、唯一约束、`CHECK`、事务与原子更新。**
 
 ## 0. 架构决策：为什么改为逻辑关联
 
@@ -64,6 +64,8 @@ activity_session.activity_session_id  ← gift_inventory_operation.session_id
 session_zone.zone_id                  ← gift_inventory_operation.zone_id（GIFT）
 gift_inventory_operation.operation_id ← gift_inventory_operation_item.operation_id
 session_seat.seat_id                  ← gift_inventory_operation_item.seat_id
+outbox_event.event_id                 ← ticket_qualification_after_sale_task.source_event_id
+product_order_item.order_item_id      ← ticket_qualification_after_sale_task.product_order_item_id
 
 activity (1) → (N) activity_session (1) → (N) session_zone (1) → (N) session_seat
 ticket_order (1) → (N) ticket_order_item (1) → (N) ticket
@@ -226,7 +228,7 @@ CREATE TABLE session_seat (
     CONSTRAINT chk_seat_number CHECK (seat_no > 0),
     CONSTRAINT chk_seat_priority CHECK (allocation_priority > 0),
     CONSTRAINT chk_seat_allocation_status
-        CHECK (allocation_status IN ('AVAILABLE', 'SOLD', 'GIFT_ALLOCATED')),
+        CHECK (allocation_status IN ('AVAILABLE', 'SOLD', 'GIFT_ALLOCATED', 'GIFT_CANCELLED')),
     CONSTRAINT uq_seat_zone_position
         UNIQUE (zone_id, row_no, seat_no),
 
@@ -240,6 +242,7 @@ CREATE TABLE session_seat (
 - `AVAILABLE`：可以分配。
 - `SOLD`：被有效付费门票占用。
 - `GIFT_ALLOCATED`：被主办方赠票库存操作分配，不记录领取者平台账号。
+- `GIFT_CANCELLED`：所属场次取消后失去参与效力，保留原分配历史与赠票池占用，不转入公开票池。
 
 座位历史归属仍须由后续 `ticket`、赠票库存操作记录等业务实体保存。**不要把 `allocation_status` 当作交易历史。** Service 必须校验：付费售票只能占用 `PAID` Zone 下的座位，赠票分配只能占用 `GIFT` Zone 下的座位。
 
@@ -791,7 +794,7 @@ ALTER TABLE activity_session
 | `activity_session.capacity`、`max_tickets_per_user`、`seat_mode` | 冻结 |
 | `session_zone.price`、`total_amount` | 冻结，当前票价位于 `session_zone.price` |
 | `session_seat` 行列、座位编号、分配优先级及增删 | 冻结 |
-| `activity_session.start_time`、`end_time` | 普通编辑冻结，专用改期流程留到 Day 22 |
+| `activity_session.start_time`、`end_time` | 普通编辑冻结，通过 Day 22 专用改期接口修改并保存历史 |
 | `whitelist_config`、`whitelist_member` | 所属发布者仍可维护，保留上述配置语义 |
 
 这些跨表生命周期限制由 Service 维护，不由白名单表的单行 `CHECK` 推断。当前新增配置入口锁定 Activity 并检查 `DRAFT`，发布后返回 `409 ACTIVITY_NOT_DRAFT`。通用核心资源编辑入口尚未开放，普通编辑请求返回 `404` 或 `405`。
@@ -948,9 +951,13 @@ WHERE order_item_id = :order_item_id
 - **V2.6**：新增 `gift_inventory_operation`、`gift_inventory_operation_item`，冻结 ALLOCATE 成功操作及逐座历史，保护发布者请求键和单次操作座位唯一性，不记录领取人。共 17 张业务表，0 个物理 FOREIGN KEY。
 - **V2.7**：V8 新增 product、sku、product_whitelist_member，支持两种持票范围、预设模板、独立 SKU 库存与独立名单。共 20 张业务表，0 个物理 FOREIGN KEY。
 - **V2.8**：V9 新增 product_order、product_order_item、user_product_purchase，冻结订单同 Publisher/可跨 Activity、重复 SKU 拒绝、快照价格、requestId 幂等与建单不占资源。共 23 张业务表，0 个物理 FOREIGN KEY。
-- **V2.9（本版）**：V10 新增 user_activity_qualification_guard，并在商品订单明细保存持票资格 Guard 版本快照；商品支付、票务支付和退款共同串行化有效 Ticket 变化。共 24 张业务表，0 个物理 FOREIGN KEY。
-- **V2.10（本版）**：V11 扩展商品订单明细的履约与售后累计数量，新增 product_after_sale_request、product_after_sale_item；以条件更新和 CHECK 约束共同保护申请中数量与成功退款数量。共 26 张业务表，0 个物理 FOREIGN KEY。
-- **V2.11（本版）**：V12 为商品售后明细增加验收通过模拟值，并以 CHECK 禁止验收失败却标记可再售；保留已应用的 V11 迁移定义。共 26 张业务表，0 个物理 FOREIGN KEY。
+- **V2.9**：V10 新增 user_activity_qualification_guard，并在商品订单明细保存持票资格 Guard 版本快照；商品支付、票务支付和退款共同串行化有效 Ticket 变化。共 24 张业务表，0 个物理 FOREIGN KEY。
+- **V2.10**：V11 扩展商品订单明细的履约与售后累计数量，新增 product_after_sale_request、product_after_sale_item；以条件更新和 CHECK 约束共同保护申请中数量与成功退款数量。共 26 张业务表，0 个物理 FOREIGN KEY。
+- **V2.11**：V12 为商品售后明细增加验收通过模拟值，并以 CHECK 禁止验收失败却标记可再售；保留已应用的 V11 迁移定义。共 26 张业务表，0 个物理 FOREIGN KEY。
+- **V2.12**：V16 增加资格变化 Outbox 事件类型和 `ticket_qualification_after_sale_task`。任务按 `product_order_item_id` 唯一，保存来源事件、资格范围、重试状态和失败原因。共 27 张业务表，0 个物理 FOREIGN KEY。
+- **V2.13**：V17 增加 5 张改期相关表、退款政策来源字段及两种 Outbox 事件类型。实际迁移库共 38 张应用表（32 张业务表加 cache_generation、cache_invalidation_task、outbox_event、consumer_process、consumer_failure、notification），0 个物理 FOREIGN KEY。
+
+- **V2.14（本版）**：V18 增加取消事件、范围、批次和明细，扩展取消退款政策及 GIFT 失效历史。共 42 张应用表，0 个物理 FOREIGN KEY。
 
 ## 16. 商品目录与资格（V2.7）
 
@@ -960,6 +967,71 @@ SKU 的 price 为 DECIMAL(10,2)，total_stock/remains_stock 独立非负且余�
 
 product_whitelist_member 唯一键为 (product_id,user_id)，不复用 Activity/Session 名单。Product 的 qualification_type 已表示显式配置，PRODUCT_WHITELIST 且成员为零时拒绝，不额外建重复配置表。
 
-库存及引用巡检见 [product_invariants.sql](../tests/sql/product_invariants.sql)，响应和权限见 [商品 API](api/products.md)，真实迁移及业务验证见 [Day 14 记录](day14-products.md)。
+库存及引用巡检见 [product_invariants.sql](../tests/sql/product_invariants.sql)，响应和权限见 [商品 API](api/products.md)，真实迁移及业务验证见 [Day 14 记录](../qa/reports/day14-products.md)。
 
-V8 保持三张目录表：资格配置内嵌 Product，独立名单保存成员，因此不创建重复配置表。V9 订单主表、明细与共享限购计数以及 V10 资格 Guard 见第 14 节。两种售后模板用受约束的枚举与版本保存，不引入全局 returnable 位。Day 16 商品支付会扣减 SKU 库存并增加 Product 共享计数；退款联动仍待 Day 20。
+V8 保持三张目录表：资格配置内嵌 Product，独立名单保存成员，因此不创建重复配置表。V9 订单主表、明细与共享限购计数以及 V10 资格 Guard 见第 14 节。两种售后模板用受约束的枚举与版本保存，不引入全局 returnable 位。Day 16 商品支付会扣减 SKU 库存并增加 Product 共享计数；V16 通过独立资格变更事件联动售后。
+
+## 17. 异步消息与 Outbox（V14、V16）
+
+[V14 迁移](../src/main/resources/db/migration/V14__add_transactional_outbox_and_notification_processing.sql) 增加四张无物理外键的表。引用以逻辑键保存，业务写入与事件写入由 Service 事务共同提交。
+
+| 表 | 唯一键与主要索引 | 用途 |
+|---|---|---|
+| `outbox_event` | `event_id` 主键；`(status,next_attempt_at,created_at,event_id)`、租约和聚合索引 | 事件载荷、`PENDING/CLAIMED/SENT/FAILED` 状态、尝试次数、下一次尝试时间、租约 token/期限、traceparent、失败原因和发布时间 |
+| `consumer_process` | 主键 `(consumer_name,event_id)`；按 event 查询索引 | 在消费者业务事务内登记已提交处理，阻止重复副作用 |
+| `consumer_failure` | 主键 `(consumer_name,event_id)`；状态/更新时间索引 | 记录有限重试的次数、最近错误和 `RETRYING/FAILED` 状态 |
+| `notification` | 唯一键 `(user_id,event_id)`；用户时间线及未读索引 | 可查询的模拟站内通知及其已读状态 |
+
+Outbox 对状态、尝试次数、租约字段、发布时间、事件类型和聚合 ID 设置 CHECK。V16 将 `TICKET_QUALIFICATION_CHANGED` 加入事件类型。通知的用户、内容、读状态字段也受 CHECK 与唯一键约束。业务引用不声明物理外键，遵循本项目的数据模型规则。
+
+## 18. 持票资格联动任务（V16）
+
+[V16 迁移](../src/main/resources/db/migration/V16__add_ticket_qualification_after_sale_tasks.sql) 增加 `ticket_qualification_after_sale_task`。退款事务把资格变更事件写入 `outbox_event`；消费者按买家、活动和场次查询匹配的已支付商品明细，并在资格保护锁内重新查询当前有效 Ticket。
+
+| 列 | 约束与用途 |
+|---|---|
+| `task_id` | 自增任务主键。 |
+| `source_event_id` | 逻辑引用来源 Outbox 事件；按事件 ID 建索引。 |
+| `product_order_item_id` | 唯一业务键；同一明细至多产生一个联动售后效果。 |
+| `qualification_scope` | `ACTIVITY` 或 `SESSION`，取自购买明细快照。 |
+| `status` | `PENDING`、`PROCESSING`、`WAITING_RETURN`、`SKIPPED`、`SUCCEEDED` 或 `FAILED`。 |
+| `attempt_count`、`next_attempt_at` | 最多五次任务执行；未完成任务按 5 秒间隔重试。 |
+| `failure_reason` | 保存最近失败原因；`FAILED` 必须有原因。 |
+
+`WAITING_RETURN` 表示商品已发货。收货后，任务扫描器重新核验资格，并通过 Day 17 售后 Service 模拟退回和验收。`SKIPPED` 表示处理事件时仍有有效票；后续资格再次丧失时，同一任务可重新进入 `PENDING`。普通商品不会进入任务表。消费者先提交 `consumer_process` 和任务记录，再处理每条任务；只有任务事务提交后才发送 RabbitMQ ACK。任务唯一键和稳定的售后 `request_id` 防止不同事件对同一明细重复退款。
+
+## 19. 运维角色（V15）
+
+[V15 迁移](../src/main/resources/db/migration/V15__add_admin_role_for_outbox_replay.sql) 将 `ADMIN` 加入 `app_user.role` 的受约束取值。公开注册仍创建 `USER`；ADMIN 只能通过受控运维数据维护流程授予。该角色仅用于受保护的消息重放入口，不自动获得发布者管理权限。
+
+## 20. 改期历史与特殊退款（V17）
+
+设计冻结见 [F11 契约](day22-reschedule-design.md)，DDL 见 [V17 迁移](../src/main/resources/db/migration/V17__add_session_reschedule_history.sql)。
+
+| 表 | 主键与唯一键 | 保存的业务事实 |
+|---|---|---|
+| `session_reschedule_event` | 自增 `event_id`；唯一 `(session_id, request_id)` | 新旧起止时间、原因、操作人、公告时间与本次特殊退款截止 |
+| `reschedule_affected_ticket` | `(event_id, ticket_id)` | 公告时有效票的买家、订单、场次、原座位、原成交价 |
+| `reschedule_response` | `(event_id, ticket_id)` | PENDING、USER_CONFIRMED、AUTO_RETAINED，分别记录用户与系统时间及来源 |
+| `reschedule_refund_submission` | 自增 `submission_id`；唯一 `(buyer_id, request_id)` | 整批请求的事件、排序后的 Ticket ID 清单和受理时间 |
+| `reschedule_refund_link` | `(submission_id, refund_id)`；`refund_id` 唯一 | 整批受理与原有逐订单退款申请的对应关系 |
+
+`ticket_refund_request` 增加 `refund_policy`、`source_event_id`、`accepted_at`。普通退款为 NORMAL_REFUND；特殊退款为 SESSION_RESCHEDULE_REFUND，来源事件必须存在于业务校验，受理时间必须等于 requested_at，逐票 fee_rate 为 0，退款额为快照成交价。原有 `uq_refund_ticket_claim` 继续统一约束所有退款原因。
+
+时间使用 DATETIME(3)，数据库业务时区为 Asia/Shanghai。输入带 UTC 偏移，服务端转换后存储；事件和响应查询输出带偏移的时间。截止为 `min(announcement_time + 7×24h, new_start_time)`，截止时刻不接受新特殊申请。新开始不得早于活动统一 close_time，不修改开售时间。
+
+快照在 Session 排他锁下、同一 READ COMMITTED 事务中建立。既有支付和退款的 Session 共享锁确定公告截止点；公告不会异步重新查询受影响范围。再次改期新增事件，原事件、快照和响应不覆盖。
+
+`tests/sql/reschedule_invariants.sql` 检查事件、快照、响应、退款批次、特殊价格与窗口、历史时间链及 Outbox 来源。Day 22 全脚本对账共 13 个 SQL 文件，消息汇总是诊断结果，其余结果集正常时为零行。
+
+## V18 取消事件与批次
+
+V18__add_cancellation_batches.sql 新增四张表：cancellation_event 保存不可覆盖的取消事实；cancellation_scope 固定本次 Session 范围；cancellation_batch 保存分页游标与汇总；cancellation_batch_item 保存每个对象的状态、认领令牌、租约、重试和退款关联。
+
+事件以 (cancel_type,target_id) 和 (publisher_id,request_id) 双重唯一。范围的 session_id 全局唯一，活动整体取消不会再次接管先前取消的场次。明细以 (batch_id,target_type,target_id,action) 唯一。扫描不依赖 OFFSET，使用各类业务主键；工作索引为 (status,next_attempt_at,item_id) 和 (status,lease_until,item_id)。每页 50 项，每项独立事务。
+
+退款新增 CANCELLATION_REFUND / CANCELLATION_V1，source_event_id 指向 cancellation_event。此政策允许开始后退款，普通/改期退款仍受 requested_at < start_time_snapshot 的原约束；新政策要求 source_event_id、accepted_at 非空。已成功退款不再次退款。尚未成功的旧报价保持金额快照，以 CANCELLATION_SUPERSEDED 终止后释放唯一票据占用。
+
+GIFT 座位增加 GIFT_CANCELLED；分配明细增加 cancelled_at、cancellation_event_id，两者同时为空或同时存在。取消占用仍归赠票池：总量 = AVAILABLE + GIFT_ALLOCATED + GIFT_CANCELLED，禁止转入 PAID 库存。原分配操作保持 ALLOCATE / SUCCEEDED，取消事实附于分配明细，不删除原操作。
+
+正常只读对账见 tests/sql/cancellation-invariants.sql。业务效果和单项成功同事务提交；批次汇总为后续短事务，扫描器修复效果已提交但汇总未更新的中断。对账应在任务静止且汇总刷新后进行，处理中项通过持久记录和扫描路径追踪。

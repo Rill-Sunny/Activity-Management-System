@@ -1,4 +1,4 @@
-USE limit_activity_system;
+-- Use the database selected by the datasource. Never switch to a developer's schema.
 
 -- Use UTC for DATETIME(3) test fixtures
 SET @day1_old_timezone = @@session.time_zone;
@@ -121,3 +121,6 @@ SELECT
     @session_id AS session_id,
     @zone_id AS zone_id,
     @seat_id AS seat_id;
+
+COMMIT;
+SET SESSION time_zone = @day1_old_timezone;

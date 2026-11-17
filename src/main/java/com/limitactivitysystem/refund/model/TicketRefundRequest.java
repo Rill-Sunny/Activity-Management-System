@@ -16,6 +16,15 @@ public class TicketRefundRequest {
     private LocalDateTime startTimeSnapshot;
     private LocalDateTime processedAt;
     private String result;
+    private String refundPolicy;
+    private Long sourceEventId;
+    private LocalDateTime acceptedAt;
+    public String getRefundPolicy() { return refundPolicy; }
+    public void setRefundPolicy(String value) { refundPolicy=value; }
+    public Long getSourceEventId() { return sourceEventId; }
+    public void setSourceEventId(Long value) { sourceEventId=value; }
+    public LocalDateTime getAcceptedAt() { return acceptedAt; }
+    public void setAcceptedAt(LocalDateTime value) { acceptedAt=value; }
     public LocalDateTime getProcessedAt() { return processedAt; }
     public void setProcessedAt(LocalDateTime processedAt) { this.processedAt = processedAt; }
     public String getResult() { return result; }

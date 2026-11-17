@@ -66,6 +66,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // Real Security, MVC, validators and Spring JDBC transaction management; persistence is mocked.
 @SpringBootTest(properties = {JwtTestTokens.SECRET_PROPERTY, "spring.flyway.enabled=false"})
 @AutoConfigureMockMvc
+@MockitoBean(types = {com.limitactivitysystem.cache.CacheInvalidationRecorder.class,
+        com.limitactivitysystem.cache.CacheInvalidationDelivery.class})
 class PublisherActivityPublishTest {
 
     private static final String ENDPOINT = "/publisher/activities/10/publish";

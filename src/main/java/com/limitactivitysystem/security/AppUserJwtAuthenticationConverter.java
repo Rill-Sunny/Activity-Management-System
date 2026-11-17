@@ -34,7 +34,7 @@ public class AppUserJwtAuthenticationConverter implements Converter<Jwt, Abstrac
         AppUser user = appUserMapper.findById(userId);
         Object role = jwt.getClaims().get("role");
         if (user == null || !"ACTIVE".equals(user.getStatus())
-                || !("USER".equals(role) || "PUBLISHER".equals(role))
+                || !("USER".equals(role) || "PUBLISHER".equals(role) || "ADMIN".equals(role))
                 || !role.equals(user.getRole())) {
             throw new InvalidBearerTokenException("Invalid bearer token");
         }

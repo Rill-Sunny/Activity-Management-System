@@ -98,7 +98,7 @@ PAID 支付在锁定 Zone 后检查 PAID 类型，自动配座查询只读取该
 
 故障注入发生在首个及最后 Seat 占用、Zone 扣减、主操作 INSERT、首条及最后一条明细 INSERT 后，比较全部资源与历史快照不变，再复用原键重试。另有零影响行回滚、真实 Zone 锁等待跨场次开始，以及最终时间检查使完整资源和历史写入回滚的实验。
 
-第 14 项另补两组指定实验：A 在第二个 Seat 已占用且尚未扣库存时失败；B 请求五张，在全部占座、库存扣五且已写入一条明细后失败。两组都在抛异常前读取事务内实际状态，失败后检查所有 Seat、库存及历史完整回滚，并运行零差异对账。第 15 项白名单 A–D 完整回归及本轮 88 项结果见 [赠票故障与名单变化验收](day12-whitelist-regression.md)。
+第 14 项另补两组指定实验：A 在第二个 Seat 已占用且尚未扣库存时失败；B 请求五张，在全部占座、库存扣五且已写入一条明细后失败。两组都在抛异常前读取事务内实际状态，失败后检查所有 Seat、库存及历史完整回滚，并运行零差异对账。第 15 项白名单 A–D 完整回归及本轮 88 项结果见 [赠票故障与名单变化验收](../qa/reports/day12-whitelist-regression.md)。
 
 [gift_invariants.sql](../tests/sql/gift_invariants.sql) 在每个业务用例结束时执行以下三类容量巡检，并检查座位类型不串池、操作明细数等于 quantity、逻辑关联及当前 Seat 状态正确、每个已分配座位有一条当前 ALLOCATE 历史、GIFT 座位没有普通 Ticket。
 
@@ -110,9 +110,9 @@ PAID 支付在锁定 Zone 后检查 PAID 类型，自动配座查询只读取该
 
 Session 检查使用规划总量，不能把已售或已分配数量从规划容量中扣掉。正常场景返回零异常行，故意损坏的夹具必须检出问题。PAID 资源另运行既有退款对账。脚本只读，等待并发工作线程结束后运行；对应当前 ALLOCATE-only 模型，增加 RELEASE 时需同步扩展历史对账语义。
 
-第 16～22 项补齐了三个 API、当前归属授权、历史完整性、三类容量异常检出、AT-06 无领取人绑定和最后一席并发。相关专项测试共 112 项通过，完整验收矩阵、全项目回归与对账证据见 [Day 12 完成验收](day12-completion.md)。
+第 16～22 项补齐了三个 API、当前归属授权、历史完整性、三类容量异常检出、AT-06 无领取人绑定和最后一席并发。相关专项测试共 112 项通过，完整验收矩阵、全项目回归与对账证据见 [Day 12 完成验收](../qa/reports/day12-completion.md)。
 
-第 4～13 项分配主链的回归共 **342 项通过，失败 0、错误 0、跳过 0**，当时包含 GIFT 分配 72 项、Schema 44 项、退款 70 项、支付 84 项、配座 17 项、安全 44 项和名单并发 11 项。第 14、15 项新增测试后的本轮结果见上文。原分配证据见 [分配运行汇总](verification/day12-gift-allocation/run-summary.json)、[分配五张](verification/day12-gift-allocation/day12-gift-allocate-five.json)、[跨 Zone 幂等竞争](verification/day12-gift-allocation/day12-gift-cross-zone-key-race.json)及 [AT-06 双向隔离](verification/day12-gift-allocation/day12-at06-paid-gift-isolation.json)。
+第 4～13 项分配主链的回归共 **342 项通过，失败 0、错误 0、跳过 0**，当时包含 GIFT 分配 72 项、Schema 44 项、退款 70 项、支付 84 项、配座 17 项、安全 44 项和名单并发 11 项。第 14、15 项新增测试后的本轮结果见上文。原分配证据见 [分配运行汇总](../qa/verification/day12-gift-allocation/run-summary.json)、[分配五张](../qa/verification/day12-gift-allocation/day12-gift-allocate-five.json)、[跨 Zone 幂等竞争](../qa/verification/day12-gift-allocation/day12-gift-cross-zone-key-race.json)及 [AT-06 双向隔离](../qa/verification/day12-gift-allocation/day12-at06-paid-gift-isolation.json)。
 
 ```powershell
 	mvn '-Dtest=GiftAllocationMySqlIntegrationTest,GiftInventorySchemaMySqlIntegrationTest,TicketRefundProcessingMySqlIntegrationTest,TicketPaymentMySqlIntegrationTest,SeatAllocationMySqlIntegrationTest,SecurityAccessTest,WhitelistQualificationConcurrencyMySqlIntegrationTest' test
@@ -126,10 +126,10 @@ V7 只新增两张表，不改变既有十五张业务表，不写 Seat、Zone�
 
 Schema 测试覆盖精确列清单、NOT NULL、正数边界、操作与状态 CHECK、索引列顺序、同发布者请求键竞争、不同发布者复用请求键、逐操作 Seat 去重、数据库时间、历史事务回滚及零普通 Ticket 写入。它也验证不存在物理外键的实际语义，避免把正数 ID CHECK 误认为关联存在性校验。
 
-2026-10-31 迁移阶段验证共 **195 项通过，失败 0、错误 0、跳过 0**：GIFT Schema 44 项、Day 11 退款处理 70 项、白名单资格入口 29 项、名单并发 11 项、免费预约 41 项。退款对账的 53 个正常场景均零差异，17 个故意损坏场景均检出问题。原始结果见 [运行汇总](verification/day12-gift-schema/run-summary.json)、[迁移验证](verification/day12-gift-schema/day12-gift-migration.json)、[请求键竞争](verification/day12-gift-schema/day12-gift-request-key-race.json)和 [Day 11 硬门槛对账](verification/day12-gift-schema/day11-hard-gate-reconciliation.json)。
+2026-10-31 迁移阶段验证共 **195 项通过，失败 0、错误 0、跳过 0**：GIFT Schema 44 项、Day 11 退款处理 70 项、白名单资格入口 29 项、名单并发 11 项、免费预约 41 项。退款对账的 53 个正常场景均零差异，17 个故意损坏场景均检出问题。原始结果见 [运行汇总](../qa/verification/day12-gift-schema/run-summary.json)、[迁移验证](../qa/verification/day12-gift-schema/day12-gift-migration.json)、[请求键竞争](../qa/verification/day12-gift-schema/day12-gift-request-key-race.json)和 [Day 11 硬门槛对账](../qa/verification/day12-gift-schema/day11-hard-gate-reconciliation.json)。
 
 ```powershell
 	mvn '-Dtest=GiftInventorySchemaMySqlIntegrationTest,TicketRefundProcessingMySqlIntegrationTest,WhitelistQualificationConcurrencyMySqlIntegrationTest,QualificationEntryPointMySqlIntegrationTest,FreeReservationMySqlIntegrationTest' test
 ```
 
-MySQL 验收需要 DB_PASSWORD，跳过不算通过。结果保存在 [Day 12 Schema 验证目录](verification/day12-gift-schema)。
+MySQL 验收需要 DB_PASSWORD，跳过不算通过。结果保存在 [Day 12 Schema 验证目录](../qa/verification/day12-gift-schema)。

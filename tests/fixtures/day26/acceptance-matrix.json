@@ -1,0 +1,334 @@
+[
+  {
+    "id": "AT-01",
+    "rule": "同活动不同场次可分别免费预约；同场次最多一笔有效预约",
+    "fixture": "FreeReservationMySqlIntegrationTest#publishOpenFreeScope：三个 FREE 场次、USER/PUBLISHER 两种参与身份",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+        "method": "at01ThreeSessionsAllowTwoBookingsButRejectDuplicateActiveReservations"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-02",
+    "rule": "最后一个免费名额最多一个成功",
+    "fixture": "20 个不同账号、容量 1、同步起跑和真实提交",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+        "method": "at02TwentyDifferentAccountsPostingForTheLastSlotHaveExactlyOneWinner"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-03",
+    "rule": "取消释放名额；重新预约不享有优先权",
+    "fixture": "原预约者与其他账号分别先取得数据库门锁，保留取消历史",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+        "method": "at03CancellationAndRebookingKeepHistoryAndAnOldCancelCannotReleaseTheNewQuota"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.FreeReservationMySqlIntegrationTest",
+        "method": "at03ReleasedSlotIsOpenToBothFormerOwnerAndOtherAccount"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-04",
+    "rule": "显式空白名单拒绝；未配置执行继承或公开规则",
+    "fixture": "活动级名单、场次级空名单、移除配置与六种资格规则",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest",
+        "method": "emptySessionListRejectsAllConsumerRolesAndRemovingItRestoresInheritance"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.QualificationEntryPointMySqlIntegrationTest",
+        "method": "bothBusinessEntriesUseTheSixQualificationRules"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-05",
+    "rule": "同账号两笔各 3 张订单竞争场次限购 4，不超限",
+    "fixture": "PURCHASE_LIMIT_FROM_ZERO 分支：配额 0、两单各 3 张、限购 4；独立连接与 CyclicBarrier",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-06",
+    "rule": "GIFT 独立库存且不绑定平台买家",
+    "fixture": "PAID/GIFT 两个区，赠票操作记录发布者和实体座位",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest",
+        "method": "at06RecordsOnlyTheOperatorAndRealSeatsWithoutReceiverAccountsOrTickets"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.GiftAllocationMySqlIntegrationTest",
+        "method": "allocateFiveRestoresNoPaidResourcesAndPersistsExactSeatHistory"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-07",
+    "rule": "最后一张付费票仅一个成交，失败事务无局部扣减",
+    "fixture": "LAST_STOCK/SAME_SELECTED_SEAT 分支、两个账号；另有后一区缺货回滚",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "independentHttpTransactionsCannotOversellExceedQuotaOrSellOneSeatTwice"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "secondZoneStockFailureRollsBackTheFirstZoneAndQuotaBeforeAnIndependentClose"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-08",
+    "rule": "停售阻止新建票单，未过期旧单仍可支付",
+    "fixture": "使用数据库相对时间：创建早于停售、支付晚于停售且早于 15 分钟到期点",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketPaymentMySqlIntegrationTest",
+        "method": "aValidOrderCreatedBeforeCloseCanReachResourceAllocationAfterTicketSalesClose"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-09",
+    "rule": "仅退指定 Ticket，使用原成交价和冻结政策",
+    "fixture": "四张实际成交价不同的票，只退 B/D，核对余票与资源",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+        "method": "at09RefundOnlyBAndDAtTheirFourActualPaidPrices"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-10",
+    "rule": "并发退款同一票只生效一次",
+    "fixture": "并发受理/执行同一张票，另测失败请求与新请求竞争",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+        "method": "at10ConcurrentSameTicketApplicationsAndProcessingRestoreAndRefundOnlyOnce"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.TicketRefundProcessingMySqlIntegrationTest",
+        "method": "at10FailedRequestAndANewRequestForTheSameTicketCannotBothSucceed"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-11",
+    "rule": "黑 M 缺货不替换白 L，调整清单需再次确认",
+    "fixture": "黑 M 库存 0、白 L 有货，预览/确认及新购买清单",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "publishAndReadBlackMZeroStockWithoutSubstitutingWhiteL"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "p04_previewReportsExactOutOfStockSkuAndDoesNotWriteResources"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-12",
+    "rule": "多 SKU 缺货整单回滚，回滚后安全关闭旧单",
+    "fixture": "SKU A×2、B×1；竞争者真实成交；迟到关闭与并发已付款竞争；p16 受控异常恢复",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "at12RealCompetingSaleRollsBackEarlierSkuWithoutCorruptingTheLedger"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "at12DelayedShortageClosureCannotOverwriteACommittedPayment"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "p16_outOfStockAfterAnEarlierSkuUpdateRollsBackQuotaAndStockThenClosesTheWholeOrder"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-13",
+    "rule": "同 Product 两 SKU 共享限购 2",
+    "fixture": "A/B 各购买 1 后再买拒绝，并发支付累计限购",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "at13OneOfEachSkuExhaustsTheSharedProductLimit"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "p17_productQuotaIsSharedAcrossSkusUnderConcurrentPayment"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-14",
+    "rule": "已发货部分售后，验收后仅可再售部分回库",
+    "fixture": "已发货 3 件特殊模板商品，质量退款、验收失败、通过但不可再售、可再售；重复验收",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "specialTemplateBlocksOnlyNoReasonAndNonresalableReturnedGoodsDoNotRestoreStock"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "shippedQualifiedItemWaitsForReturnReceiptBeforeRefundAndRestock"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "orderResponseItemIdsEnableFulfillmentAndAfterSaleWithoutDatabaseLookup"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-15",
+    "rule": "最后有效票退款经 Outbox/RabbitMQ 仅联动失去资格的商品行",
+    "fixture": "普通商品/本场限定/其他场限定混单；剩余票、重获资格、已发货、重复事件和失败任务恢复",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "at15LastTicketRefundUsesRabbitOutboxAndOnlyRefundsQualifiedLineInMixedOrder"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "partialRefundWithAnotherValidTicketDoesNotStartQualificationAfterSale"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "delayedRefundEventRechecksEligibilityAfterAnotherTicketIsPurchased"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "activityScopeUsesOtherSessionTicketWhileSessionScopeDoesNot"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ProductCatalogMySqlIntegrationTest",
+        "method": "consumerFailureLeavesTicketRefundCommittedAndTerminalTaskCanBeQueriedAndReplayed"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-16",
+    "rule": "发布后配置冻结，时间变更仅走专用改期 API",
+    "fixture": "发布票价/容量/座位等核心字段的普通编辑矩阵；专用改期保持 Ticket/Seat",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+        "method": "ordinaryEditsLeaveEveryPublishedCoreFieldUnchanged"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.ActivityPublishingMySqlIntegrationTest",
+        "method": "publishedActivityRejectsAdditionalSeatsInTheDatabase"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+        "method": "at16DedicatedApiPreservesTicketsSeatsAndFrozenConfiguration"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-17",
+    "rule": "特殊退款截止 min(公告+7天,新开始)，零手续费且已受理申请不失效",
+    "fixture": "新开始 2/30 天；deadline -1ms、=、+1ms；先受理后跨截止执行",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+        "method": "at17DatabaseAnnouncementUsesTheEarlierDeadline"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+        "method": "t05T06ExclusiveDeadlineAcceptance"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+        "method": "t07T08ConfirmedTicketCanRefundAndAcceptedPolicySurvivesDelayedExecution"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-18",
+    "rule": "到期未响应自动保留，不写为用户主动确认",
+    "fixture": "短窗口及真实扫描/消息，退款票不能重新有效",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+        "method": "at18T11AutoRetentionIsDistinctAndNeverReactivatesRefundedTickets"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.SessionRescheduleMySqlIntegrationTest",
+        "method": "realRabbitWindowMessageRetainsOnlyOnce"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-19",
+    "rule": "取消场次立即停止交易，其他场次隔离",
+    "fixture": "A 场次待支付单/有效票/已退票/GIFT，B 场次不变；FREE 按实际模型另设活动",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "at19SessionCancellationClosesOnlyItsOrdersAndRefundsOnlyValidTickets"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "freeReservationLosesParticipationBeforeWorkerAndRestoresQuotaOnce"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  },
+  {
+    "id": "AT-20",
+    "rule": "取消退款单项失败可查可重试，成功项不重复执行且不能重新销售",
+    "fixture": "A/C 成功、B 写后注入异常，B 独立回滚；解除失败只补 B，有限重试和显式恢复",
+    "tests": [
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "at20OneRefundRollsBackAndOthersCommitThenOnlyTheFailedItemRetries"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "finiteFailuresRequireExplicitRetryAndRemainQueryable"
+      },
+      {
+        "class": "com.limitactivitysystem.activity.integration.CancellationMySqlIntegrationTest",
+        "method": "scannerRepairsSummaryAfterBusinessCommitWithoutAckOrWorkerContinuation"
+      }
+    ],
+    "sql": "tests/sql/*.sql（messaging_reconciliation.sql 为诊断明细，其余正常结果必须为空）"
+  }
+]

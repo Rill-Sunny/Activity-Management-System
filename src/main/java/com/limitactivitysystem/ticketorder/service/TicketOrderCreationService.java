@@ -21,10 +21,12 @@ import com.limitactivitysystem.ticketorder.mapper.TicketOrderMapper;
 import com.limitactivitysystem.ticketorder.mapper.UserSessionPurchaseMapper;
 import com.limitactivitysystem.ticketorder.model.TicketOrder;
 import com.limitactivitysystem.ticketorder.model.TicketOrderItem;
+import com.limitactivitysystem.outbox.OutboxEventWriter;
 import com.limitactivitysystem.whitelist.service.QualificationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,11 +57,13 @@ public class TicketOrderCreationService {
     private final DatabaseTimeMapper time;
     private final TicketOrderMapper orders;
     private final TicketOrderItemMapper orderItems;
+    private final OutboxEventWriter outbox;
 
+    @Autowired
     public TicketOrderCreationService(CurrentUserProvider currentUser, QualificationService qualification,
                               ActivityMapper activities, ActivitySessionMapper sessions, SessionZoneMapper zones,
                               SessionSeatMapper seats, UserSessionPurchaseMapper purchases, DatabaseTimeMapper time,
-                              TicketOrderMapper orders, TicketOrderItemMapper orderItems) {
+                              TicketOrderMapper orders, TicketOrderItemMapper orderItems, OutboxEventWriter outbox) {
         this.currentUser = currentUser;
         this.qualification = qualification;
         this.activities = activities;
@@ -70,6 +74,15 @@ public class TicketOrderCreationService {
         this.time = time;
         this.orders = orders;
         this.orderItems = orderItems;
+        this.outbox = outbox;
+    }
+
+    /** Keeps the former constructor usable by isolated unit fixtures. The application always injects OutboxEventWriter. */
+    public TicketOrderCreationService(CurrentUserProvider currentUser, QualificationService qualification,
+                              ActivityMapper activities, ActivitySessionMapper sessions, SessionZoneMapper zones,
+                              SessionSeatMapper seats, UserSessionPurchaseMapper purchases, DatabaseTimeMapper time,
+                              TicketOrderMapper orders, TicketOrderItemMapper orderItems) {
+        this(currentUser, qualification, activities, sessions, zones, seats, purchases, time, orders, orderItems, null);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
@@ -158,6 +171,12 @@ public class TicketOrderCreationService {
             throw failure(ORDER_CREATION_CONFLICT, "Order items could not all be saved");
         }
         TicketOrder stored = orders.findById(order.getOrderId());
+        if (outbox != null) {
+            outbox.append("ORDER_EXPIRED", order.getOrderId(), Map.of(
+                    "orderId", order.getOrderId(),
+                    "buyerId", buyerId,
+                    "expiresAt", stored.getExpiresAt()));
+        }
         return TicketOrderResponses.from(stored, orderItems.findByOrderId(order.getOrderId()));
     }
 

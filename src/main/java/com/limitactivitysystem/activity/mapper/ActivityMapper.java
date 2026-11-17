@@ -61,7 +61,7 @@ public interface ActivityMapper {
             SELECT activity_id, publisher_id, name, description, type, status, open_time, close_time
             FROM activity
             WHERE activity_id = #{id}
-              AND status = 'PUBLISHED'
+              AND status IN ('PUBLISHED','CANCELLED')
             """)
     @ResultMap("activityResultMap")
     Activity findPublishedById(@Param("id") Long id);

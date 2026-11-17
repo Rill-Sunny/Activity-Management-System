@@ -51,6 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIfEnvironmentVariable(named = "DB_PASSWORD", matches = ".+")
 class TicketOrderSmallConcurrencyMySqlIntegrationTest extends PaymentResourceTestSupport {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.limitactivitysystem.cache.RedisRequestDeduplicator paymentDeduplicator;
     @LocalServerPort private int port;
     @Autowired private TicketOrderCloseService closing;
     private ActivitySession session;
@@ -62,6 +64,10 @@ class TicketOrderSmallConcurrencyMySqlIntegrationTest extends PaymentResourceTes
     enum Action { PAY, CANCEL, CLOSE }
 
     @BeforeEach void createPublishedScope() throws Exception {
+        // This experiment counts database waiters, so every request must reach the Order lock.
+        org.mockito.BDDMockito.given(paymentDeduplicator.beginPayment(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong()))
+                .willAnswer(call -> org.mockito.Mockito.mock(com.limitactivitysystem.cache.RedisRequestDeduplicator.Lease.class));
         var activity = insertDraft(publisher, "PAID");
         jdbc.update("""
                 UPDATE activity SET open_time = DATE_SUB(CURRENT_TIMESTAMP(3), INTERVAL 1 HOUR),

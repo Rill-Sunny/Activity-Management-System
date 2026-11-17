@@ -76,13 +76,13 @@ class ActivityQueryMySqlIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"DRAFT", "PUBLISHED", "FINISHED", "CANCELLED"})
-    void detailsOnlyExposePersistedPublishedActivities(String state) throws Exception {
+    void detailsExposePublishedAndCancelledActivitiesWhileOtherStatesStayPrivate(String state) throws Exception {
         Activity activity = fixtures.get(state);
         var response = mvc.perform(get("/activities/{id}", activity.getActivityId()));
-        if ("PUBLISHED".equals(state)) {
+        if ("PUBLISHED".equals(state)||"CANCELLED".equals(state)) {
             response.andExpect(status().isOk())
                     .andExpect(jsonPath("$.activityId").value(activity.getActivityId()))
-                    .andExpect(jsonPath("$.status").value("PUBLISHED"));
+                    .andExpect(jsonPath("$.status").value(state));
         } else {
             response.andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("ACTIVITY_NOT_FOUND"))

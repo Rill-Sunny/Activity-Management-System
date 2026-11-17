@@ -144,7 +144,7 @@ Schema 测试验证计数、记录和事务原子性；创建 API 通过 FreeRes
 
 [FreeReservationSchemaMySqlIntegrationTest](../src/test/java/com/limitactivitysystem/activity/integration/FreeReservationSchemaMySqlIntegrationTest.java) 在随机隔离库中执行 V1、V3、V4，避开带固定 USE 的 V2 seed。当前 30 项验证覆盖生成唯一键、多个取消历史、跨场次与跨账号、字段 CHECK、初始化竞争、不重置剩余量、最后名额竞争、重复预约失败回滚、两处事务故障及七类独立对账反向检测。
 
-Schema 冻结阶段连同发布回归共 125 项通过，无失败、无跳过。该阶段的历史与并发记录、测试统计保存在 [verification/day9-schema](verification/day9-schema)。复跑选择器：
+Schema 冻结阶段连同发布回归共 125 项通过，无失败、无跳过。该阶段的历史与并发记录、测试统计保存在 [verification/day9-schema](../qa/verification/day9-schema)。复跑选择器：
 
 ```powershell
 	mvn '-Dtest=FreeReservationSchemaMySqlIntegrationTest,ActivityPublishingMySqlIntegrationTest,PublisherActivityPublishTest' test
@@ -170,11 +170,11 @@ Schema 冻结阶段连同发布回归共 125 项通过，无失败、无跳过�
 - 账号在认证后禁用时拒绝动作；名额返还影响零行时，取消状态也回滚。
 - 最后名额竞争、同账号重复创建、并发重复取消；释放名额后原用户或其他用户均可取得新预约。
 
-此前 API 验证记录保存在 [verification/day9-api](verification/day9-api)，其中公共池竞争保存两种胜方、旧历史 ID 和新预约 ID。验证后执行统一免费预约对账 SQL，确认剩余量与 ACTIVE 数量一致。
+此前 API 验证记录保存在 [verification/day9-api](../qa/verification/day9-api)，其中公共池竞争保存两种胜方、旧历史 ID 和新预约 ID。验证后执行统一免费预约对账 SQL，确认剩余量与 ACTIVE 数量一致。
 
-当前已完成 AT-01～AT-03、20 个不同账号同时 POST、跳过预查询后的唯一键保护、并发取消实际返还次数、毫秒边界和四处故障注入。复跑脚本、完整必测矩阵、111 项测试结果和交付清单见 [Day 9 免费预约验收](day9-concurrency.md)。
+当前已完成 AT-01～AT-03、20 个不同账号同时 POST、跳过预查询后的唯一键保护、并发取消实际返还次数、毫秒边界和四处故障注入。复跑脚本、完整必测矩阵、111 项测试结果和交付清单见 [Day 9 免费预约验收](../qa/guides/day9-concurrency.md)。
 
-此前 API 基线验证包含预约业务 39 项、请求契约 40 项、Schema 24 项；加入支付 84 项及安全 44 项后，共 231 项相关回归通过且没有跳过。历史 [run-summary.json](verification/day9-api/run-summary.json) 保存这五个测试类的结果及原始证据哈希；本次验收为预约业务 41 项、请求契约 40 项、Schema 与对账 30 项，合计 111 项。
+此前 API 基线验证包含预约业务 39 项、请求契约 40 项、Schema 24 项；加入支付 84 项及安全 44 项后，共 231 项相关回归通过且没有跳过。历史 [run-summary.json](../qa/verification/day9-api/run-summary.json) 保存这五个测试类的结果及原始证据哈希；本次验收为预约业务 41 项、请求契约 40 项、Schema 与对账 30 项，合计 111 项。
 
 复跑预约契约、业务和 Schema 的选择器为：
 
